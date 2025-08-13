@@ -958,30 +958,34 @@ namespace z3nCore
             
             try
             {
-                new Sql(_project).DbQ("CREATE SCHEMA IF NOT EXISTS private;");
+               // new Sql(_project).DbQ("CREATE SCHEMA IF NOT EXISTS private;");
                 new Sql(_project).DbQ("CREATE SCHEMA IF NOT EXISTS public;");
-                new Sql(_project).DbQ("CREATE SCHEMA IF NOT EXISTS projects;");
+               // new Sql(_project).DbQ("CREATE SCHEMA IF NOT EXISTS projects;");
             }
             catch (Exception ex) { }
 
             var phK = new List<string> {
-                "private_settings",
-                "private_profile",
-                "private_blockchain",
-                "private_api",
-                "private_google",
-                "private_twitter",
-                "private_discord",
-                "private_github",
-                "public_blockchain",
-                "public_native",
-                "public_deposits",
-                "public_profile",
-                "public_rpc",
-                "public_mail",
-                "public_google",
-                "public_twitter",
-                "public_discord",
+                "_settings",
+                "_instance",
+                "_wallets",
+                "_api",
+
+                "_addresses",
+                "_native",
+                "_deposits",
+
+
+                "_google",
+                "_twitter",
+                "_discord",
+                "_github",
+             
+
+
+                "_profile",
+                "_rpc",
+                "_mail",
+                
             };
 
             var phV = new List<string> {
@@ -989,22 +993,23 @@ namespace z3nCore
                 "Proxy, cookies, webgl",
                 "Blockchain keys, seeds, etc. ",
                 "Api keys ",
+
+                "Blockchain addresses",
+                "Balancees",
+                "CEX deposit addresses",
+
+
                 "Google Credentials",
                 "Twitter Credentials",
                 "Discord Credentials",
                 "GitHub Credentials",
-                "Blockchain addresses",
-                "Balancees",
-                "CEX deposit addresses",
+
                 "Username, bio, pfp, etc.",
                 "Custom RPC & Explorers list",
                 "All emails",
-                "Google Stats",
-                "Twitter Stats",
-                "Discord Stats",
+
             };
 
-            // If a specific schema is provided, process only that schema
             if (schemaValue.HasValue)
             {
                 string tablename = schemaValue.ToString();
@@ -1022,7 +1027,6 @@ namespace z3nCore
             }
             else
             {
-                // Original behavior: process all selected schemas from the form
                 var import = _f0rm.GetKeyBoolPairs(phK.Count(), phK, phV, "check boxes to import", prepareUpd: false);
 
                 foreach (KeyValuePair<string, bool> pair in import)
