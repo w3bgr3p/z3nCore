@@ -1,5 +1,7 @@
 ﻿using System;
+using System.CodeDom;
 using System.Globalization;
+using System.Linq.Expressions;
 using System.Threading;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
@@ -89,9 +91,19 @@ namespace z3nCore
             }
 
         }
-        public static void TimeOut(this IZennoPosterProjectModel project, int min = 30)
+        public static void TimeOut(this IZennoPosterProjectModel project, int min = 0)
         {
-            if (project.TimeElapsed() > 60 * min) throw new Exception("GlobalTimeout");
+            if (min == 0) {
+                try
+                {
+                    min = int.Parse(project.Var("timeOut"));
+                }
+                catch 
+                { 
+                    throw new ArgumentException("value not provided"); }
+                }
+            if (project.TimeElapsed() > 60 * min)
+                throw new Exception($"GlobalTimeout {min}min, after {project.LastExecutedActionId}");
         }
         public static void Deadline(this IZennoPosterProjectModel project, int sec = 0)
         {
@@ -101,7 +113,7 @@ namespace z3nCore
                 long currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                 long startTime = long.Parse(start);
                 int difference = (int)(currentTime - startTime);
-                if (difference > sec) throw new Exception("Timeout");
+                if (difference > sec) throw new Exception($"Deadline Exception: {sec}s, after {project.LastExecutedActionId}");
 
             }
             else
@@ -117,6 +129,10 @@ namespace z3nCore
                 Thread.Sleep(new Random().Next(min, max) * 1000);
         }
 
+        public static void StartSession(this IZennoPosterProjectModel project) 
+        {
+            project.Var("varSessionId", (DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString());
+        }
         #region obsolete
 
         public static string cd(object input = null, string o = "unix")

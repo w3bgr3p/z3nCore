@@ -106,7 +106,7 @@ namespace z3nCore
                     return;
                 case "all":
                     cookies = Get().Replace("'", "''").Trim();
-                    new Sql(_project).Upd($"cookies= '{cookies}'", "_instance");
+                    new Sql(_project).Upd($"cookies = '{cookies}'", "_instance");
                     if (!string.IsNullOrEmpty(jsonPath)) 
                         lock (LockObject) { File.WriteAllText(jsonPath, cookies); }
                     return;
