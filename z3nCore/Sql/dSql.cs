@@ -24,8 +24,7 @@ namespace z3nCore
     public class dSql : IDisposable
     {
         private readonly IDbConnection _connection;
-        private readonly string _tableName;
-        private readonly Logger _logger;
+
         private bool _disposed = false;
 
         public dSql(string dbPath, string dbPass)
@@ -391,9 +390,7 @@ namespace z3nCore
 
         public async Task<int> Upd(string toUpd, object id, string tableName = null, string where = null, bool last = false)
         {
-            _logger.Send(toUpd);
             var parameters = new DynamicParameters();
-            if (tableName == null) tableName = _tableName;
             if (tableName == null) throw new Exception("TableName is null");
 
             toUpd = QuoteName(toUpd, true);
@@ -444,7 +441,6 @@ namespace z3nCore
         public async Task<string> Get(string toGet, string id, string tableName = null, string where = null)
         {
             var parameters = new DynamicParameters();
-            if (tableName == null) tableName = _tableName;
             if (tableName == null) throw new Exception("TableName is null");
 
             toGet = QuoteName(toGet, true);
@@ -476,17 +472,15 @@ namespace z3nCore
 
         public async Task AddRange(int range, string tableName = null)
         {
-            if (tableName == null) tableName = _tableName;
             if (tableName == null) throw new Exception("TableName is null");
 
             string query = $@"SELECT COALESCE(MAX(id), 0) FROM {tableName};";
 
             int current = await _connection.ExecuteScalarAsync<int>(query, commandType: System.Data.CommandType.Text);
-            _logger.Send($"{query}-{current}");
 
             for (int currentId = current + 1; currentId <= range; currentId++)
             {
-                _connection.ExecuteAsync($@"INSERT INTO {tableName} (id) VALUES ({currentId}) ON CONFLICT DO NOTHING;");
+                await _connection.ExecuteAsync($@"INSERT INTO {tableName} (id) VALUES ({currentId}) ON CONFLICT DO NOTHING;");
             }
         }
 
