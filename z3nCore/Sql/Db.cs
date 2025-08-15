@@ -333,7 +333,7 @@ namespace z3nCore
             {
                 query = $"UPDATE {tableName} SET {toUpd} WHERE {where}";
             }
-            return project.DbQ(query);
+            return project.DbQ(query, log:log);
         }
 
         //Tables

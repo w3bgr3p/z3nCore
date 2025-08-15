@@ -77,7 +77,6 @@ namespace z3nCore
             _logger.Send(headersString);
             //_project.L0g(headersString);
 
-            string headerToGet = "authorization";
             var headers = headersString.Split('\n');
 
             foreach (string header in headers)

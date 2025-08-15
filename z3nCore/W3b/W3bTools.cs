@@ -969,7 +969,6 @@ namespace z3nCore
 
     public class KuCoin
     {
-        private readonly string _apiKey = "";
         public async Task<string> OrderbookByTiker(string ticker = "ETH")
         {
             var client = new HttpClient();

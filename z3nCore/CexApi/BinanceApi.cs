@@ -17,8 +17,6 @@ namespace z3nCore
         private readonly IZennoPosterProjectModel _project;
         private readonly Logger _logger;
 
-        private readonly bool _logShow;
-        private readonly Sql _sql;
 
 
         private string _apiKey;

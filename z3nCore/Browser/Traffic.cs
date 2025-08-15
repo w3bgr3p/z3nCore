@@ -102,7 +102,6 @@ namespace z3nCore
             Thread.Sleep(1000);
             var traffic = _instance.ActiveTab.GetTraffic();
             var data = new Dictionary<string, string>();
-            string param;
             foreach (var t in traffic)
             {
                 if (t.Url.Contains(url))
