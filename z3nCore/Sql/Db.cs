@@ -705,5 +705,38 @@ namespace z3nCore
 
         }
 
+        public static void MigrateAllTables(this IZennoPosterProjectModel project)
+        {
+            string dbMode = project.Var("DBmode");
+            if (dbMode != "PostgreSQL" && dbMode != "SQLite") throw new ArgumentException("DBmode must be 'PostgreSQL' or 'SQLite'");
+
+            string direction = dbMode == "PostgreSQL" ? "toSQLite" : "toPostgreSQL";
+
+            string sqLitePath = project.Var("DBsqltPath");
+            string pgHost = "localhost";
+            string pgPort = "5432";
+            string pgDbName = "postgres";
+            string pgUser = "postgres";
+            string pgPass = project.Var("DBpstgrPass");
+
+            string sourceConnection = dbMode == "PostgreSQL" ? $"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;" : sqLitePath;
+            string destinationConnection = dbMode == "PostgreSQL" ? sqLitePath : $"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;";
+
+            project.SendInfoToLog($"Migrating all tables from {dbMode} to {(direction == "toSQLite" ? "SQLite" : "PostgreSQL")}", true);
+
+            using (var sourceDb = new dSql(sourceConnection))
+            using (var destinationDb = new dSql(destinationConnection))
+            {
+                try
+                {
+                    int rowsMigrated = dSql.MigrateAllTablesAsync(sourceDb, destinationDb).GetAwaiter().GetResult();
+                    project.SendInfoToLog($"Successfully migrated {rowsMigrated} rows", true);
+                }
+                catch (Exception ex)
+                {
+                    project.SendWarningToLog($"Error during migration: {ex.Message}", true);
+                }
+            }
+        }
     }
 }

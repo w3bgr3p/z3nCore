@@ -10,7 +10,7 @@ using System.Diagnostics;
 using System.Linq;
 
 using System.Threading.Tasks;
-using ZennoLab.InterfacesLibrary.ProjectModel;
+
 
 namespace z3nCore
 {
@@ -388,6 +388,107 @@ namespace z3nCore
             
         }
 
+        
+        public static async Task<int> MigrateAllTablesAsync(dSql sourceDb, dSql destinationDb)
+        {
+            if (sourceDb == null) throw new ArgumentNullException(nameof(sourceDb));
+            if (destinationDb == null) throw new ArgumentNullException(nameof(destinationDb));
+            if (sourceDb.ConnectionType == destinationDb.ConnectionType) throw new ArgumentException("Source and destination must be different database types.");
+
+            // Получить список несистемных таблиц из источника
+            string tablesQuery;
+            List<string> tables = new List<string>();
+            if (sourceDb.ConnectionType == DatabaseType.PostgreSQL)
+            {
+                tablesQuery = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name NOT LIKE 'pg_%';";
+                string tablesResult = await sourceDb.DbReadAsync(tablesQuery);
+                tables = tablesResult.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
+            }
+            else if (sourceDb.ConnectionType == DatabaseType.SQLite)
+            {
+                tablesQuery = "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%';";
+                string tablesResult = await sourceDb.DbReadAsync(tablesQuery);
+                tables = tablesResult.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
+            }
+            else
+            {
+                throw new NotSupportedException("Unsupported source database type.");
+            }
+
+            int totalRows = 0;
+            foreach (var tableName in tables)
+            {
+                // Получить схему таблицы из источника
+                string createTableQuery = await GetCreateTableQueryAsync(sourceDb, tableName);
+
+                // Создать таблицу в destination
+                await destinationDb.DbWriteAsync(createTableQuery);
+
+                // Копировать данные
+                string selectQuery = $"SELECT * FROM \"{tableName}\";";
+                string dataResult = await sourceDb.DbReadAsync(selectQuery, separator: "|");
+
+                if (!string.IsNullOrEmpty(dataResult))
+                {
+                    var rows = dataResult.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var row in rows)
+                    {
+                        var values = row.Split('|').Select(v => string.IsNullOrEmpty(v) ? "NULL" : $"'{v.Replace("'", "''")}'").ToArray();
+                        string insertQuery = $"INSERT INTO \"{tableName}\" VALUES ({string.Join(", ", values)});";
+                        await destinationDb.DbWriteAsync(insertQuery);
+                    }
+                    totalRows += rows.Length;
+                }
+            }
+            return totalRows;
+        }
+        private static async Task<string> GetCreateTableQueryAsync(dSql db, string tableName)
+        {
+            string columnsDef;
+            string primaryKeyConstraint = "";
+            if (db.ConnectionType == DatabaseType.PostgreSQL)
+            {
+                string schemaQuery = $"SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_name = '{tableName}' AND table_schema = 'public';";
+                columnsDef = await db.DbReadAsync(schemaQuery);
+                var columns = columnsDef.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(row => row.Split('|'))
+                    .Select(parts => $"\"{parts[0]}\" {parts[1]} {(parts[2] == "NO" ? "NOT NULL" : "")} {(parts[3] != "" ? $"DEFAULT {parts[3]}" : "")}")
+                    .ToList();
+
+                string pkQuery = $"SELECT pg_get_constraintdef(pg_constraint.oid) FROM pg_constraint JOIN pg_class ON pg_constraint.conrelid = pg_class.oid JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid WHERE pg_class.relname = '{tableName}' AND pg_constraint.contype = 'p' AND pg_namespace.nspname = 'public';";
+                string pkResult = await db.DbReadAsync(pkQuery);
+                if (!string.IsNullOrEmpty(pkResult))
+                {
+                    primaryKeyConstraint = $", {pkResult}";
+                }
+                return $"CREATE TABLE \"{tableName}\" ({string.Join(", ", columns)}{primaryKeyConstraint});";
+            }
+            else if (db.ConnectionType == DatabaseType.SQLite)
+            {
+                string schemaQuery = $"PRAGMA table_info(\"{tableName}\");";
+                columnsDef = await db.DbReadAsync(schemaQuery);
+                var columns = columnsDef.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(row => row.Split('|'))
+                    .Select(parts => $"\"{parts[1]}\" {parts[2]} {(parts[3] == "1" ? "NOT NULL" : "")} {(parts[4] != "" ? $"DEFAULT {parts[4]}" : "")}")
+                    .ToList();
+
+                string pkResult = await db.DbReadAsync(schemaQuery);
+                var pkColumns = pkResult.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(row => row.Split('|'))
+                    .Where(parts => parts[5] == "1")
+                    .Select(parts => $"\"{parts[1]}\"")
+                    .ToList();
+                if (pkColumns.Any())
+                {
+                    primaryKeyConstraint = $", PRIMARY KEY ({string.Join(", ", pkColumns)})";
+                }
+                return $"CREATE TABLE \"{tableName}\" ({string.Join(", ", columns)}{primaryKeyConstraint});";
+            }
+            throw new NotSupportedException("Unsupported database type.");
+        }
+        
+        
+        
         public async Task<int> Upd(string toUpd, object id, string tableName = null, string where = null, bool last = false)
         {
             var parameters = new DynamicParameters();
