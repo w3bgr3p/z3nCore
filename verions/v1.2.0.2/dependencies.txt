@@ -27,5 +27,5 @@ Newtonsoft.Json.dll : 11.0.2.21924
 Npgsql.dll : 4.1.14.0
 Otp.NET.dll : 1.4.0.0
 System.Net.Http.dll : 4.6.26011.01
-z3nCore.dll : 1.2.0.1
+z3nCore.dll : 1.2.0.2
 zxing.dll : 0.16.10.0
