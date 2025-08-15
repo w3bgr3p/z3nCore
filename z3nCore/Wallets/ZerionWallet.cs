@@ -173,7 +173,7 @@ namespace z3nCore
             {
                 action = _instance.HeGet(("button", "class", "_primary", "regexp", 0),"last");
             }
-            catch (Exception ex)
+            catch 
             {
                 _logger.Send($"No Wallet tab found. 0");
                 return;
