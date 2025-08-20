@@ -129,7 +129,7 @@ namespace z3nCore
             return result;
         }
 
-        public async Task<string> DbReadAsync(string sql, string separator = "|")
+        public async Task<string> DbReadAsync(string sql, string columnSeparator = "|", string rawSepararor = "\r\n")
         {
             EnsureConnection();
             var result = new List<string>();
@@ -144,7 +144,7 @@ namespace z3nCore
                         var row = new List<string>();
                         for (int i = 0; i < reader.FieldCount; i++)
                             row.Add(reader[i]?.ToString() ?? "");
-                        result.Add(string.Join(separator, row));
+                        result.Add(string.Join(columnSeparator, row));
                     }
                 }
             }
@@ -158,7 +158,7 @@ namespace z3nCore
                         var row = new List<string>();
                         for (int i = 0; i < reader.FieldCount; i++)
                             row.Add(reader[i]?.ToString() ?? "");
-                        result.Add(string.Join(separator, row));
+                        result.Add(string.Join(columnSeparator, row));
                     }
                 }
             }
@@ -166,8 +166,7 @@ namespace z3nCore
             {
                 throw new NotSupportedException("Unsupported connection type");
             }
-
-            return string.Join("\r\n", result);
+            return string.Join(rawSepararor, result);
         }
         public string DbRead(string sql, string separator = "|")
         {
@@ -388,9 +387,12 @@ namespace z3nCore
             
         }
 
-        
+
         public static async Task<int> MigrateAllTablesAsync(dSql sourceDb, dSql destinationDb)
         {
+            string columnSeparator = "|";
+            string rowSeparator = "░";
+            
             if (sourceDb == null) throw new ArgumentNullException(nameof(sourceDb));
             if (destinationDb == null) throw new ArgumentNullException(nameof(destinationDb));
             if (sourceDb.ConnectionType == destinationDb.ConnectionType) throw new ArgumentException("Source and destination must be different database types.");
@@ -401,14 +403,14 @@ namespace z3nCore
             if (sourceDb.ConnectionType == DatabaseType.PostgreSQL)
             {
                 tablesQuery = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' AND table_name NOT LIKE 'pg_%';";
-                string tablesResult = await sourceDb.DbReadAsync(tablesQuery);
-                tables = tablesResult.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                string tablesResult = await sourceDb.DbReadAsync(tablesQuery, columnSeparator, rowSeparator);
+                tables = tablesResult.Split(new[] { rowSeparator }, StringSplitOptions.RemoveEmptyEntries).ToList();
             }
             else if (sourceDb.ConnectionType == DatabaseType.SQLite)
             {
                 tablesQuery = "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%';";
-                string tablesResult = await sourceDb.DbReadAsync(tablesQuery);
-                tables = tablesResult.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                string tablesResult = await sourceDb.DbReadAsync(tablesQuery, columnSeparator, rowSeparator);
+                tables = tablesResult.Split(new[] { rowSeparator }, StringSplitOptions.RemoveEmptyEntries).ToList();
             }
             else
             {
@@ -418,76 +420,202 @@ namespace z3nCore
             int totalRows = 0;
             foreach (var tableName in tables)
             {
-                // Получить схему таблицы из источника
-                string createTableQuery = await GetCreateTableQueryAsync(sourceDb, tableName);
-
-                // Создать таблицу в destination
-                await destinationDb.DbWriteAsync(createTableQuery);
-
-                // Копировать данные
-                string selectQuery = $"SELECT * FROM \"{tableName}\";";
-                string dataResult = await sourceDb.DbReadAsync(selectQuery, separator: "|");
-
-                if (!string.IsNullOrEmpty(dataResult))
+                try
                 {
-                    var rows = dataResult.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
-                    foreach (var row in rows)
+                    // Получить схему таблицы и создать таблицу в целевой базе
+                    string createTableQuery = "";
+                    string columnsDef;
+                    List<string> columnNames;
+                    bool tableExists = false;
+
+                    // Проверить, существует ли таблица в целевой базе
+                    if (destinationDb.ConnectionType == DatabaseType.SQLite)
                     {
-                        var values = row.Split('|').Select(v => string.IsNullOrEmpty(v) ? "NULL" : $"'{v.Replace("'", "''")}'").ToArray();
-                        string insertQuery = $"INSERT INTO \"{tableName}\" VALUES ({string.Join(", ", values)});";
-                        await destinationDb.DbWriteAsync(insertQuery);
+                        string checkTableQuery = $"SELECT name FROM sqlite_master WHERE type = 'table' AND name = '{tableName}';";
+                        string checkResult = await destinationDb.DbReadAsync(checkTableQuery, columnSeparator, rowSeparator);
+                        if (!string.IsNullOrEmpty(checkResult))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Table '{tableName}' already exists in destination database. Skipping creation.");
+                            tableExists = true;
+                        }
                     }
-                    totalRows += rows.Length;
+                    else if (destinationDb.ConnectionType == DatabaseType.PostgreSQL)
+                    {
+                        string checkTableQuery = $"SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '{tableName}';";
+                        string checkResult = await destinationDb.DbReadAsync(checkTableQuery, columnSeparator, rowSeparator);
+                        if (!string.IsNullOrEmpty(checkResult))
+                        {
+                            System.Diagnostics.Debug.WriteLine($"Table '{tableName}' already exists in destination database. Skipping creation.");
+                            tableExists = true;
+                        }
+                    }
+
+                    if (!tableExists)
+                    {
+                        if (sourceDb.ConnectionType == DatabaseType.PostgreSQL)
+                        {
+                            // Получить схему таблицы из PostgreSQL
+                            string schemaQuery = $"SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_name = '{tableName}' AND table_schema = 'public';";
+                            columnsDef = await sourceDb.DbReadAsync(schemaQuery, columnSeparator, rowSeparator);
+                            var columnsData = columnsDef.Split(new[] { rowSeparator }, StringSplitOptions.RemoveEmptyEntries)
+                                .Select(row => row.Split(new[] { columnSeparator }, StringSplitOptions.None))
+                                .ToList();
+
+                            // Проверка на дубликаты имен столбцов с учетом нечувствительности к регистру
+                            var columnNamesLower = columnsData.Select(parts => parts[0].ToLower()).ToList();
+                            if (columnNamesLower.Distinct().Count() != columnNamesLower.Count)
+                            {
+                                var duplicates = columnNamesLower.GroupBy(c => c).Where(g => g.Count() > 1).Select(g => g.Key);
+                                var duplicateColumns = columnsData.Where(parts => duplicates.Contains(parts[0].ToLower())).Select(parts => parts[0]);
+                                System.Diagnostics.Debug.WriteLine($"Duplicate column names (case-insensitive) found in table '{tableName}': {string.Join(", ", duplicateColumns)}. Skipping table.");
+                                throw new InvalidOperationException($"Duplicate column names (case-insensitive) found in table '{tableName}': {string.Join(", ", duplicateColumns)}");
+                            }
+
+                            var columns = columnsData.Select(parts =>
+                            {
+                                string dataType = parts[1];
+                                // Приведение типов PostgreSQL к SQLite
+                                if (dataType == "bigint") dataType = "INTEGER";
+                                if (dataType == "text") dataType = "TEXT";
+                                
+                                string defaultValue = parts[3];
+                                if (!string.IsNullOrEmpty(defaultValue))
+                                {
+                                    // Удаляем PostgreSQL-специфичные конструкции
+                                    defaultValue = defaultValue.Replace("::text", "").Replace("::bigint", "");
+                                    // Удаляем кавычки для числовых значений
+                                    if (long.TryParse(defaultValue.Trim('\''), out _))
+                                    {
+                                        defaultValue = defaultValue.Trim('\'');
+                                    }
+                                    // Для строковых значений сохраняем или добавляем кавычки
+                                    else if (!defaultValue.StartsWith("'"))
+                                    {
+                                        defaultValue = $"'{defaultValue}'";
+                                    }
+                                }
+                                return $"\"{parts[0]}\" {dataType} {(parts[2] == "NO" ? "NOT NULL" : "")} {(defaultValue != "" ? $"DEFAULT {defaultValue}" : "")}";
+                            }).ToList();
+
+                            // Получить первичный ключ
+                            string primaryKeyConstraint = "";
+                            string pkQuery = $"SELECT pg_get_constraintdef(pg_constraint.oid) FROM pg_constraint JOIN pg_class ON pg_constraint.conrelid = pg_class.oid JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid WHERE pg_class.relname = '{tableName}' AND pg_constraint.contype = 'p' AND pg_namespace.nspname = 'public';";
+                            string pkResult = await sourceDb.DbReadAsync(pkQuery, columnSeparator, rowSeparator);
+                            if (!string.IsNullOrEmpty(pkResult))
+                            {
+                                // Очистка PostgreSQL-специфичных конструкций
+                                pkResult = pkResult.Replace("::bigint", "").Replace("::text", "");
+                                primaryKeyConstraint = $", {pkResult}";
+                            }
+
+                            createTableQuery = $"CREATE TABLE \"{tableName}\" ({string.Join(", ", columns)}{primaryKeyConstraint});";
+                            await destinationDb.DbWriteAsync(createTableQuery);
+                        }
+                        else if (sourceDb.ConnectionType == DatabaseType.SQLite)
+                        {
+                            // Получить схему таблицы из SQLite
+                            string schemaQuery = $"PRAGMA table_info(\"{tableName}\");";
+                            columnsDef = await sourceDb.DbReadAsync(schemaQuery, columnSeparator, rowSeparator);
+                            var columnsData = columnsDef.Split(new[] { rowSeparator }, StringSplitOptions.RemoveEmptyEntries)
+                                .Select(row => row.Split(new[] { columnSeparator }, StringSplitOptions.None))
+                                .ToList();
+
+                            // Проверка на дубликаты имен столбцов с учетом нечувствительности к регистру
+                            var columnNamesLower = columnsData.Select(parts => parts[1].ToLower()).ToList();
+                            if (columnNamesLower.Distinct().Count() != columnNamesLower.Count)
+                            {
+                                var duplicates = columnNamesLower.GroupBy(c => c).Where(g => g.Count() > 1).Select(g => g.Key);
+                                var duplicateColumns = columnsData.Where(parts => duplicates.Contains(parts[1].ToLower())).Select(parts => parts[1]);
+                                System.Diagnostics.Debug.WriteLine($"Duplicate column names (case-insensitive) found in table '{tableName}': {string.Join(", ", duplicateColumns)}. Skipping table.");
+                                throw new InvalidOperationException($"Duplicate column names (case-insensitive) found in table '{tableName}': {string.Join(", ", duplicateColumns)}");
+                            }
+
+                            var columns = columnsData.Select(parts => $"\"{parts[1]}\" {parts[2]} {(parts[3] == "1" ? "NOT NULL" : "")} {(parts[4] != "" ? $"DEFAULT {parts[4]}" : "")}")
+                                .ToList();
+
+                            // Получить первичный ключ
+                            string primaryKeyConstraint = "";
+                            string pkResult = await sourceDb.DbReadAsync(schemaQuery, columnSeparator, rowSeparator);
+                            var pkColumns = pkResult.Split(new[] { rowSeparator }, StringSplitOptions.RemoveEmptyEntries)
+                                .Select(row => row.Split(new[] { columnSeparator }, StringSplitOptions.None))
+                                .Where(parts => parts[5] == "1")
+                                .Select(parts => $"\"{parts[1]}\"")
+                                .ToList();
+                            if (pkColumns.Any())
+                            {
+                                primaryKeyConstraint = $", PRIMARY KEY ({string.Join(", ", pkColumns)})";
+                            }
+
+                            createTableQuery = $"CREATE TABLE \"{tableName}\" ({string.Join(", ", columns)}{primaryKeyConstraint});";
+                            await destinationDb.DbWriteAsync(createTableQuery);
+                        }
+                        else
+                        {
+                            throw new NotSupportedException("Unsupported database type.");
+                        }
+                    }
+
+                    // Получить список столбцов для точного соответствия
+                    if (sourceDb.ConnectionType == DatabaseType.PostgreSQL)
+                    {
+                        string columnQuery = $"SELECT column_name FROM information_schema.columns WHERE table_name = '{tableName}' AND table_schema = 'public';";
+                        string columnResult = await sourceDb.DbReadAsync(columnQuery, columnSeparator, rowSeparator);
+                        columnNames = columnResult.Split(new[] { rowSeparator }, StringSplitOptions.RemoveEmptyEntries).ToList();
+                    }
+                    else
+                    {
+                        string columnQuery = $"PRAGMA table_info(\"{tableName}\");";
+                        string columnResult = await sourceDb.DbReadAsync(columnQuery, columnSeparator, rowSeparator);
+                        columnNames = columnResult.Split(new[] { rowSeparator }, StringSplitOptions.RemoveEmptyEntries)
+                            .Select(row => row.Split(new[] { columnSeparator }, StringSplitOptions.None)[1])
+                            .ToList();
+                    }
+
+                    // Проверка на дубликаты имен столбцов для INSERT
+                    var columnNamesLowerForInsert = columnNames.Select(c => c.ToLower()).ToList();
+                    if (columnNamesLowerForInsert.Distinct().Count() != columnNamesLowerForInsert.Count)
+                    {
+                        var duplicates = columnNamesLowerForInsert.GroupBy(c => c).Where(g => g.Count() > 1).Select(g => g.Key);
+                        var duplicateColumns = columnNames.Where(c => duplicates.Contains(c.ToLower()));
+                        System.Diagnostics.Debug.WriteLine($"Duplicate column names (case-insensitive) found in table '{tableName}' for INSERT: {string.Join(", ", duplicateColumns)}. Skipping table.");
+                        throw new InvalidOperationException($"Duplicate column names (case-insensitive) found in table '{tableName}' for INSERT: {string.Join(", ", duplicateColumns)}");
+                    }
+
+                    // Копировать данные, явно указывая столбцы
+                    string selectQuery = $"SELECT {string.Join(", ", columnNames.Select(c => $"\"{c}\""))} FROM \"{tableName}\";";
+                    string dataResult = await sourceDb.DbReadAsync(selectQuery, columnSeparator, rowSeparator);
+
+                    if (!string.IsNullOrEmpty(dataResult))
+                    {
+                        var rows = dataResult.Split(new[] { rowSeparator }, StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var row in rows)
+                        {
+                            var values = row.Split(new[] { columnSeparator }, StringSplitOptions.None)
+                                .Take(columnNames.Count) // Ограничить количеством столбцов
+                                .Select(v => string.IsNullOrEmpty(v) ? "NULL" : $"'{v.Replace("'", "''")}'")
+                                .ToArray();
+                            string insertQuery = $"INSERT INTO \"{tableName}\" ({string.Join(", ", columnNames.Select(c => $"\"{c}\""))}) VALUES ({string.Join(", ", values)});";
+                            try
+                            {
+                                await destinationDb.DbWriteAsync(insertQuery);
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Error inserting row into table '{tableName}': {ex.Message} : Prev row: [{row}] : Prev result: [{dataResult}] : [{insertQuery}]");
+                                throw new Exception($"Error inserting row into table '{tableName}': {ex.Message} : Prev row: [{row}] : Prev result: [{dataResult}] : [{insertQuery}]");
+                            }
+                        }
+                        totalRows += rows.Length;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Failed to migrate table '{tableName}': {ex.Message}");
+                    continue; // Продолжить со следующей таблицей
                 }
             }
             return totalRows;
         }
-        private static async Task<string> GetCreateTableQueryAsync(dSql db, string tableName)
-        {
-            string columnsDef;
-            string primaryKeyConstraint = "";
-            if (db.ConnectionType == DatabaseType.PostgreSQL)
-            {
-                string schemaQuery = $"SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_name = '{tableName}' AND table_schema = 'public';";
-                columnsDef = await db.DbReadAsync(schemaQuery);
-                var columns = columnsDef.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(row => row.Split('|'))
-                    .Select(parts => $"\"{parts[0]}\" {parts[1]} {(parts[2] == "NO" ? "NOT NULL" : "")} {(parts[3] != "" ? $"DEFAULT {parts[3]}" : "")}")
-                    .ToList();
-
-                string pkQuery = $"SELECT pg_get_constraintdef(pg_constraint.oid) FROM pg_constraint JOIN pg_class ON pg_constraint.conrelid = pg_class.oid JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid WHERE pg_class.relname = '{tableName}' AND pg_constraint.contype = 'p' AND pg_namespace.nspname = 'public';";
-                string pkResult = await db.DbReadAsync(pkQuery);
-                if (!string.IsNullOrEmpty(pkResult))
-                {
-                    primaryKeyConstraint = $", {pkResult}";
-                }
-                return $"CREATE TABLE \"{tableName}\" ({string.Join(", ", columns)}{primaryKeyConstraint});";
-            }
-            else if (db.ConnectionType == DatabaseType.SQLite)
-            {
-                string schemaQuery = $"PRAGMA table_info(\"{tableName}\");";
-                columnsDef = await db.DbReadAsync(schemaQuery);
-                var columns = columnsDef.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(row => row.Split('|'))
-                    .Select(parts => $"\"{parts[1]}\" {parts[2]} {(parts[3] == "1" ? "NOT NULL" : "")} {(parts[4] != "" ? $"DEFAULT {parts[4]}" : "")}")
-                    .ToList();
-
-                string pkResult = await db.DbReadAsync(schemaQuery);
-                var pkColumns = pkResult.Split(new[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(row => row.Split('|'))
-                    .Where(parts => parts[5] == "1")
-                    .Select(parts => $"\"{parts[1]}\"")
-                    .ToList();
-                if (pkColumns.Any())
-                {
-                    primaryKeyConstraint = $", PRIMARY KEY ({string.Join(", ", pkColumns)})";
-                }
-                return $"CREATE TABLE \"{tableName}\" ({string.Join(", ", columns)}{primaryKeyConstraint});";
-            }
-            throw new NotSupportedException("Unsupported database type.");
-        }
-        
-        
         
         public async Task<int> Upd(string toUpd, object id, string tableName = null, string where = null, bool last = false)
         {

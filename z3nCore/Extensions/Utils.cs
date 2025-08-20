@@ -41,7 +41,7 @@ namespace z3nCore
             string toLog = $"{actionId}\n{type}\n{msg}\n{stackTrace}\n{innerMsg}";
             if (log) project?.SendWarningToLog(toLog);
 
-            string failReport = $"⛔️\\#fail  \\#{project?.Name?.EscapeMarkdown() ?? "Unknown"} \\#{project?.Variables?["acc0"]?.Value ?? "Unknown"} \n" +
+            string failReport = $"⛔️\\#fail  \\#{project?.Var("projectScript")?.EscapeMarkdown() ?? "Unknown"} \\#{project?.Variables?["acc0"]?.Value ?? "Unknown"} \n" +
                                $"Error: `{actionId.EscapeMarkdown()}` \n" +
                                $"Type: `{type.EscapeMarkdown()}` \n" +
                                $"Msg: `{msg.EscapeMarkdown()}` \n" +
@@ -392,6 +392,10 @@ namespace z3nCore
             return invite;
         }
 
+        public static bool RndBool(this int truePercent)
+        {
+            return new Random().NextDouble() * 100 < truePercent;
+        }
 
 
 

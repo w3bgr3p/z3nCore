@@ -31,19 +31,19 @@ namespace z3nCore
                 {
                     string columnName = part.Substring(0, equalsIndex).Trim();
                     string valuePart = part.Substring(equalsIndex).Trim();
-                    ValidateName(columnName, "column name");
+                    //ValidateName(columnName, "column name");
 
                     result.Add($"\"{columnName}\" {valuePart}");
                 }
                 else
                 {
-                    ValidateName(part, "column name");
+                    //ValidateName(part, "column name");
                     result.Add(part);
                 }
             }
             return string.Join(", ", result);
         }
-
+        //private static readonly Regex ValidNamePattern = new Regex(@"^[a-zA-Z_.-][a-zA-Z0-9_.-]*$", RegexOptions.Compiled);
         private static readonly Regex ValidNamePattern = new Regex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled);
         private static string ValidateName(string name, string paramName)
         {
@@ -305,7 +305,7 @@ namespace z3nCore
 
             return project.DbQ(query, log: log, throwOnEx: throwOnEx);
         }
-        public static string SqlUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool throwOnEx = false, bool last = true, string key = "id", object id = null, string where = "")
+        private static string SqlUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool throwOnEx = false, bool last = true, string key = "id", object id = null, string where = "")
         {          
             var parameters = new DynamicParameters();
             if (string.IsNullOrEmpty(tableName)) tableName = project.Var("projectTable");
@@ -384,7 +384,14 @@ namespace z3nCore
                 .ToList();
             return result;
         }
-        public static Dictionary<string, string> TblForProject(this IZennoPosterProjectModel project, string[] projectColumns= null,  string defaultType = "TEXT DEFAULT ''")
+
+        public static Dictionary<string, string> TblForProject(this IZennoPosterProjectModel project, string[] projectColumns , string defaultType = "TEXT DEFAULT ''")
+        {
+            var projectColumnsList =projectColumns.ToList();
+            return TblForProject(project, projectColumnsList, defaultType);
+        }
+
+        public static Dictionary<string, string> TblForProject(this IZennoPosterProjectModel project, List<string> projectColumns = null,  string defaultType = "TEXT DEFAULT ''")
         {
             string cfgToDo = project.Variables["cfgToDo"].Value;
             var tableStructure = new Dictionary<string, string>
@@ -719,13 +726,12 @@ namespace z3nCore
             string pgUser = "postgres";
             string pgPass = project.Var("DBpstgrPass");
 
-            string sourceConnection = dbMode == "PostgreSQL" ? $"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;" : sqLitePath;
-            string destinationConnection = dbMode == "PostgreSQL" ? sqLitePath : $"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;";
+            string pgConnection = $"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;";
 
             project.SendInfoToLog($"Migrating all tables from {dbMode} to {(direction == "toSQLite" ? "SQLite" : "PostgreSQL")}", true);
 
-            using (var sourceDb = new dSql(sourceConnection))
-            using (var destinationDb = new dSql(destinationConnection))
+            using (var sourceDb = dbMode == "PostgreSQL" ? new dSql(pgConnection) : new dSql(sqLitePath, null))
+            using (var destinationDb = dbMode == "PostgreSQL" ? new dSql(sqLitePath, null) : new dSql(pgConnection))
             {
                 try
                 {

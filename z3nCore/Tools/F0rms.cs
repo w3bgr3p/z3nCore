@@ -155,6 +155,108 @@ namespace z3nCore
             return result;
         }
 
+   
+        public List<string> GetLines(
+            string keycolumn = "input Column Name",
+            string title = "Input data line per line")
+        {
+            var result = new List<string>();
+            // Создание формы
+            System.Windows.Forms.Form form = new System.Windows.Forms.Form();
+            form.Text = title;
+            form.Width = 420;
+            form.Height = 700;
+            form.TopMost = true;
+            form.Location = new System.Drawing.Point(108, 108);
+
+            System.Windows.Forms.Label columnLabel = new System.Windows.Forms.Label();
+            columnLabel.Text = "input string for key here (it will be lowered)";
+            columnLabel.AutoSize = true;
+            columnLabel.Left = 10;
+            columnLabel.Top = 10;
+            form.Controls.Add(columnLabel);
+
+            System.Windows.Forms.TextBox columnInput = new System.Windows.Forms.TextBox();
+            columnInput.Left = 10;
+            columnInput.Top = 30;
+            columnInput.Width = 50;//form.ClientSize.Width - 20;
+            columnInput.Text = keycolumn;//_project.Variables["addressType"].Value; // Предполагаем, что переменная существует
+            form.Controls.Add(columnInput);
+
+            System.Windows.Forms.Label addressLabel = new System.Windows.Forms.Label();
+            addressLabel.Text = "Input strings (will be devided by \\n):";
+            addressLabel.AutoSize = true;
+            addressLabel.Left = 10;
+            addressLabel.Top = 60;
+            form.Controls.Add(addressLabel);
+
+            System.Windows.Forms.TextBox addressInput = new System.Windows.Forms.TextBox();
+            addressInput.Left = 10;
+            addressInput.Top = 80;
+            addressInput.Width = form.ClientSize.Width - 20;
+            addressInput.Multiline = true;
+            addressInput.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            addressInput.MaxLength = 1000000;
+            form.Controls.Add(addressInput);
+
+            // Кнопка "OK"
+            System.Windows.Forms.Button okButton = new System.Windows.Forms.Button();
+            okButton.Text = "OK";
+            okButton.Width = form.ClientSize.Width - 20;
+            okButton.Height = 25;
+            okButton.Left = (form.ClientSize.Width - okButton.Width) / 2;
+            okButton.Top = form.ClientSize.Height - okButton.Height - 5;
+            okButton.Click += (s, e) => { form.DialogResult = System.Windows.Forms.DialogResult.OK; form.Close(); };
+            form.Controls.Add(okButton);
+            addressInput.Height = okButton.Top - addressInput.Top - 5;
+
+            form.Load += (s, e) => { form.Location = new System.Drawing.Point(108, 108); };
+
+            form.FormClosing += (s, e) => { if (form.DialogResult != System.Windows.Forms.DialogResult.OK) form.DialogResult = System.Windows.Forms.DialogResult.Cancel; };
+
+            form.ShowDialog();
+
+            if (form.DialogResult != System.Windows.Forms.DialogResult.OK)
+            {
+                _project.SendInfoToLog("Import cancelled by user", true);
+                return null;
+            }
+
+            if (string.IsNullOrEmpty(columnInput.Text) || string.IsNullOrEmpty(addressInput.Text))
+            {
+                _project.SendWarningToLog("Column name or addresses cannot be empty");
+                return null;
+            }
+
+            string columnName = columnInput.Text.ToLower().Trim();
+
+            string[] lines = addressInput.Text.Trim().Split('\n');
+            int lineCount = 0;
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i].Trim();
+                if (string.IsNullOrWhiteSpace(line))
+                {
+                    _project.SendWarningToLog($"Line {i} is empty");
+                    continue;
+                }
+
+                try
+                {
+                    string value = $"{columnName} = '{line.Replace("'", "''")}'";
+                    result.Add(value);
+                    lineCount++;
+                }
+                catch (Exception ex)
+                {
+                    
+                }
+            }
+            return result;
+        }
+        
+        
         public Dictionary<string, string> GetKeyValuePairs(
             int quantity,
             List<string> keyPlaceholders = null,

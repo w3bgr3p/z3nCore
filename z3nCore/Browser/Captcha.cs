@@ -72,7 +72,7 @@ namespace z3nCore
         public static bool CapGuru(this IZennoPosterProjectModel project)
         {
             var _sql = new Sql(project);
-            var key = project.SqlGet("apikey", "_api", key: "capguru");
+            var key = project.DbGet("apikey", "_api", key: "capguru");
             project.Context["capguru_key"] = key;
             byte[] fileBytes = Convert.FromBase64String(getplugin());
             string tempFilePath = Path.Combine(Path.GetTempPath(), "Cap.Guru.20.zp");

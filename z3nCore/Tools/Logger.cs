@@ -163,9 +163,11 @@ namespace z3nCore
             }
             else
             {
-                string lastQuery = string.Empty; try { lastQuery = _project.Var("lastQuery"); } catch { }
+                string lastQuery = string.Empty; 
+                try { lastQuery = _project.Var("lastQuery"); } 
+                catch (Exception ex) { _project.SendWarningToLog(ex.Message); }
 
-                string successReport = $"✅️\\#succsess  \\#{_project.Name.EscapeMarkdown()} \\#{_project.Var("acc0")} \n";
+                string successReport = $"✅️\\#succsess  \\#{_project.Var("projectScript")} \\#{_project.Var("acc0")} \n";
                 if (lastQuery != string.Empty) successReport += $"LastUpd: `{lastQuery}` \n";               
                 if (!string.IsNullOrEmpty(message)) successReport += $"Message:`{message}` \n";               
                 successReport += $"TookTime: {_project.TimeElapsed()}s \n";

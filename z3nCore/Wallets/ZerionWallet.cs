@@ -587,6 +587,10 @@ namespace z3nCore
             }
         }
 
+        public static string Replace(string tx)
+        {
+            return "";
+        }
 
     }
 

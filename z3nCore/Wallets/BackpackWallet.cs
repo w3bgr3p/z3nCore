@@ -82,6 +82,7 @@ namespace z3nCore
             _instance.UseFullMouseEmulation = false;
 
             _logger.Send($"Launching Backpack ({fileName})");
+            new ChromeExt(_project, _instance, log: log).Switch(_extId);
             if (new ChromeExt(_project, _instance).Install(_extId, fileName, log))
                 Import(log: log);
             else

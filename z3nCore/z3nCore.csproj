@@ -117,7 +117,6 @@
     <Compile Include="Protocols\GazZip.cs" />
     <Compile Include="Protocols\Relay.cs" />
     <Compile Include="Tools\Rnd.cs" />
-    <Compile Include="Sql\DBuilder.cs" />
     <Compile Include="Tools\F0rms.cs" />
     <Compile Include="Protocols\DMail.cs" />
     <Compile Include="Protocols\Galxe.cs" />
@@ -128,7 +127,7 @@
     <Compile Include="Socials\TikTok.cs" />
     <Compile Include="Wallets\KeplrWallet.cs" />
     <Compile Include="Wallets\Rabby.cs" />
-    <Compile Include="Wallets\Backpack.cs" />
+    <Compile Include="Wallets\BackpackWallet.cs" />
     <Compile Include="CexApi\BinanceApi.cs" />
     <Compile Include="W3b\Blockchain.cs" />
     <Compile Include="Wallets\MetaMask.cs" />

@@ -439,5 +439,46 @@ namespace z3nCore
             return oneline ? finalResult.Replace('\n', ' ').Replace('\r', ' ') : finalResult;
         }
 
+        public static string NewPassword(int length)
+        {
+            if (length < 8)
+            {
+                throw new ArgumentException("Length must be at least 8 characters.");
+            }
+
+            string lowercase = "abcdefghijklmnopqrstuvwxyz";
+            string uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            string numbers = "0123456789";
+            string special = "!@#$%^&*()";
+            string allChars = lowercase + uppercase + numbers + special;
+            Random random = new Random();
+            StringBuilder password = new StringBuilder();
+
+            // Ensure at least one character from each required set
+            password.Append(lowercase[random.Next(lowercase.Length)]);
+            password.Append(uppercase[random.Next(uppercase.Length)]);
+            password.Append(numbers[random.Next(numbers.Length)]);
+            password.Append(special[random.Next(special.Length)]);
+
+            // Fill the remaining length with random characters from all sets
+            for (int i = 4; i < length; i++)
+            {
+                password.Append(allChars[random.Next(allChars.Length)]);
+            }
+
+            // Shuffle the password to randomize character positions
+            for (int i = 0; i < password.Length; i++)
+            {
+                int randomIndex = random.Next(password.Length);
+                char temp = password[i];
+                password[i] = password[randomIndex];
+                password[randomIndex] = temp;
+            }
+
+            return password.ToString();
+        }
+
+        
+        
     }
 }
