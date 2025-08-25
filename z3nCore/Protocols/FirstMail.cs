@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
-using System.Security.Policy;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using ZennoLab.CommandCenter;
+
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
@@ -20,6 +16,7 @@ namespace z3nCore
         private string _key;
         private string _login;
         private string _pass;
+        private string _proxy;
         private bool _log;
 
         public FirstMail(IZennoPosterProjectModel project, bool log = false)
@@ -32,11 +29,12 @@ namespace z3nCore
 
         private void LoadKeys()
         {
-            var creds = _project.SqlGet("apikey, apisecret, passphrase", "_api", where: "id = 'firstmail'").Split('|');
+            var creds = _project.SqlGet("apikey, apisecret, passphrase, proxy", "_api", where: "id = 'firstmail'").Split('|');
 
             _key = creds[0];
             _login = Uri.EscapeDataString(creds[1]);
             _pass = Uri.EscapeDataString(creds[2]);
+            _proxy = creds[3];
 
         }
         public async Task<string> Request(string url)
@@ -82,11 +80,7 @@ namespace z3nCore
             _project.Json.FromString(result);
             return result;
         }
-
-
-
-
-
+        
         public string GetMail(string email)
         {
 
@@ -98,7 +92,7 @@ namespace z3nCore
                 $"X-API-KEY: {_key}"
             };
 
-            string result = _project.GET(url,"", headers, log:_log);
+            string result = _project.GET(url,_proxy, headers, log:_log);
             _project.Json.FromString(result);
             return result;
 

@@ -88,7 +88,6 @@
   <ItemGroup>
     <Compile Include="Browser\Cookies.cs" />
     <Compile Include="Browser\Captcha.cs" />
-    <Compile Include="CexApi\OKX.cs" />
     <Compile Include="Extensions\Exceptions.cs" />
     <Compile Include="Extensions\Utils.cs" />
     <Compile Include="Properties\VersionInfo.cs" />
