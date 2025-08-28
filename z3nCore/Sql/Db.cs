@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using ZennoLab.InterfacesLibrary.ProjectModel;
+using System.Globalization;
 
 namespace z3nCore
 {
@@ -547,7 +548,7 @@ namespace z3nCore
             }
 
         }
-        public static List<string> ToDoQueries(this IZennoPosterProjectModel project, string toDo = null, string defaultRange = null, string defaultDoFail = null)
+        /*public static List<string> ToDoQueries(this IZennoPosterProjectModel project, string toDo = null, string defaultRange = null, string defaultDoFail = null)
         {
             string tableName = project.Variables["projectTable"].Value;
 
@@ -573,6 +574,93 @@ namespace z3nCore
             }
 
             return allQueries;
+        }*/
+        /*public static List<string> ToDoQueries(this IZennoPosterProjectModel project, string toDo = null, string defaultRange = null, string defaultDoFail = null)
+        {
+            string tableName = project.Variables["projectTable"].Value;
+
+            var nowIso = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+
+            if (string.IsNullOrEmpty(toDo)) toDo = project.Variables["cfgToDo"].Value;
+
+            string[] toDoItems = (toDo ?? "").Split(',');
+
+            var allQueries = new List<(string TaskId, string Query)>();
+
+            foreach (string taskId in toDoItems)
+            {
+                string trimmedTaskId = taskId.Trim();
+                if (!string.IsNullOrWhiteSpace(trimmedTaskId))
+                {
+                    string range = defaultRange ?? project.Variables["range"].Value;
+                    string doFail = defaultDoFail ?? project.Variables["doFail"].Value;
+                    string failCondition = (doFail != "True" ? "AND status NOT LIKE '%fail%'" : "");
+                    string query = $@"SELECT {Quote("id")} FROM {Quote(tableName)} WHERE {Quote("id")} in ({range}) {failCondition} AND {Quote("status")} NOT LIKE '%skip%' AND ({Quote(trimmedTaskId)} < '{nowIso}' OR {Quote(trimmedTaskId)} = '')";
+                    allQueries.Add((trimmedTaskId, query));
+                }
+            }
+
+            return allQueries
+                .OrderBy(x =>
+                {
+                    if (string.IsNullOrEmpty(x.TaskId))
+                        return DateTime.MinValue;
+                    return DateTime.ParseExact(x.TaskId, "yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
+                })
+                .Select(x => x.Query)
+                .ToList();
+        }*/
+        public static List<string> ToDoQueries(this IZennoPosterProjectModel project, string toDo = null, string defaultRange = null, string defaultDoFail = null)
+        {
+            string tableName = project.Variables["projectTable"].Value;
+
+            var nowIso = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+
+            if (string.IsNullOrEmpty(toDo)) 
+                toDo = project.Variables["cfgToDo"].Value;
+
+            string[] toDoItems = (toDo ?? "").Split(',');
+
+            var allQueries = new List<(string TaskId, string Query)>();
+
+            foreach (string taskId in toDoItems)
+            {
+                string trimmedTaskId = taskId.Trim();
+                if (!string.IsNullOrWhiteSpace(trimmedTaskId))
+                {
+                    string range = defaultRange ?? project.Variables["range"].Value;
+                    string doFail = defaultDoFail ?? project.Variables["doFail"].Value;
+                    string failCondition = (doFail != "True" ? "AND status NOT LIKE '%fail%'" : "");
+                    string query = $@"SELECT {Quote("id")} 
+                              FROM {Quote(tableName)} 
+                              WHERE {Quote("id")} in ({range}) {failCondition} 
+                              AND {Quote("status")} NOT LIKE '%skip%' 
+                              AND ({Quote(trimmedTaskId)} < '{nowIso}' OR {Quote(trimmedTaskId)} = '')";
+                    allQueries.Add((trimmedTaskId, query));
+                }
+            }
+
+            return allQueries
+                .OrderBy(x =>
+                {
+                    if (string.IsNullOrEmpty(x.TaskId))
+                        return DateTime.MinValue;
+
+                    if (DateTime.TryParseExact(
+                            x.TaskId,
+                            "yyyy-MM-ddTHH:mm:ss.fffZ",
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                            out DateTime parsed))
+                    {
+                        return parsed;
+                    }
+
+                    // fallback: если парсинг не удался
+                    return DateTime.MinValue;
+                })
+                .Select(x => x.Query)
+                .ToList();
         }
         public static void FilterAccList(this IZennoPosterProjectModel project, List<string> dbQueries, bool log = false)
         {
@@ -705,9 +793,9 @@ namespace z3nCore
                 return string.Empty;
             }
  
-            var _logger = new Logger(project, log: log, classEmoji: dbMode == "PostgreSQL" ? "🐘" : "SQLite");
-            _logger.Send(query + "\n" + result);
-
+            //var _logger = new Logger(project, log: log, classEmoji: dbMode == "PostgreSQL" ? "🐘" : "SQLite");
+            string toLog = (query.Contains("SELECT")) ? $"[{query}]\n[{result}]" : $"[{query}] - [{result}]";
+            new Logger(project, log: log, classEmoji: dbMode == "PostgreSQL" ? "🐘" : "SQLite").Send(toLog);
             return result;
 
         }

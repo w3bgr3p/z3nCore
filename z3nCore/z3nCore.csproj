@@ -125,12 +125,10 @@
     <Compile Include="Protocols\Unlock.cs" />
     <Compile Include="Socials\TikTok.cs" />
     <Compile Include="Wallets\KeplrWallet.cs" />
-    <Compile Include="Wallets\Rabby.cs" />
+    <Compile Include="Wallets\RabbyWallet.cs" />
     <Compile Include="Wallets\BackpackWallet.cs" />
     <Compile Include="CexApi\BinanceApi.cs" />
     <Compile Include="W3b\Blockchain.cs" />
-    <Compile Include="Wallets\MetaMask.cs" />
-    <Compile Include="Wallets\Razor.cs" />
     <Compile Include="Socials\Google.cs" />
     <Compile Include="Tools\Converter.cs" />
     <Compile Include="Tools\Cryptography.cs" />
@@ -150,9 +148,7 @@
     <Compile Include="Requests\Requests.cs" />
     <Compile Include="Tools\Time.cs" />
     <Compile Include="Extensions\ProjectExtensions.cs" />
-    <Compile Include="Wallets\Wlt.cs" />
     <Compile Include="Socials\X.cs" />
-    <Compile Include="Wallets\Zerion.cs" />
     <Compile Include="Wallets\ZerionWallet.cs" />
     <Compile Include="W3b\W3b.cs" />
   </ItemGroup>

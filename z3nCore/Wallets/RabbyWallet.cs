@@ -9,35 +9,49 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
 {
-    public class RabbyWallet : Wlt
+    public class RabbyWallet
     {
-        protected readonly string _extId;
-        protected readonly string _fileName;
+        private readonly IZennoPosterProjectModel _project;
+        private readonly Instance _instance;
+        private readonly Logger _logger;
+        private readonly string _extId;
+        private readonly string _fileName;
+        private readonly string _key;
+        private readonly string _pass;
+        private string _expectedAddress;
 
-        public RabbyWallet(IZennoPosterProjectModel project, Instance instance, bool log = false, string key = null, string seed = null)
-            : base(project, instance, log)
+        public RabbyWallet(IZennoPosterProjectModel project, Instance instance, bool log = false, string key = null, string fileName = "Zerion1.21.3.crx")
         {
-            _extId = "acmacodkjbdgmoleebolmdjonilkdbch";
-            _fileName = "Rabby0.93.24.crx";
-            _key = KeyCheck(key);
-            _seed = SeedCheck(seed);
+            _project = project;
+            _instance = instance;
+            _fileName = fileName;
+
+            _key = KeyLoad(key);
+            _pass = SAFU.HWPass(_project);
+            _logger = new Logger(project, log: log, classEmoji: "Rabby");
+
         }
 
-        private string KeyCheck(string key)
+
+        private string KeyLoad(string key)
         {
-            if (string.IsNullOrEmpty(key))
-                key = Decrypt(KeyT.secp256k1);
-            if (string.IsNullOrEmpty(key))
-                throw new Exception("emptykey");
+            if (string.IsNullOrEmpty(key)) key = "key";
+
+            switch (key)
+            {
+                case "key":
+                    key = _project.DbKey("evm");
+                    break;
+                case "seed":
+                    key = _project.DbKey("seed");
+                    break;
+                default:
+                    return key;
+            }
+            if (string.IsNullOrEmpty(key)) throw new Exception("keyIsEmpy").Throw();
+
+            _expectedAddress = key.ToPubEvm();
             return key;
-        }
-        private string SeedCheck(string seed)
-        {
-            if (string.IsNullOrEmpty(seed))
-                seed = Decrypt(KeyT.bip39);
-            if (string.IsNullOrEmpty(seed))
-                throw new Exception("emptykey");
-            return seed;
         }
 
         public void RabbyLnch(string fileName = null, bool log = false)
@@ -47,8 +61,11 @@ namespace z3nCore
             var em = _instance.UseFullMouseEmulation;
             _instance.UseFullMouseEmulation = true;
 
-            Log($"Launching Rabby wallet with file {fileName}", log: log);
-            if (Install(_extId, fileName, log))
+            _logger.Send($"Launching Rabby wallet with file {fileName}");
+            var ext = new ChromeExt(_project, _instance, log: log);
+            
+            ext.Switch(_extId);
+            if (ext.Install(_extId, fileName, log))
                 RabbyImport(log: log);
             else
                 RabbyUnlock(log: log);
@@ -59,7 +76,7 @@ namespace z3nCore
 
         public void RabbyImport(bool log = false)
         {
-            Log("Importing Rabby wallet with private key", log: log);
+            _logger.Send("Importing Rabby wallet with private key");
             var key = _key;
             var password = _pass;
 
@@ -73,25 +90,25 @@ namespace z3nCore
                 _instance.HeSet(("confirmPassword", "id"), password);
                 _instance.HeClick(("button", "innertext", "Confirm", "regexp", 0));
                 _instance.HeClick(("button", "innertext", "Get\\ Started", "regexp", 0));
-                Log("Successfully imported Rabby wallet", log: log);
+                _logger.Send("Successfully imported Rabby wallet");
             }
             catch (Exception ex)
             {
-                Log($"Failed to import Rabby wallet: {ex.Message}", log: log);
+                _logger.Send($"Failed to import Rabby wallet: {ex.Message}");
                 throw;
             }
         }
 
         public void RabbyUnlock(bool log = false)
         {
-            Log("Unlocking Rabby wallet", log: log);
+            _logger.Send("Unlocking Rabby wallet");
             var password = _pass;
 
             _instance.UseFullMouseEmulation = true;
 
             while (_instance.ActiveTab.URL == $"chrome-extension://{_extId}/offscreen.html")
             {
-                Log("Closing offscreen tab and retrying unlock", log: log);
+                _logger.Send("Closing offscreen tab and retrying unlock");
                 _instance.ActiveTab.Close();
                 _instance.ActiveTab.Navigate($"chrome-extension://{_extId}/index.html#/unlock", "");
             }
@@ -100,11 +117,11 @@ namespace z3nCore
             {
                 _instance.HeSet(("password", "id"), password);
                 _instance.HeClick(("button", "innertext", "Unlock", "regexp", 0));
-                Log("Wallet unlocked successfully", log: log);
+                _logger.Send("Wallet unlocked successfully");
             }
             catch (Exception ex)
             {
-                Log($"Failed to unlock Rabby wallet: {ex.Message}", log: log);
+                _logger.Send($"Failed to unlock Rabby wallet: {ex.Message}");
                 throw;
             }
         }
