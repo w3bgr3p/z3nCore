@@ -32,7 +32,6 @@ namespace z3nCore
 
             _project = project;
             _instance = instance;
-            _sql = new Sql(_project, log);
             _logShow = log;
             _logger = new Logger(project, log: log, classEmoji: "X");
 
@@ -244,8 +243,7 @@ namespace z3nCore
 
             }
 
-            _sql.Upd($"status = '{status}'", "projects_twitter");
-            _sql.Upd($"status = '{status}'", "private_twitter");
+            _project.DbUpd($"status = '{status}'", "_twitter");
             if (status == "restricted" || status == "suspended" || status == "emailCapcha")
             {
 
@@ -391,16 +389,16 @@ namespace z3nCore
                 { "RECOVERY_SEED", data.ContainsKey("RECOVERY_SEED") ? data["RECOVERY_SEED"].Replace("'", "''") : "" }
             };
 
-            var _sql = new Sql(_project, _logShow);
+            //var _sql = new Sql(_project, _logShow);
             try
             {
-                _sql.Upd($@"token = '{fields["TOKEN"]}', 
+                _project.DbUpd($@"token = '{fields["TOKEN"]}', 
                 login = '{fields["LOGIN"]}', 
                 password = '{fields["PASSWORD"]}', 
                 otpsecret = '{fields["CODE2FA"]}', 
                 email = '{fields["EMAIL"]}', 
                 emailpass = '{fields["EMAIL_PASSWORD"]}', 
-                otpbackup = '{fields["RECOVERY_SEED"]}'", "private_twitter");
+                otpbackup = '{fields["RECOVERY_SEED"]}'", "_twitter", log:_logShow);
             }
             catch (Exception ex)
             {
@@ -430,7 +428,7 @@ namespace z3nCore
             string following = interactionStatistic?[1]?["userInteractionCount"]?.ToString() ?? "";
             string tweets = interactionStatistic?[2]?["userInteractionCount"]?.ToString() ?? "";
 
-            _sql.Upd($@"datecreated = '{dateCreated}',
+            _project.DbUpd($@"datecreated = '{dateCreated}',
                 id = '{id}',
                 username = '{username}',
                 description = '{description}',
@@ -441,7 +439,7 @@ namespace z3nCore
                 followers = '{followers}',
                 following = '{following}',
                 tweets = '{tweets}',
-                ");
+                ","__twitter", log:_logShow);
             try
             {
                 var toFill = _project.Lists["editProfile"];
@@ -529,14 +527,14 @@ namespace z3nCore
                         continue;
                 }
             }
-            _sql.Upd($@"creation = '{creation}',
+            _project.DbUpd($@"creation = '{creation}',
                         email = '{email}',
                         phone = '{phone}',
                         country = '{country}',
                         lang = '{lang}',
                         gender = '{gender}',
                         birth = '{birth}',
-                        ");
+                        ","__twitter", log:_logShow);
 
 
             try

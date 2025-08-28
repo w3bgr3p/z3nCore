@@ -26,19 +26,29 @@ namespace z3nCore
             var error = project?.GetLastError();
             if (error == null) return null;
 
-            var actionId = error.ActionId.ToString() ?? string.Empty;
-            var actionComment = error.ActionComment ?? string.Empty;
-            var exception = error.Exception;
-            if (exception == null) return null;
+            string actionId = error.ActionId.ToString() ?? "noActionId";
+            string actionComment = error.ActionComment ??"noActionComment";
 
-            var typeEx = exception.GetType();
-            string type = typeEx?.Name ?? "Unknown";
-            string msg = exception.Message ?? string.Empty;
-            string stackTrace = exception.StackTrace ?? string.Empty;
-            stackTrace = stackTrace.Split(new[] { 'в' }, StringSplitOptions.None).Skip(1).FirstOrDefault()?.Trim() ?? string.Empty;
-            string innerMsg = exception.InnerException?.Message ?? string.Empty;
+            string type = "";
+            string msg = "";
+            string stackTrace = "";
+            string innerMsg = "";
 
-            string toLog = $"{actionId}\n{type}\n{msg}\n{stackTrace}\n{innerMsg}";
+            try {
+	            var exception = error.Exception;
+	            var typeEx = exception.GetType();
+	            type = typeEx?.Name ?? "Unknown";
+	            msg = exception.Message ?? string.Empty;
+	            stackTrace = exception.StackTrace ?? string.Empty;
+	            stackTrace = stackTrace.Split(new[] { 'в' }, StringSplitOptions.None).Skip(1).FirstOrDefault()?.Trim() ?? string.Empty;
+	            innerMsg = exception.InnerException?.Message ?? string.Empty;
+            }
+            catch (Exception ex)
+            {
+	            project.SendWarningToLog(ex.Message);
+            }
+            
+            string toLog = $"{actionId}: {actionComment}\n{type}\n{msg}\n{stackTrace}\n{innerMsg}".Trim();
             if (log) project?.SendWarningToLog(toLog);
 
             string failReport = $"⛔️\\#fail  \\#{project?.Var("projectScript")?.EscapeMarkdown() ?? "Unknown"} \\#{project?.Variables?["acc0"]?.Value ?? "Unknown"} \n" +
@@ -48,21 +58,22 @@ namespace z3nCore
                                $"Trace: `{stackTrace.EscapeMarkdown()}` \n";
             if (!string.IsNullOrEmpty(innerMsg))
                 failReport += $"Inner: `{innerMsg.EscapeMarkdown()}` \n";
-            if (log) project?.SendWarningToLog("1");
+
 
             var browser = string.Empty;
             try { browser = instance.BrowserType.ToString(); } catch { }
             if (browser == "Chromium") failReport += $"Page: `{instance.ActiveTab?.URL?.EscapeMarkdown() ?? "Unknown"}`";
 
 
-            if (log) project?.SendWarningToLog("2");
+
             if (project?.Variables?["failReport"] != null)
                 project.Variables["failReport"].Value = failReport;
 
             try
             {
-                string path = $"{project?.Path ?? ""}.failed\\{project?.Variables?["projectName"]?.Value ?? "Unknown"}\\{project?.Name ?? "Unknown"} • {project?.Variables?["acc0"]?.Value ?? "Unknown"} • {project?.LastExecutedActionId ?? "Unknown"} • {actionId}.jpg";
-                ZennoPoster.ImageProcessingResizeFromScreenshot(instance?.Port ?? 0, path, 50, 50, "percent", true, false);
+                string path = $"{project?.Path ?? ""}.failed\\{project?.Variables?["projectName"]?.Value ?? "Unknown"}\\{project?.Name ?? "Unknown"} • {project?.Variables?["acc0"]?.Value ?? "Unknown"} • [{project?.LastExecutedActionId ?? "Unknown"} - {actionId}].jpg";
+                project?.SendInfoToLog(path);
+	            ZennoPoster.ImageProcessingResizeFromScreenshot(instance?.Port ?? 0, path, 50, 50, "percent", true, false);
             }
             catch (Exception e)
             {
@@ -355,7 +366,7 @@ namespace z3nCore
             project.GlobalNull();
             project.Var("acc0", "");
         }
-        public static bool ChooseSingleAcc(this IZennoPosterProjectModel project)
+        public static bool ChooseSingleAcc(this IZennoPosterProjectModel project, bool oldest = false)
         {
             var listAccounts = project.Lists["accs"];
             string pathProfiles = project.Var("profiles_folder");
@@ -370,7 +381,7 @@ namespace z3nCore
                 throw new Exception($"TimeToChill");
             }
 
-            int randomAccount = new Random().Next(0, listAccounts.Count);
+            int randomAccount = oldest ? 0 : new Random().Next(0, listAccounts.Count) ;
             string acc0 = listAccounts[randomAccount];
             project.Var("acc0", acc0);
             listAccounts.RemoveAt(randomAccount);
