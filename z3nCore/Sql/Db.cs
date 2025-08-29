@@ -520,7 +520,7 @@ namespace z3nCore
             {
                 if (!tableStructure.ContainsKey(column))
                 {
-                    project.ClmnDrop(tblName,column, log: log);
+                    project.ClmnDrop(column,tblName, log: log);
                 }
             }
         }
@@ -548,68 +548,7 @@ namespace z3nCore
             }
 
         }
-        /*public static List<string> ToDoQueries(this IZennoPosterProjectModel project, string toDo = null, string defaultRange = null, string defaultDoFail = null)
-        {
-            string tableName = project.Variables["projectTable"].Value;
 
-            var nowIso = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
-
-            if (string.IsNullOrEmpty(toDo)) toDo = project.Variables["cfgToDo"].Value;
-
-            string[] toDoItems = (toDo ?? "").Split(',');
-
-            var allQueries = new List<string>();
-
-            foreach (string taskId in toDoItems)
-            {
-                string trimmedTaskId = taskId.Trim();
-                if (!string.IsNullOrWhiteSpace(trimmedTaskId))
-                {
-                    string range = defaultRange ?? project.Variables["range"].Value;
-                    string doFail = defaultDoFail ?? project.Variables["doFail"].Value;
-                    string failCondition = (doFail != "True" ? "AND status NOT LIKE '%fail%'" : "");
-                    string query = $@"SELECT {Quote("id")} FROM {Quote(tableName)} WHERE {Quote("id")} in ({range}) {failCondition} AND {Quote("status")} NOT LIKE '%skip%' AND ({Quote(trimmedTaskId)} < '{nowIso}' OR {Quote(trimmedTaskId)} = '')";
-                    allQueries.Add(query);
-                }
-            }
-
-            return allQueries;
-        }*/
-        /*public static List<string> ToDoQueries(this IZennoPosterProjectModel project, string toDo = null, string defaultRange = null, string defaultDoFail = null)
-        {
-            string tableName = project.Variables["projectTable"].Value;
-
-            var nowIso = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
-
-            if (string.IsNullOrEmpty(toDo)) toDo = project.Variables["cfgToDo"].Value;
-
-            string[] toDoItems = (toDo ?? "").Split(',');
-
-            var allQueries = new List<(string TaskId, string Query)>();
-
-            foreach (string taskId in toDoItems)
-            {
-                string trimmedTaskId = taskId.Trim();
-                if (!string.IsNullOrWhiteSpace(trimmedTaskId))
-                {
-                    string range = defaultRange ?? project.Variables["range"].Value;
-                    string doFail = defaultDoFail ?? project.Variables["doFail"].Value;
-                    string failCondition = (doFail != "True" ? "AND status NOT LIKE '%fail%'" : "");
-                    string query = $@"SELECT {Quote("id")} FROM {Quote(tableName)} WHERE {Quote("id")} in ({range}) {failCondition} AND {Quote("status")} NOT LIKE '%skip%' AND ({Quote(trimmedTaskId)} < '{nowIso}' OR {Quote(trimmedTaskId)} = '')";
-                    allQueries.Add((trimmedTaskId, query));
-                }
-            }
-
-            return allQueries
-                .OrderBy(x =>
-                {
-                    if (string.IsNullOrEmpty(x.TaskId))
-                        return DateTime.MinValue;
-                    return DateTime.ParseExact(x.TaskId, "yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
-                })
-                .Select(x => x.Query)
-                .ToList();
-        }*/
         public static List<string> ToDoQueries(this IZennoPosterProjectModel project, string toDo = null, string defaultRange = null, string defaultDoFail = null)
         {
             string tableName = project.Variables["projectTable"].Value;
