@@ -305,7 +305,7 @@ namespace z3nCore
             {
                 action = _instance.HeGet(("div", "innertext", "Approve", "regexp", 0), "last");
             }
-            catch (Exception ex)
+            catch 
             {
                 if (!_instance.ActiveTab.FindElementByAttribute("input:password", "fulltagname", "input:password", "regexp", 0).IsVoid)
                 {

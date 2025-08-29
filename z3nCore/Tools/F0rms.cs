@@ -248,7 +248,7 @@ namespace z3nCore
                     result.Add(value);
                     lineCount++;
                 }
-                catch (Exception ex)
+                catch 
                 {
                     
                 }
@@ -282,7 +282,6 @@ namespace z3nCore
             int labelWidth = 40;
             int keyBoxWidth = 100;
             int valueBoxWidth = 370;
-            int textBoxWidth = 300;
             int spacing = 5;
 
             // Создаём поля для ключей и значений

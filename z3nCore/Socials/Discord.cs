@@ -15,14 +15,13 @@ namespace z3nCore
         protected readonly Instance _instance;
         protected readonly bool _logShow;
         protected readonly string _pass;
-        protected readonly Sql _sql;
+
         protected readonly NetHttp _http;
         public Discord(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
             _project = project;
             _instance = instance;
             _logShow = log;
-            _sql = new Sql(_project);
             _http = new NetHttp(_project);
         }
         public void Log(string tolog = "", [CallerMemberName] string callerName = "", bool log = false)
@@ -207,7 +206,8 @@ namespace z3nCore
                 Log(state);
                 var token = DSgetToken();
                 if (string.IsNullOrEmpty(token))
-                _sql.Upd($"token = '{token}', status = 'ok'", "private_discord");
+                _project.DbUpd($"token = '{token}', status = 'ok'", "_discord");
+                _project.Var("discordSTATUS", "ok");
                 _instance.UseFullMouseEmulation = emu;
             }
             return state;
@@ -241,8 +241,8 @@ namespace z3nCore
 
             }
 
-            string result = string.Join(" | ", servers);
-            _sql.Upd($"servers = '{result}'", "discord");
+            string result = string.Join(" , ", servers);
+            _project.DbUpd($"servers = '{result}'", "_discord");
             return result;
         }
     }

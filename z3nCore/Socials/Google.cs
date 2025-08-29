@@ -103,9 +103,7 @@ namespace z3nCore
                 case "CAPTCHA":
 
                     throw new Exception("gCAPTCHA");
-                    try { _project.CapGuru(); } catch { }
-                    _instance.HeClick(("button", "innertext", "Next", "regexp", 0));
-                    goto check;
+
                 case "phoneVerify":
                 case "badBrowser":
                     _sql.Upd($"status = '{state}'", "projects_google");
@@ -221,7 +219,7 @@ namespace z3nCore
                             _instance.HeClick(("button", "innertext", "Next", "regexp", 0));
                             goto Continue;
                         }
-                        catch (Exception ex) { }
+                        catch  { }
                         return "SUCCESS. without confirmation";
                     }
                 }

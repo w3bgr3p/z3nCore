@@ -128,7 +128,7 @@ namespace z3nCore
                 var random = new Random();
                 return files[random.Next(files.Length)];
             }
-            catch (Exception ex)
+            catch 
             {
                 goto readrandom;
             }

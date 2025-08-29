@@ -108,7 +108,7 @@ namespace z3nCore
             if (DateTime.Now > deadline) throw new Exception("timeout");
 
             var status = XcheckState(log: true);
-            try { _project.Var("twitterSTATUS", status); } catch (Exception ex) { }
+            try { _project.Var("twitterSTATUS", status); } catch  { }
             if (status == "login" && !tokenUsed)
             {
                 TokenSet();
@@ -218,7 +218,7 @@ namespace z3nCore
             if (DateTime.Now > deadline) throw new Exception("timeout");
 
             var status = XcheckState(log: true);
-            try { _project.Var("twitterSTATUS", status); } catch (Exception ex) { }
+            try { _project.Var("twitterSTATUS", status); } catch  { }
 
             if (status == "login" && !tokenUsed)
             {
