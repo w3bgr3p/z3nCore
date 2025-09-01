@@ -175,8 +175,9 @@ namespace z3nCore
 
                 whereClause += " ORDER BY RANDOM() LIMIT 1";
                 refCode = project.SqlGet("refcode", where: whereClause);
+                project.Variables["cfgRefCode"].Value  = refCode;
             }
-
+            
             return refCode;
         }
 
