@@ -195,6 +195,7 @@ namespace z3nCore.Socials
 
             try
             {
+	            /*
                 string response = ZennoPoster.HttpPost(
                     GRAPHQL_URL,
                     Encoding.UTF8.GetBytes(jsonBody),
@@ -211,10 +212,28 @@ namespace z3nCore.Socials
                     "",
                     true
                 );
-
-                _project.SendInfoToLog($"Response received: {response.Substring(0, Math.Min(100, response.Length))}...");
-                _project.Json.FromString(response);
-                return response;
+                */
+                string result = ZennoPoster.HTTP.Request(
+	                ZennoLab.InterfacesLibrary.Enums.Http.HttpMethod.POST,
+	                GRAPHQL_URL,
+	                Encoding.UTF8.GetBytes(jsonBody),
+	                "application/json",
+	                _project.Variables["proxy"].Value,
+	                "UTF-8",
+	                ZennoLab.InterfacesLibrary.Enums.Http.ResponceType.BodyOnly,
+	                30000,
+	                "",
+	                "Galaxy/v1",
+	                true,
+	                5,
+	                headers,
+	                "",
+	                true,
+	                false,
+	                null);
+                _project.SendInfoToLog($"Response received: {result.Substring(0, Math.Min(100, result.Length))}...");
+                _project.Json.FromString(result);
+                return result;
             }
             catch (Exception ex)
             {
@@ -268,6 +287,7 @@ namespace z3nCore.Socials
 
             try
             {
+	            /*
                 string response = ZennoPoster.HttpPost(
                     "https://graphigo.prd.galaxy.eco/query", // URL эндпоинта
                     Encoding.UTF8.GetBytes(jsonBody),
@@ -284,10 +304,28 @@ namespace z3nCore.Socials
                     "",
                     true
                 );
-
-                _project.SendInfoToLog($"Response received: {response.Substring(0, Math.Min(100, response.Length))}...");
-                _project.Json.FromString(response);
-                return response;
+                */
+                string result = ZennoPoster.HTTP.Request(
+	                ZennoLab.InterfacesLibrary.Enums.Http.HttpMethod.POST,
+	                "https://graphigo.prd.galaxy.eco/query",
+	                Encoding.UTF8.GetBytes(jsonBody),
+	                "application/json",
+	                _project.Variables["proxy"].Value,
+	                "UTF-8",
+	                ZennoLab.InterfacesLibrary.Enums.Http.ResponceType.BodyOnly,
+	                30000,
+	                "",
+	                "Galaxy/v1",
+	                true,
+	                5,
+	                headers,
+	                "",
+	                true,
+	                false,
+	                null);
+                _project.SendInfoToLog($"Response received: {result.Substring(0, Math.Min(100, result.Length))}...");
+                _project.Json.FromString(result);
+                return result;
             }
             catch (Exception ex)
             {

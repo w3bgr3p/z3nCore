@@ -89,6 +89,12 @@ namespace z3nCore
 
         public void Send(string toLog, [CallerMemberName] string callerName = "", bool show = false, bool thr0w = false, bool toZp = true, int cut = 0, bool wrap = true)
         {
+            if (_force)
+            {
+                show = true;
+                toZp = true;
+            }
+
             if (!show && !_logShow) return;
             string header = string.Empty;
             string body = toLog;
@@ -110,7 +116,7 @@ namespace z3nCore
             
             var sb = new StringBuilder(128);
             
-            string formated = null;
+            
             if (_acc)
                 try
                 {

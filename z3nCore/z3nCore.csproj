@@ -88,14 +88,17 @@
   <ItemGroup>
     <Compile Include="Browser\Cookies.cs" />
     <Compile Include="Browser\Captcha.cs" />
+    <Compile Include="cmnc0de.cs" />
     <Compile Include="Extensions\Exceptions.cs" />
     <Compile Include="Extensions\Utils.cs" />
+    <None Include="HanaGarden.cs" />
     <Compile Include="Properties\VersionInfo.cs" />
     <Compile Include="Protocols\AI.cs" />
     <Compile Include="Protocols\ChainOperaAI.cs" />
     <Compile Include="Protocols\Guild.cs" />
     <Compile Include="Sql\dSql.cs" />
     <Compile Include="Tools\Debug.cs" />
+    <Compile Include="Tools\Reporter.cs" />
     <Compile Include="W3b\Rpc.cs" />
     <Compile Include="W3b\W3bLegacy.cs" />
     <Compile Include="W3b\W3bTools.cs" />
@@ -103,7 +106,6 @@
     <Compile Include="Sql\Db.cs" />
     <Compile Include="Tools\Accountant.cs" />
     <Compile Include="Protocols\FirstMail.cs" />
-    <Compile Include="Protocols\HanaGarden.cs" />
     <Compile Include="Tools\Init.cs" />
     <Compile Include="Requests\NetHttp.cs" />
     <Compile Include="Browser\BrowserScan.cs" />
@@ -147,7 +149,6 @@
     <Compile Include="Extensions\StringExtentions.cs" />
     <Compile Include="Requests\Requests.cs" />
     <Compile Include="Tools\Time.cs" />
-    <Compile Include="Extensions\ProjectExtensions.cs" />
     <Compile Include="Socials\X.cs" />
     <Compile Include="Wallets\ZerionWallet.cs" />
     <Compile Include="W3b\W3b.cs" />

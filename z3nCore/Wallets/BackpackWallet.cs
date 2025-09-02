@@ -481,7 +481,7 @@ namespace z3nCore
         public string Current()//"Solana" | "Ethereum" //"key" | "phrase"
 
         {
-        start:
+
             if (_instance.ActiveTab.URL != _popout) _instance.ActiveTab.Navigate(_popout, "");
             var chan = _instance.HeGet(("div", "aria-haspopup", "dialog", "regexp", 0), atr: "innerhtml");
             if (chan.Contains("solana")) return "Solana";

@@ -3,6 +3,9 @@
   <component name="UserContentModel">
     <attachedFolders />
     <explicitIncludes />
-    <explicitExcludes />
+    <explicitExcludes>
+      <Path>z3nCore/HanaGarden.cs</Path>
+      <Path>z3nCore/cmnc0de.cs</Path>
+    </explicitExcludes>
   </component>
 </project>

@@ -91,6 +91,16 @@ namespace z3nCore
             project.SendWarningToLog($"Err: [{exMessage}] after [{previous}]", true);
             throw tracedEx;
         }
+        public static Exception Throw(this IZennoPosterProjectModel project, Exception ex,
+            [CallerMemberName] string caller = null)
+        {
+            var previous = project.LastExecutedActionId;
+            
+            var tracedEx = new TracedException(ex, caller);
+            project.SendWarningToLog($"Err: [{ex.Message}] after [{previous}]", true);
+            throw tracedEx;
+        }
+
     }
 
 

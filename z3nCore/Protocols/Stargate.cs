@@ -50,11 +50,11 @@ namespace z3nCore
             _project.L0g($"checking... {connectedButton.InnerText}  {unconnectedButton.InnerText}");
             if (unconnectedButton.IsVoid && connectedButton.IsVoid) goto check;
 
-            string state = null;
+           // string state = null;
 
             if (!connectedButton.FindChildByAttribute("img", "alt", "Zerion", "regexp", 0).IsVoid) connected.Add("Zerion");//state += "Zerion";
             if (!connectedButton.FindChildByAttribute("img", "alt", "Backpack", "regexp", 0).IsVoid) connected.Add("Backpack");
-            else if (unconnectedButton.InnerText == "Connect Wallet") state = "Connect";
+            //else if (unconnectedButton.InnerText == "Connect Wallet") state = "Connect";
 
 
             if (connected.Contains(wallet))

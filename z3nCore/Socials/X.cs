@@ -402,7 +402,7 @@ namespace z3nCore
             }
             catch (Exception ex)
             {
-                _project.L0g("!W{ex.Message}");
+                _project.L0g($"!W{ex.Message}");
             }
             LoadCreds();
         }

@@ -91,7 +91,7 @@ namespace z3nCore
 
             string message = timestamp + "POST" + url + jsonBody;
             string signature = CalculateHmacSha256ToBaseSignature(message, _secretKey);
-
+            /*
             // Send HTTP request
             var result = ZennoPoster.HttpPost(
                 "https://www.okx.com" + url,
@@ -118,6 +118,33 @@ namespace z3nCore
                      //false,
                      //_project.Profile.CookieContainer
             );
+            */
+            string result = ZennoPoster.HTTP.Request(
+                ZennoLab.InterfacesLibrary.Enums.Http.HttpMethod.POST,
+                "https://www.okx.com" + url,
+                jsonBody,
+                "application/json",
+                proxy,
+                "UTF-8",
+                ResponceType.BodyOnly,
+                30000,
+                "",
+                "Mozilla/4.0",
+                true,
+                5,
+                new string[]
+                {
+                    "Content-Type: application/json",
+                    "OK-ACCESS-KEY: " + _apiKey,
+                    "OK-ACCESS-SIGN: " + signature,
+                    "OK-ACCESS-TIMESTAMP: " + timestamp,
+                    "OK-ACCESS-PASSPHRASE: " + _passphrase
+                },
+                "",
+                false,
+                false,
+                null);
+            
             _project.Json.FromString(result);
             CexLog($"json received: [{result}]");
             return result;
@@ -128,7 +155,7 @@ namespace z3nCore
             string timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
             string message = timestamp + "GET" + url;
             string signature = CalculateHmacSha256ToBaseSignature(message, _secretKey);
-
+                /*
             var jsonResponse = ZennoPoster.HttpGet(
                 "https://www.okx.com" + url,
                 proxy,
@@ -150,10 +177,36 @@ namespace z3nCore
                 "",
                 false
             );
+            */
+            string result = ZennoPoster.HTTP.Request(
+                ZennoLab.InterfacesLibrary.Enums.Http.HttpMethod.GET,
+                "https://www.okx.com" + url,
+                "",
+                "application/json",
+                proxy,
+                "UTF-8",
+                ResponceType.BodyOnly,
+                30000,
+                "",
+                "Mozilla/4.0",
+                true,
+                5,
+                new string[]
+                {
+                    "Content-Type: application/json",
+                    "OK-ACCESS-KEY: " + _apiKey,
+                    "OK-ACCESS-SIGN: " + signature,
+                    "OK-ACCESS-TIMESTAMP: " + timestamp,
+                    "OK-ACCESS-PASSPHRASE: " + _passphrase
+                },
+                "",
+                false,
+                false,
+                null);
 
-            CexLog($"json received: [{jsonResponse}]");
-            _project.Json.FromString(jsonResponse);
-            return jsonResponse;
+            CexLog($"json received: [{result}]");
+            _project.Json.FromString(result);
+            return result;
         }
 
         public List<string> OKXGetSubAccs(string proxy = null, bool log = false)

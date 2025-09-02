@@ -16,8 +16,8 @@ namespace z3nCore.CexApi
         private readonly bool _logShow;
         private readonly Sql _sql;
 
-        private  OKXApi _okx;
-        private  BinanceApi _binance;
+        
+        
 
         private string _acc0;
 
@@ -63,6 +63,7 @@ namespace z3nCore.CexApi
 
         public void OkxRefuel(decimal inUsd, string chain, string address = null, string tiker = "ETH")
         {
+            var _okx = new OKXApi(_project);
             address = ChekAdr(address);
             decimal ethPrice = _okx.OKXPrice<decimal>("ETH-USDT");
             decimal usdAmount = (inUsd) / ethPrice;

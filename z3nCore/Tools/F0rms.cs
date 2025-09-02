@@ -148,7 +148,7 @@ namespace z3nCore
                 }
                 catch (Exception ex)
                 {
-
+                    _project.SendWarningToLog(ex.Message);
                 }
             }
 

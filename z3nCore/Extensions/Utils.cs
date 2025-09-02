@@ -251,7 +251,7 @@ namespace z3nCore
                     catch (Exception ex)
                     {
                         project.SendWarningToLog(ex.Message, true);
-                        throw ex;
+                        throw;
                     }
 
             try 
@@ -261,11 +261,9 @@ namespace z3nCore
             catch (Exception ex) 
             { 
                 project.SendWarningToLog(ex.Message, true);
-                throw ex;
+                throw;
             }
-            
             return;
-
         }
     }
     public static class Vars

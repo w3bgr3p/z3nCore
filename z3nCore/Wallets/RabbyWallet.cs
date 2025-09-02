@@ -14,7 +14,7 @@ namespace z3nCore
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
         private readonly Logger _logger;
-        private readonly string _extId;
+        private readonly string _extId = "acmacodkjbdgmoleebolmdjonilkdbch";
         private readonly string _fileName;
         private readonly string _key;
         private readonly string _pass;
