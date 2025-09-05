@@ -565,9 +565,13 @@ namespace z3nCore
             { 
                 toDoItems.Add(task.Trim());
             }
+            
+            
             string customTask  = project.Var("cfgCustomTask");
             if (!string.IsNullOrEmpty(customTask))
                 toDoItems.Add(customTask);
+            
+            
             //string[] toDoItems = (toDo ?? "").Split(',');
 
             var allQueries = new List<(string TaskId, string Query)>();
@@ -579,6 +583,7 @@ namespace z3nCore
                 {
                     string range = defaultRange ?? project.Variables["range"].Value;
                     string doFail = defaultDoFail ?? project.Variables["doFail"].Value;
+                    project.ClmnAdd(trimmedTaskId,tableName);
                     string failCondition = (doFail != "True" ? "AND status NOT LIKE '%fail%'" : "");
                     string query = $@"SELECT {Quote("id")} 
                               FROM {Quote(tableName)} 
