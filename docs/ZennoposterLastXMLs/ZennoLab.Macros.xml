@@ -1,0 +1,1402 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>ZennoLab.Macros</name>
+    </assembly>
+    <members>
+        <member name="T:ZennoLab.Macros.FileSystem">
+            <summary>
+            	<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 13px 'Segoe UI', Verdana, Arial; WIDOWS: 1; DISPLAY: inline !important; LETTER-SPACING: normal; TEXT-INDENT: 0px; -webkit-text-stroke-width: 0px">
+            Represents the static methods for working with file system.</span>
+            </summary>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.IsSystemFolder(System.String)">
+            <summary> Проверяем лежит ли файл в папке системы </summary>
+            <param name="path">путь</param>
+            <returns></returns>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.DirectoryCountOfFiles(System.String)">
+            <summary>Gets count of files in the directory</summary>
+            <param name="pathToDirectory">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the directory.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.int32.aspx">System.Int32</see></para>
+            	<para>Count of files in the directory.</para>
+            </returns>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.FileSystem.DirectoryCountOfFiles(System.String)">DirectoryCountOfFiles</see> method.
+            <code title="Example" description="" lang="C#">
+            string pathToDirectory = {pathToDirectory};
+            int countOfFiles = FileSystem.DirectoryCountOfFiles(pathToDirectory);</code><code title="Example2" description="" lang="PHP">
+            $pathToDirectory = {pathToDirectory};
+            $countOfFiles = FileSystem::DirectoryCountOfFiles($pathToDirectory);</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.DirectoryRandomFile(System.String)">
+            <summary>Get the random file in the directory</summary>
+            <param name="pathToDirectory">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the directory.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the random file in the directory.</para>
+            </returns>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.FileSystem.DirectoryRandomFile(System.String)">DirectoryRandomFile</see> method.
+            <code title="Example" description="" lang="C#">
+            string pathToDirectory = {pathToDirectory};
+            string resultFilePath = FileSystem.DirectoryRandomFile(pathToDirectory);</code><code title="Example2" description="" lang="PHP">
+            $pathToDirectory = {pathToDirectory};
+            $resultFilePath = FileSystem::DirectoryRandomFile($pathToDirectory);</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.DirectorySubItem(System.String,System.String,System.String,System.Boolean)">
+            <summary>
+            The path to a file/subdirectory in the specified directory
+            </summary>
+            <param name="pathToDirectory">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the directory.</para>
+            </param>
+            <param name="items">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>
+            		<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            			<span class="hps">Sampling units ("d" - directories, "f" - files, "df" - <span id="result_box" lang="en" class="short_text" xml:lang="en"><span class="hps">all together</span></span>)</span>
+            		</span>.</para>
+            </param>
+            <param name="itemNumber">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>
+            		<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            			<span class="hps alt-edited">
+            				<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            					<span class="hps">The number of the</span>
+            					<span class="hps">element.</span>
+            				</span>
+            			</span>
+            		</span>
+            	</para>
+            </param>
+            <param name="sortAlphabetically">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if sort items before sampling; otherwise, false.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>
+            		<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            			<span class="hps">Directory entries</span>
+            		</span>
+            		<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            			<span class="hps">.</span>
+            		</span>
+            	</para>
+            </returns>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.FileSystem.DirectorySubItem(System.String,System.String,System.String,System.Boolean)">DirectorySubItem</see> method.
+            <code title="Example" description="" lang="C#">
+            string pathToDirectory = {pathToDirectory};
+            string items = "df";
+            string itemNumber = "0";
+            bool sortAlphabetically = false;
+            string result = FileSystem.DirectorySubItem(pathToDirectory, items, itemNumber, sortAlphabetically);</code><code title="Example2" description="" lang="PHP">
+            $pathToDirectory = {pathToDirectory};
+            $items = "df";
+            $itemNumber = "0";
+            $sortAlphabetically = false;
+            $result = FileSystem::DirectorySubItem($pathToDirectory, $items, $itemNumber, $sortAlphabetically);</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.DirectoryDeleteFileByMask(System.String,System.String)">
+            <summary>Removes the file by mask</summary>
+            <param name="pathToDirectory">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the directory.</para>
+            </param>
+            <param name="pattern">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>
+            		<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            			<span class="hps">Mask for</span>
+            			<span class="hps alt-edited">remove
+            files</span>
+            		</span>.</para>
+            </param>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.FileSystem.DirectoryDeleteFileByMask(System.String,System.String)">DirectoryDeleteFileByMask</see> method.
+            <code title="Example" description="" lang="C#">
+            string pathToDirectory = {pathToDirectory};
+            string pattern = {maskToRemoveFiles};
+            FileSystem.DirectoryDeleteFileByMask(pathToDirectory, pattern);</code><code title="Example2" description="" lang="PHP">
+            $pathToDirectory = {pathToDirectory};
+            $pattern = {maskToRemoveFiles};
+            FileSystem::DirectoryDeleteFileByMask($pathToDirectory, $pattern);</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.DirectoryDeleteFile(System.String)">
+            <summary>Removes the file</summary>
+            <param name="pathToFile">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the file.</para>
+            </param>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.FileSystem.DirectoryDeleteFile(System.String)">DirectoryDeleteFile</see> method.
+            <code title="Example" description="" lang="C#">
+            string pathToFile = {pathToFile};
+            FileSystem.DirectoryDeleteFile(pathToFile);</code><code title="Example2" description="" lang="PHP">
+            $pathToFile = {pathToFile};
+            FileSystem::DirectoryDeleteFile($pathToFile);</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.DirectoryDeleteDirectory(System.String,System.Boolean,System.Boolean)">
+            <summary> Remove target directory </summary>
+            <param name="pathToDirectory">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the directory.</para>
+            </param>
+            <param name="recursive">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if <span id="result_box" lang="en" class="short_text" xml:lang="en"><span class="hps">removing</span><span class="hps">recursively</span></span>;
+            otherwise, false.</para>
+            </param>
+            <param name="onlyFromStartupPath">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if <span id="result_box" lang="en" class="short_text" xml:lang="en"><span class="hps"><span id="result_box" lang="en" xml:lang="en"><span class="hps">not remove</span><span class="hps">the directory</span><span class="hps">does not</span><span class="hps">belong to</span><span class="hps">the
+            startup directory</span></span></span></span>; otherwise, false.</para>
+            </param>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.FileSystem.DirectoryDeleteDirectory(System.String,System.Boolean,System.Boolean)">DirectoryDeleteDirectory</see> method.
+            <code title="Example" description="" lang="C#">
+            string pathToDirectory = {pathToDirectory};
+            bool recursive = true;
+            bool startupPath = false;
+            FileSystem.DirectoryDeleteDirectory(pathToDirectory, recursive, startupPath);</code><code title="Example2" description="" lang="PHP">
+            $pathToDirectory = {pathToDirectory};
+            $recursive = true;
+            $startupPath = false;
+            FileSystem::DirectoryDeleteDirectory($pathToDirectory, $recursive, $startupPath);</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.GetFileStream(System.String,System.Boolean,System.IO.FileMode)">
+            <summary> get exclusive file stream </summary>
+            <param name="path">path to the file</param>
+            <param name="existCheck"> </param>
+            <param name="fileMode"> </param>
+            <returns>stream</returns>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.RemoveAndWrite(System.IO.FileStream,System.Collections.Generic.IEnumerable{System.String},System.Int32)">
+            <summary>
+            Удалить строку и записать в поток
+            </summary>
+            <param name="fs">поток</param>
+            <param name="text">текст</param>
+            <param name="line">строка для удаления</param>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.RemoveAndWrite(System.IO.FileStream,System.Collections.Generic.IEnumerable{System.String},System.Collections.Generic.IEnumerable{System.Int32})">
+            <summary> Удалить строку и записать в поток </summary>
+            <param name="fs">поток</param>
+            <param name="text">текст</param>
+            <param name="lines">строки для удаления</param>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.FileGetLine(System.String,System.String,System.Boolean,System.Boolean)">
+            <summary>Gets string from the file</summary>
+            <param name="path">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the source file.</para>
+            </param>
+            <param name="numberOfLine">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>
+            		<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            			<span class="hps alt-edited">
+            				<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            					<span class="hps">The number of the</span>
+            					<span class="hps">line.</span>
+            				</span>
+            			</span>
+            		</span>
+            	</para>
+            </param>
+            <param name="removeLine">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if remove the used line; otherwise, false.</para>
+            </param>
+            <param name="removeEmptyFile">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if need to remove empty source file after sampling; otherwise, false.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>String after spliting <span id="result_box" lang="en" class="short_text" xml:lang="en"><span class="hps">and sampling.</span></span></para>
+            </returns>
+            <example>
+            The following example shows call the <see cref="o:FileGetLine">FileGetLine</see> method.
+            <code title="Example" description="" lang="C#">
+            string path = {pathToFile};
+            string numberOfLine = {numberOfLine};
+            bool removeLine = true;
+            string result = FileSystem.FileGetLine(path, numberOfLine, removeLine);</code><code title="Example2" description="" lang="PHP">
+            $path = {pathToFile};
+            $numberOfLine = {numberOfLine};
+            $removeLine = true;
+            $result = FileSystem::FileGetLine($path, $numberOfLine, $removeLine);</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.FileGetLines(System.String,System.String,System.Boolean,System.Boolean)">
+            <summary>Gets strings from the file</summary>
+            <param name="path">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the source file.</para>
+            </param>
+            <param name="numberOfLine">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>
+            		<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            			<span class="hps alt-edited">
+            				<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            					<span class="hps">The number of the</span>
+            					<span class="hps">line.</span>
+            				</span>
+            			</span>
+            		</span>
+            	</para>
+            </param>
+            <param name="removeLine">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if remove the used line; otherwise, false.</para>
+            </param>
+            <param name="removeEmptyFile">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if need to remove empty source file after sampling; otherwise, false.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Strings after spliting <span id="result_box" lang="en" class="short_text" xml:lang="en"><span class="hps">and sampling.</span></span></para>
+            </returns>
+            <example>
+            The following example shows call the <see cref="o:FileGetLine">FileGetLine</see> method.
+            <code title="Example" description="" lang="C#">
+            string path = {pathToFile};
+            string numberOfLine = {numberOfLine};
+            bool removeLine = true;
+            string[] result = FileSystem.FileGetLines(path, numberOfLine, removeLine);</code><code title="Example2" description="" lang="PHP">
+            $path = {pathToFile};
+            $numberOfLine = {numberOfLine};
+            $removeLine = true;
+            $result = FileSystem::FileGetLines($path, $numberOfLine, $removeLine);</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.FileGetLine(System.String,System.String,System.Boolean,System.String,System.String,System.Boolean)">
+            <summary>Gets string from the file</summary>
+            <param name="path">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the source file.</para>
+            </param>
+            <param name="numberOfLine">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>
+            		<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            			<span class="hps alt-edited">
+            				<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            					<span class="hps">The number of the</span>
+            					<span class="hps">line.</span>
+            				</span>
+            			</span>
+            		</span>
+            	</para>
+            </param>
+            <param name="removeLine">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if remove the used line; otherwise, false.</para>
+            </param>
+            <param name="regex">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Regular expression to parse the line.</para>
+            </param>
+            <param name="numberOfMatch">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Number of match after parsing.</para>
+            </param>
+            <param name="removeEmptyFile">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if need to remove empty source file after sampling; otherwise, false.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>String after spliting <span id="result_box" lang="en" class="short_text" xml:lang="en"><span class="hps">and sampling.</span></span></para>
+            </returns>
+            <example>
+            The following example shows call the <see cref="o:FileGetLine">FileGetLine</see> method.
+            <code title="Example" description="" lang="C#">
+            string path = {pathToFile};
+            string numberOfLine = {numberOfLine};
+            bool removeLine = true;
+            string regex = {regularExpression};
+            string numberOfMatch = {numberOfMatch};
+            string result = FileSystem.FileGetLine(path, numberOfLine, removeLine, regex, numberOfMatch);</code><code title="Example2" description="" lang="PHP">
+            $path = {pathToFile};
+            $numberOfLine = {numberOfLine};
+            $removeLine = true;
+            $regex = {regularExpression};
+            $numberOfMatch = {numberOfMatch};
+            $result = FileSystem::FileGetLine($path, $numberOfLine, $removeLine, $regex, $numberOfMatch);</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.FileGetLines(System.String,System.String,System.Boolean,System.String,System.String,System.Boolean)">
+            <summary>Gets strings from the file</summary>
+            <param name="path">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the source file.</para>
+            </param>
+            <param name="numberOfLine">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>
+            		<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            			<span class="hps alt-edited">
+            				<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            					<span class="hps">The number of the</span>
+            					<span class="hps">line.</span>
+            				</span>
+            			</span>
+            		</span>
+            	</para>
+            </param>
+            <param name="removeLine">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if remove the used line; otherwise, false.</para>
+            </param>
+            <param name="regex">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Regular expression to parse the line.</para>
+            </param>
+            <param name="numberOfMatch">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Number of match after parsing.</para>
+            </param>
+            <param name="removeEmptyFile">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if need to remove empty source file after sampling; otherwise, false.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Strings after spliting <span id="result_box" lang="en" class="short_text" xml:lang="en"><span class="hps">and sampling.</span></span></para>
+            </returns>
+            <example>
+            The following example shows call the <see cref="o:FileGetLine">FileGetLine</see> method.
+            <code title="Example" description="" lang="C#">
+            string path = {pathToFile};
+            string numberOfLine = {numberOfLine};
+            bool removeLine = true;
+            string regex = {regularExpression};
+            string numberOfMatch = {numberOfMatch};
+            string[] result = FileSystem.FileGetLines(path, numberOfLine, removeLine, regex, numberOfMatch);</code><code title="Example2" description="" lang="PHP">
+            $path = {pathToFile};
+            $numberOfLine = {numberOfLine};
+            $removeLine = true;
+            $regex = {regularExpression};
+            $numberOfMatch = {numberOfMatch};
+            $result = FileSystem::FileGetLines($path, $numberOfLine, $removeLine, $regex, $numberOfMatch);</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.FileGetBlock(System.String,System.String,System.String,System.Boolean,System.Boolean)">
+            <summary>Gets text block from the file</summary>
+            <param name="path">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the source file.</para>
+            </param>
+            <param name="blockSplitter">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Delimiter for text in the file.</para>
+            </param>
+            <param name="numberOfLine">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>
+            		<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            			<span class="hps alt-edited">The line number</span>
+            			<span class="hps alt-edited">after
+            splitting</span>
+            			<span class="hps">into blocks.</span>
+            		</span>
+            	</para>
+            </param>
+            <param name="removeBlock">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if remove the used block; otherwise, false.</para>
+            </param>
+            <param name="removeEmptyFile">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if need to remove empty source file after sampling; otherwise, false.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Text block after spliting <span id="result_box" lang="en" class="short_text" xml:lang="en"><span class="hps">and sampling.</span></span></para>
+            </returns>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.FileSystem.FileGetBlock(System.String,System.String,System.String,System.Boolean,System.Boolean)">FileGetBlock</see> method.
+            <code title="Example" description="" lang="C#">
+            string path = {pathToFile};
+            string blockSplitter = ":";
+            string numberOfLine = "random";
+            bool removeBlock = false;
+            string result = FileSystem.FileGetBlock(path, blockSplitter, numberOfLine, removeBlock);</code><code title="Example2" description="" lang="PHP">
+            $path = {pathToFile};
+            $blockSplitter = ":";
+            $numberOfLine = "random";
+            $removeBlock = false;
+            $result = FileSystem::FileGetBlock($path, $blockSplitter, $numberOfLine, $removeBlock);</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.FileGetBlocks(System.String,System.String,System.String,System.Boolean,System.Boolean)">
+            <summary>Gets text blocks from the file</summary>
+            <param name="path">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the source file.</para>
+            </param>
+            <param name="blockSplitter">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Delimiter for text in the file.</para>
+            </param>
+            <param name="numberOfLine">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>
+            		<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            			<span class="hps alt-edited">The line number</span>
+            			<span class="hps alt-edited">after
+            splitting</span>
+            			<span class="hps">into blocks.</span>
+            		</span>
+            	</para>
+            </param>
+            <param name="removeBlock">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if remove the used block; otherwise, false.</para>
+            </param>
+            <param name="removeEmptyFile">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if need to remove empty source file after sampling; otherwise, false.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Text blocks after spliting <span id="result_box" lang="en" class="short_text" xml:lang="en"><span class="hps">and sampling.</span></span></para>
+            </returns>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.FileSystem.FileGetBlock(System.String,System.String,System.String,System.Boolean,System.Boolean)">FileGetBlock</see> method.
+            <code title="Example" description="" lang="C#">
+            string path = {pathToFile};
+            string blockSplitter = ":";
+            string numberOfLine = "all";
+            bool removeBlock = false;
+            string[] result = FileSystem.FileGetBlocks(path, blockSplitter, numberOfLine, removeBlock);</code><code title="Example2" description="" lang="PHP">
+            $path = {pathToFile};
+            $blockSplitter = ":";
+            $numberOfLine = "all";
+            $removeBlock = false;
+            $result = FileSystem::FileGetBlocks($path, $blockSplitter, $numberOfLine, $removeBlock);</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.FileAppendString(System.String,System.String,System.Boolean)">
+            <summary>Appends line to the end of file</summary>
+            <param name="path">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the file.</para>
+            </param>
+            <param name="text">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Text to append.</para>
+            </param>
+            <param name="appendNewLine">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>true if append text in a new line; otherwise, false.</para>
+            </param>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.FileSystem.FileAppendString(System.String,System.String,System.Boolean)">FileAppendString</see> method.
+            <code title="Example" description="" lang="C#">
+            string path = {pathToFile};
+            string text = "it is new line in the file!";
+            bool appendNewLine = true;
+            FileSystem.FileAppendString(path, text, appendNewLine);</code><code title="Example2" description="" lang="PHP">
+            $path = {pathToFile};
+            $text = "it is new line in the file!";
+            $appendNewLine = true;
+            FileSystem::FileAppendString($path, $text, $appendNewLine);</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.FileCountOfLines(System.String)">
+            <summary>Get count of lines in the file</summary>
+            <param name="path">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the file.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.int32.aspx">System.Int32</see></para>
+            	<para>Count of lines in the file.</para>
+            </returns>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.FileSystem.FileCountOfLines(System.String)">FileCountOfLines</see> method.
+            <code title="Example" description="" lang="C#">
+            string path = {pathToFile};
+            string countOfLines = FileSystem.FileCountOfLines(path);</code><code title="Example2" description="" lang="PHP">
+            $path = {pathToFile};
+            $countOfLines = FileSystem::FileCountOfLines($path);</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.FileSystem.FileCopy(System.String,System.String)">
+            <summary>
+            	<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            		<span class="hps">Copies an existing file</span>
+            	</span>
+            </summary>
+            <param name="oldPath">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the existing file.</para>
+            </param>
+            <param name="newPath">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Path to the new file.</para>
+            </param>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.FileSystem.FileCopy(System.String,System.String)">FileCopy</see> method.
+            <code title="Example" description="" lang="C#">
+            string oldPath = {pathToExistingFile};
+            string newPath = {pathToNewFile};
+            FileSystem.FileCopy(oldPath, newPath);</code><code title="Example2" description="" lang="PHP">
+            $oldPath = {pathToExistingFile};
+            $newPath = {pathToNewFile};
+            FileSystem::FileCopy($oldPath, $newPath);</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="T:ZennoLab.Macros.Properties.ZennoLab_MacrosStringResources">
+            <summary>
+              A strongly-typed resource class, for looking up localized strings, etc.
+            </summary>
+        </member>
+        <member name="P:ZennoLab.Macros.Properties.ZennoLab_MacrosStringResources.ResourceManager">
+            <summary>
+              Returns the cached ResourceManager instance used by this class.
+            </summary>
+        </member>
+        <member name="P:ZennoLab.Macros.Properties.ZennoLab_MacrosStringResources.Culture">
+            <summary>
+              Overrides the current thread's CurrentUICulture property for all
+              resource lookups using this strongly typed resource class.
+            </summary>
+        </member>
+        <member name="P:ZennoLab.Macros.Properties.ZennoLab_MacrosStringResources.некорректный_spintax_текст">
+            <summary>
+              Looks up a localized string similar to Некорректный spintax текст.
+            </summary>
+        </member>
+        <member name="P:ZennoLab.Macros.Properties.ZennoLab_MacrosStringResources.ошибка_загрузки_модуля_">
+            <summary>
+              Looks up a localized string similar to Ошибка загрузки модуля .
+            </summary>
+        </member>
+        <member name="P:ZennoLab.Macros.Properties.ZennoLab_MacrosStringResources.ошибка_отрезания_закрывающейся_ск">
+            <summary>
+              Looks up a localized string similar to Ошибка отрезания закрывающейся скобки.
+            </summary>
+        </member>
+        <member name="P:ZennoLab.Macros.Properties.ZennoLab_MacrosStringResources.ошибка_отрезания_открывающейся_ск">
+            <summary>
+              Looks up a localized string similar to Ошибка отрезания открывающейся скобки.
+            </summary>
+        </member>
+        <member name="P:ZennoLab.Macros.Properties.ZennoLab_MacrosStringResources.ошибка_разбора_spintax_выражения_">
+            <summary>
+              Looks up a localized string similar to Ошибка разбора Spintax выражения - Ожидалось &apos;{0}&apos;.
+            </summary>
+        </member>
+        <member name="T:ZennoLab.Macros.Spintaxer">
+            <summary> класс для обработки spintax текста  </summary>
+        </member>
+        <member name="F:ZennoLab.Macros.Spintaxer._macrossRegex">
+            <summary> задаем регулярное выражение для парсинга макроса из строки </summary>
+        </member>
+        <member name="F:ZennoLab.Macros.Spintaxer._rnd">
+            <summary> генератор рандома </summary>
+        </member>
+        <member name="P:ZennoLab.Macros.Spintaxer.ErrorDetected">
+            <summary> была ли ошибка во время парсинга </summary>
+        </member>
+        <member name="M:ZennoLab.Macros.Spintaxer.SpinString(System.String,System.Boolean)">
+            <summary> обработать строку со спинтаксом </summary>
+            <param name="value"> строка со спинтаксом </param>
+            <param name="extendedSyntax">Расширенный синтакс</param>
+            <returns></returns>
+        </member>
+        <member name="M:ZennoLab.Macros.Spintaxer.ExecComplexSpintaxInternal(System.String)">
+            <summary> выполнить сложный макрос </summary>
+            <param name="value">spintax string</param>
+            <returns></returns>
+        </member>
+        <member name="M:ZennoLab.Macros.Spintaxer.MyMatchReplaceForMacross(System.Text.RegularExpressions.Match)">
+            <summary> функция замены совпадений при парсинге макроса </summary>
+            <param name="match"></param>
+            <returns></returns>
+        </member>
+        <member name="T:ZennoLab.Macros.TextProcessing">
+            <summary> Helper class for text operations </summary>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.Split(System.String,System.String,System.String)">
+            <summary>Splits the string.</summary>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source string.</para>
+            </param>
+            <param name="separator">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Delimiter for text in the string.</para>
+            </param>
+            <param name="number">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<span id="result_box" lang="en" class="short_text" xml:lang="en"></span>
+            	<para>
+            		<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            			<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            				<span class="hps alt-edited">
+            					<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            						<span class="hps">The number of </span>
+            						<span class="hps">string after splitting.</span>
+            					</span>
+            				</span>
+            			</span>
+            		</span>
+            	</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>A new string after splitting.</para>
+            </returns>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.TextProcessing.Split(System.String,System.String,System.String)">Split</see> method.
+            <code title="Example" description="" lang="C#">
+            var result = Macros.TextProcessing.Split("first;second;third;fourth;fifth", ";", "2").First();
+            return result;
+             
+            // result = "second"</code><code title="Example2" description="" lang="PHP">
+            $result = Macros::TextProcessing::Split("first;second;third;fourth;fifth", ";", "2")-&gt;First();
+            return $result;
+             
+            // result = "second"</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.RemoveDuplicates(System.String,System.String)">
+            <summary>Removes duplicates.</summary>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source string.</para>
+            </param>
+            <param name="separator">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Delimiter for text in the string.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>A new string without duplicates.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.Replace(System.String,System.String,System.String,System.String,System.String,System.String)">Replace Method</seealso>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.Trim">Trim Method</seealso>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.TextProcessing.RemoveDuplicates(System.String,System.String)">RemoveDuplicates</see> method.
+            <code title="Example" description="" lang="C#">
+            var result = Macros.TextProcessing.RemoveDuplicates("first;first;second", ";");
+            return result;
+             
+            // result = "first;second"</code><code title="Example2" description="" lang="PHP">
+            $result = Macros::TextProcessing::RemoveDuplicates("first;first;second", ";");
+            return $result;
+             
+            // result = "first;second"</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.Spintax(System.String,System.Boolean)">
+            <summary>Spintaxes the string.</summary>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source string.</para>
+            </param>
+            <param name="extendedSyntax">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>Use extended spintax sintax.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>A spintaxed string.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.Translate(System.String,System.String,System.String,System.String,System.String)">Translate Method</seealso>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.Translit(System.String)">Translit Method</seealso>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.TextProcessing.Spintax(System.String,System.Boolean)">Spintax</see> method.
+            <code title="Example" description="" lang="C#">
+            var result = Macros.TextProcessing.Spintax("I'm the {first|second|third|fourth|fifth} in line.");
+            return result;
+             
+            // result = "I'm the first in line." or "I'm the second in line.", etc.</code><code title="Example2" description="" lang="PHP">
+            $result = Macros::TextProcessing::Spintax("I'm the {first|second|third|fourth|fifth} in line.");
+            return $result;
+             
+            // result = "I'm the first in line." or "I'm the second in line.", etc.</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.RandomText(System.Int32,System.String,System.String)">
+            <summary>Gets the random text.</summary>
+            <param name="countOfChars">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.int32.aspx">System.Int32</see></para>
+            	<para>
+            		<span id="result_box" lang="en" class="short_text" xml:lang="en">
+            			<span class="hps">The count of chars in result text.</span>
+            		</span>
+            	</para>
+            </param>
+            <param name="options">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The set of options ("d" - use digits, "c" - use big letters, "s" - use only customSymbols, "f" - first letter is large)</para>
+            </param>
+            <param name="customSymbols">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The custom set of letters to use with option "s".</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The random text.</para>
+            </returns>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.TextProcessing.RandomText(System.Int32,System.String,System.String)">RandomText</see> method.
+            <code title="Example" description="" lang="C#">
+            var result = Macros.TextProcessing.RandomText(20, "dcf", "");</code><code title="Example2" description="" lang="PHP">
+            $result = Macros::TextProcessing::RandomText(20, "dcf", "");</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.Translit(System.String)">
+            <summary>Converts the string to translit.</summary>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source string.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>A translit string.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.Spintax(System.String,System.Boolean)">Spintax Method</seealso>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.Translate(System.String,System.String,System.String,System.String,System.String)">Translate Method</seealso>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.TextProcessing.Translit(System.String)">Translit</see> method.
+            <code title="Example" description="" lang="C#">
+            var result = Macros.TextProcessing.Translit("Переводим в транслит.");
+            return result;
+             
+            // result = "Perevodim v translit."</code><code title="Example2" description="" lang="PHP">
+            $result = Macros::TextProcessing::Translit("Переводим в транслит.");
+            return $result;
+             
+            // result = "Perevodim v translit."</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.Translate(System.String,System.String,System.String,System.String,System.String,System.String)">
+            <summary>Translate text through the specified DLL library.</summary>
+            <param name="dllName">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>DLL library.</para>
+            </param>
+            <param name="text">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source text.</para>
+            </param>
+            <param name="targetLanguge">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Target language.</para>
+            </param>
+            <param name="sourceLanguage">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Source language (default: auto).</para>
+            </param>
+            <param name="proxyStr">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Proxy URL string</para>
+            </param>
+            <param name="additionalParameters">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Additional parameters string</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Result text.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.Spintax(System.String,System.Boolean)">Spintax Method</seealso>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.Translit(System.String)">Translit Method</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="!:TextTranslate">TextTranslate</see> method.
+            <code title="Example" description="" lang="C#">
+            string res = Macros.TextProcessing.TextTranslate("BaiduTranslate.dll", "Hello!", "Chinese");</code><code title="Example2" description="" lang="PHP">
+            $res = Macros::TextProcessing::TextTranslate("BaiduTranslate.dll", "Hello!", "Chinese");</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.UrlEncode(System.String,System.String)">
+            <summary>Encodes the string to UrlEncode.</summary>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source string.</para>
+            </param>
+            <param name="encodingName">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Name of encoding, UTF-8 by default.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>A encoded string.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.UrlDecode(System.String)">UrlDecode Method</seealso>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.TextProcessing.UrlEncode(System.String,System.String)">UrlEncode</see> method.
+            <code title="Example" description="" lang="C#">
+            var result = Macros.TextProcessing.UrlEncode("&lt;");
+            return result;
+             
+            // result = "%3C"</code><code title="Example2" description="" lang="PHP">
+            $result = Macros::TextProcessing::UrlEncode("&lt;");
+            return $result;
+             
+            // result = "%3C"</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.UrlDecode(System.String,System.String)">
+            <summary>Decodes the string from UrlEncode.</summary>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source string.</para>
+            </param>
+            <param name="encodingName">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Name of encoding. UTF-8 by default.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>A decoded string.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.UrlEncode(System.String)">UrlEncode Method</seealso>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.TextProcessing.UrlDecode(System.String,System.String)">UrlDecode</see> method.
+            <code title="Example" description="" lang="C#">
+            var result = Macros.TextProcessing.UrlDecode("%3C");
+            return result;
+             
+            // result = "&lt;"</code><code title="Example2" description="" lang="PHP">
+            $result = Macros::TextProcessing::UrlDecode("%3C");
+            return $result;
+             
+            // result = "&lt;"</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.PrepToJavaScriptEval(System.String)">
+            <summary>Performs the text preparing for JavaScript evaluation.</summary>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source string.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The text after preparing for JavaScript evaluation.</para>
+            </returns>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.TextProcessing.PrepToJavaScriptEval(System.String)">PrepToJavaScriptEval</see> method.
+            <code title="Example" description="" lang="C#">
+            // perform the text preparing for JavaScript evaluation.
+            string preparedText = Macros.TextProcessing.PrepToJavaScriptEval("text for JavaScript");</code><code title="Example2" description="" lang="PHP">
+            // perform the text preparing for JavaScript evaluation.
+            $preparedText = Macros::TextProcessing::PrepToJavaScriptEval("text for JavaScript");</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.ToChar(System.String)">
+            <summary>Converts the integer value in specified string to a Unicode character.</summary>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>Source string.</para>
+            </param>
+            <remarks>The <em>sourceString</em> must be a string that contains a single character.</remarks>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>A Unicode character that is equivalent to the integer value in <em>sourceString</em>.</para>
+            </returns>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.TextProcessing.ToChar(System.String)">ToChar</see> method.
+            <code title="Example" description="" lang="C#">
+            // convert to char
+            string c = Macros.TextProcessing.ToChar("45");</code><code title="Example2" description="" lang="PHP">
+            // convert to char
+            $c = Macros::TextProcessing::ToChar("45");</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.ToLower(System.String,System.String)">
+            <summary>Returns a copy of this string converted to lowercase in specified place.</summary>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source string.</para>
+            </param>
+            <param name="method">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The place where need performs the operation to uppercase. It can have the following values: <strong><em>All</em></strong>,
+            <strong><em>FirstLetters</em></strong> and <em><strong>FirstLetter</strong></em>.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The lowercase in specified place equivalent of the current string.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.ToUpper(System.String,System.String)">ToUpper Method</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="M:ZennoLab.Macros.TextProcessing.ToLower(System.String,System.String)">ToLower</see> method.
+            <code title="Example" description="" lang="C#">
+            // performs to lower operation for all string
+            string allToLower = Macros.TextProcessing.ToUpper("STRING TO LOWER", "All");
+             
+            // performs to lower operation for first letters
+            string firstLettersToLower = Macros.TextProcessing.ToUpper("STRING TO LOWER", "FirstLetters");
+             
+            // performs to lower operation for first letter
+            string firstLetterToLower = Macros.TextProcessing.ToUpper("STRING TO LOWER", "FirstLetter");</code><code title="Example2" description="" lang="PHP">
+            // performs to lower operation for all string
+            $allToLower = Macros::TextProcessing::ToUpper("STRING TO LOWER", "All");
+             
+            // performs to lower operation for first letters
+            $firstLettersToLower = Macros::TextProcessing::ToUpper("STRING TO LOWER", "FirstLetters");
+             
+            // performs to lower operation for first letter
+            $firstLetterToLower = Macros::TextProcessing::ToUpper("STRING TO LOWER", "FirstLetter");</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.ToUpper(System.String,System.String)">
+            <summary>Returns a copy of this string converted to uppercase in specified place.</summary>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source string.</para>
+            </param>
+            <param name="method">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The place where need performs the operation to uppercase. It can have the following values: <strong><em>All</em></strong>,
+            <strong><em>FirstLetters </em></strong>and <em><strong>FirstLetter</strong></em>.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The uppercase in specified place equivalent of the current string.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.ToLower(System.String,System.String)">ToLower Method</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="M:ZennoLab.Macros.TextProcessing.ToUpper(System.String,System.String)">ToUpper</see> method.
+            <code title="Example" description="" lang="C#">
+            // performs to upper operation for all string
+            string allToUpper = Macros.TextProcessing.ToUpper("string to upper", "All");
+             
+            // performs to upper operation for first letters
+            string firstLettersToUpper = Macros.TextProcessing.ToUpper("string to upper", "FirstLetters");
+             
+            // performs to upper operation for first letter
+            string firstLetterToUpper = Macros.TextProcessing.ToUpper("string to upper", "FirstLetter");</code><code title="Example2" description="" lang="PHP">
+            // performs to upper operation for all string
+            $allToUpper = Macros::TextProcessing::ToUpper("string to upper", "All");
+             
+            // performs to upper operation for first letters
+            $firstLettersToUpper = Macros::TextProcessing::ToUpper("string to upper", "FirstLetters");
+             
+            // performs to upper operation for first letter
+            $firstLetterToUpper = Macros::TextProcessing::ToUpper("string to upper", "FirstLetter");</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.Trim(System.String,System.String)">
+            <summary>Removes all leading and trailing, leading or trailing white-space, tabulations and end of line characters from the current String object.</summary>
+            <overloads>Removes all leading and trailing, leading or trailing specified characters from the current String object.</overloads>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source string.</para>
+            </param>
+            <param name="whereToTrim">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The place where need performs the trim operation. It can have the following values: <em><strong>Begin</strong></em>, <strong><em>End</em></strong> or
+            <strong><em>Full</em></strong>.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The string that remains after all specified  characters are removed from the start or end of the current string.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.RemoveDuplicates(System.String,System.String)">RemoveDuplicates Method</seealso>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.Replace(System.String,System.String,System.String,System.String,System.String,System.String)">Replace Method</seealso>
+            <example>
+            The following example shows call the <see cref="O:ZennoLab.Macros.TextProcessing.Trim">Trim</see> method.
+            <code title="Example" description="" lang="C#">
+            // trim white-space and end line characters from start and end of string 
+            string fullTrim = Macros.TextProcessing.Trim(" string for trim operation\r\n ", "Full");
+             
+            // trim white-space from start of string 
+            string beginTrim = Macros.TextProcessing.Trim(" string for trim operation\r\n ", "Begin");
+             
+            // trim end line characters from end of string 
+            string endTrim = Macros.TextProcessing.Trim(" string for trim operation\r\n ", "End");</code><code title="Example2" description="" lang="PHP">
+            // trim white-space and end line characters from start and end of string 
+            $fullTrim = Macros::TextProcessing::Trim(" string for trim operation\r\n ", "Full");
+             
+            // trim white-space from start of string 
+            $beginTrim = Macros::TextProcessing::Trim(" string for trim operation\r\n ", "Begin");
+             
+            // trim end line characters from end of string 
+            $endTrim = Macros::TextProcessing::Trim(" string for trim operation\r\n ", "End");</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.Trim(System.String,System.String,System.String)">
+            <summary>Removes all leading and trailing, leading or trailing specified characters from the current String object.</summary>
+            <overloads>Removes all leading and trailing, leading or trailing specified characters from the current String object.</overloads>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source string.</para>
+            </param>
+            <param name="symbols">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The specified characters for trim operation as string object.</para>
+            </param>
+            <param name="whereToTrim">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The place where need performs the trim operation. It can have the following values: <em><strong>Begin</strong></em>, <strong><em>End</em></strong> or
+            <strong><em>Full</em></strong>.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The string that remains after all specified  characters are removed from the start or end of the current string.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.RemoveDuplicates(System.String,System.String)">RemoveDuplicates Method</seealso>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.Replace(System.String,System.String,System.String,System.String,System.String,System.String)">Replace Method</seealso>
+            <example>
+            The following example shows call the <see cref="O:ZennoLab.Macros.TextProcessing.Trim">Trim</see> method.
+            <code title="Example" description="" lang="C#">
+            // trim specified characters from start and end of string 
+            string fullTrim = Macros.TextProcessing.Trim("!string for trim operation?", "!?", "Full");
+             
+            // trim specified characters from start of string 
+            string beginTrim = Macros.TextProcessing.Trim("!string for trim operation?", "!?", "Begin");
+             
+            // trim specified characters from end of string 
+            string endTrim = Macros.TextProcessing.Trim("!string for trim operation?", "!?", "End");</code><code title="Example2" description="" lang="PHP">
+            // trim specified characters from start and end of string 
+            $fullTrim = Macros::TextProcessing::Trim("!string for trim operation?", "!?", "Full");
+             
+            // trim specified characters from start of string 
+            $beginTrim = Macros::TextProcessing::Trim("!string for trim operation?", "!?", "Begin");
+             
+            // trim specified characters from end of string 
+            $endTrim = Macros::TextProcessing::Trim("!string for trim operation?", "!?", "End");</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.ToList(System.String,System.String,System.String,ZennoLab.InterfacesLibrary.ProjectModel.IZennoPosterProjectModel,ZennoLab.InterfacesLibrary.ProjectModel.IZennoList)">
+            <summary>Converts all items in specified string to the list of the project model.</summary>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source string.</para>
+            </param>
+            <param name="rowSplitter">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The splitter of the rows in String object.</para>
+            </param>
+            <param name="rowSplitterType">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The split type of the rows in String object. It can have the following values: <strong><em>Text</em></strong> or <strong><em>Regex</em></strong>.</para>
+            </param>
+            <param name="project">
+            	<para>Type: <see cref="T:ZennoLab.InterfacesLibrary.ProjectModel.IZennoPosterProjectModel">IZennoPosterProjectModel</see></para>
+            	<para>The project object in which need store the data.</para>
+            </param>
+            <param name="list">
+            	<para>Type: <see cref="T:ZennoLab.InterfacesLibrary.ProjectModel.IZennoList">IZennoList</see></para>
+            	<para>The list object in which need store the data.</para>
+            </param>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.ToTable(System.String,System.String,System.String,System.String,System.String,ZennoLab.InterfacesLibrary.ProjectModel.IZennoPosterProjectModel,ZennoLab.InterfacesLibrary.ProjectModel.IZennoTable)">ToTable Method</seealso>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.TextProcessing.ToList(System.String,System.String,System.String,ZennoLab.InterfacesLibrary.ProjectModel.IZennoPosterProjectModel,ZennoLab.InterfacesLibrary.ProjectModel.IZennoList)">ToList</see> method.
+            <code title="Example" description="" lang="C#">
+            // performs convert string data to list data by specific row splitter
+            Macros.TextProcessing.ToList("1 2 3 4 5 6 7 8 9 10", " ", "Text", project, project.Lists["List1"]);</code><code title="Example2" description="" lang="PHP">
+            // performs convert string data to list data by specific row splitter
+            Macros::TextProcessing::ToList("1 2 3 4 5 6 7 8 9 10", " ", "Text", $project, $project-&gt;Lists-&gt;get_Item("List1"));</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.ToTable(System.String,System.String,System.String,System.String,System.String,ZennoLab.InterfacesLibrary.ProjectModel.IZennoPosterProjectModel,ZennoLab.InterfacesLibrary.ProjectModel.IZennoTable)">
+            <summary>Converts all items in specified string to the table of the project model.</summary>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source string.</para>
+            </param>
+            <param name="rowSplitter">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The splitter of the rows in String object.</para>
+            </param>
+            <param name="colSplitter">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The splitter of the colums in String object.</para>
+            </param>
+            <param name="project">
+            	<para>Type: <see cref="T:ZennoLab.InterfacesLibrary.ProjectModel.IZennoPosterProjectModel">IZennoPosterProjectModel</see></para>
+            	<para>The project object in which need store the data.</para>
+            </param>
+            <param name="rowSplitterType">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The split type of the rows in String object. It can have the following values: <strong><em>Text</em></strong> or <strong><em>Regex</em></strong>.</para>
+            </param>
+            <param name="colSplitterType">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The split type of the colums in String object. It can have the following values: <strong><em>Text</em></strong> or <strong><em>Regex</em></strong>.</para>
+            </param>
+            <param name="table">
+            	<para>Type: <see cref="T:ZennoLab.InterfacesLibrary.ProjectModel.IZennoTable">IZennoTable</see></para>
+            	<para>The table object in which need store the data.</para>
+            </param>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.ToList(System.String,System.String,System.String,ZennoLab.InterfacesLibrary.ProjectModel.IZennoPosterProjectModel,ZennoLab.InterfacesLibrary.ProjectModel.IZennoList)">ToList Method</seealso>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.TextProcessing.ToTable(System.String,System.String,System.String,System.String,System.String,ZennoLab.InterfacesLibrary.ProjectModel.IZennoPosterProjectModel,ZennoLab.InterfacesLibrary.ProjectModel.IZennoTable)">ToTable</see> method.
+            <code title="Example" description="" lang="C#">
+            // performs convert string data to table data by specific row and column splitters
+            Macros.TextProcessing.ToTable("1 2 3\r\n4 5 6\r\n7 8 9", "\r\n", "Text", " ", "Text", project, project.Tables["Table1"]);</code><code title="Example2" description="" lang="PHP">
+            // performs convert string data to table data by specific row and column splitters
+            Macros::TextProcessing::ToTable("1 2 3\r\n4 5 6\r\n7 8 9", "\r\n", "Text", " ", "Text", $project, $project-&gt;Tables-&gt;get_Item("Table1"));</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.Replace(System.String,System.String,System.String,System.String,System.String,System.String)">
+            <summary>Returns a new string in which occurrences of a specified string in the current instance are replaced with another specified string.</summary>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source string.</para>
+            </param>
+            <param name="find">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The string to be replaced.</para>
+            </param>
+            <param name="replace">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The string to replace occurrences of <i>find</i>.</para>
+            </param>
+            <param name="searchType">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The type of the search <em>find</em>. It can have the following values: <strong><em>Text</em></strong> or <strong><em>Regex</em></strong>.</para>
+            </param>
+            <param name="take">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The type of the performance of replacing in String object. It can have the following values: <strong><em>All</em></strong>, <strong><em>First</em></strong>,
+            <strong><em>Last</em></strong>, <strong><em>Number</em></strong> or <strong><em>Range</em></strong>.</para>
+            </param>
+            <param name="parameters">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The additional parameter for search. This parameter applies only for <strong><em>Number</em></strong> and <strong><em>Range</em></strong> values of
+            <em>take</em>. Default value is empty string. In <strong><em>Number</em></strong> case it must be number of the occurrence in string value, in
+            <strong><em>Range</em></strong> case it must be the range of the occurrences.</para>
+            </param>
+            <remarks>If <em>replace</em> is <strong>null</strong>, all occurrences of <em>find</em> are removed.</remarks>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>A string that is equivalent to the current string except that instances of <em>find</em> are replaced with <em>replace</em>.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.RemoveDuplicates(System.String,System.String)">RemoveDuplicates Method</seealso>
+            <seealso cref="M:ZennoLab.Macros.TextProcessing.Trim">Trim Method</seealso>
+            <example>
+            The following example shows call the <paramref name="Replace">Replace</paramref> method.
+            <code title="Example" description="" lang="C#">
+            // replace "this" in string to "new value"
+            string newString = Macros.TextProcessing.Replace("replace this to new value", "this", "new value", "Text", "First");</code><code title="Example2" description="" lang="PHP">
+            // replace "this" in string to "new value"
+            $newString = Macros::TextProcessing::Replace("replace this to new value", "this", "new value", "Text", "First");</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.Regex(System.String,System.String,System.String,System.String)">
+            <summary>Returns groups collection of matches for target regex.</summary>
+            <param name="sourceString">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The source string.</para>
+            </param>
+            <param name="sourceRegex">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The target regex.</para>
+            </param>
+            <param name="range">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The range of collections for return.</para>
+            </param>
+            <param name="excludeGroup">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>The group numbers for exclude in result.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.collections.generic.aspx">System.Collections.Generic.List</see></para>
+            	<para>A collection of matches</para>
+            </returns>
+            <example>
+            The following example shows call the <paramref name="Regex">Regex</paramref> method.
+            <code title="Example" description="" lang="C#">
+            // get even matches without group number 0
+            var matches = Macros.TextProcessing.Regex("Some string 42", @"(.+)\ (.+)", "even", "0");</code><code title="Example2" description="" lang="PHP">
+            // get even matches without group number 0
+            $matches = Macros::TextProcessing::Regex("Some string 42", @"(.+)\ (.+)", "even", "0");</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Macros.TextProcessing.StringMacrosScreening(System.String)">
+            <summary>Escapes macros.</summary>
+            <param name="str">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>String to process</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.string.aspx">System.String</see></para>
+            	<para>A new string with escaped macros</para>
+            </returns>
+            <example>
+            The following example shows call the <see cref="M:ZennoLab.Macros.TextProcessing.StringMacrosScreening(System.String)">Split</see> method.
+            <code title="Example" description="" lang="C#">
+            var result = Macros.TextProcessing.StringMacrosScreening("{-Variable.var1-}");
+            return result;
+             
+            // result = "{ -Variable.var1- }"</code><code title="Example2" description="" lang="PHP">
+            $result = Macros::TextProcessing::StringMacrosScreening("{-Variable.var1-}");
+            return $result;
+             
+            // result = "{ -Variable.var1- }"</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+    </members>
+</doc>

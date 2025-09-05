@@ -1,0 +1,1350 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>ZennoLab.Emulation</name>
+    </assembly>
+    <members>
+        <member name="T:ZennoLab.Emulation.Emulator">
+            <summary>Represents methods for emulation of work with windows.</summary>
+            <remarks>In this class represented the methods which can work with windows using the system handle or header (title) of the window.</remarks>
+            <seealso cref="T:ZennoLab.Emulation.KeyboardEvent">KeyboardEvent Enumeration</seealso>
+            <seealso cref="T:ZennoLab.Emulation.MouseButton">MouseButton Enumeration</seealso>
+            <seealso cref="T:ZennoLab.Emulation.MouseButtonEvent">MouseButtonEvent Enumeration</seealso>
+            <example>
+            The following code example demonstrates uses of the some methods of <see cref="T:ZennoLab.Emulation.Emulator">Emulator</see> class.
+            <code title="Example" description="" lang="C#">
+            // set active window
+            string result = Emulator.ActiveWindow("Simple window");
+            // check result
+            if (result == "ok" &amp;&amp; !Emulator.ErrorDetected)
+            {
+                // send key "z"
+                result = Emulator.SendKey("Simple window", 100, 200, System.Windows.Forms.Keys.Z, KeyboardEvent.Press);
+                // check result
+                if (result == "ok" &amp;&amp; !Emulator.ErrorDetected)
+                {
+                    // send text
+                    result = Emulator.SendText("Simple window",  100, 200, "Simple text", false);
+                    // check result
+                    if (result == "ok" &amp;&amp; !Emulator.ErrorDetected)
+                    {
+                        // mouse move
+                        Emulator.MouseMove("Simple window",350, 370);
+                        // mouse click on button as result it will show save file dialog
+                        result = Emulator.MouseClick("Simple window", MouseButton.Left, MouseButtonEvent.Click, 350, 370);
+                        // check result
+                        if (result == "ok" &amp;&amp; !Emulator.ErrorDetected)
+                        {
+                            // click on button with text "Save"
+                            return Emulator.ButtonClick("Save as", "Save");
+                        }
+                        else return "Fail";
+                    }
+                    else return "Fail";
+                }
+                else return "Fail";
+            }
+            else return "Fail";
+            // close window
+            result = Emulator.CloseWindow("Simple window");
+            // check result
+            if (result != "ok" || Emulator.ErrorDetected) return "Fail";
+            return "All done";</code><code title="Example2" description="" lang="PHP">
+            // set active window
+            $result = Emulator:ActiveWindow("Simple window");
+            // check result
+            if ($result == "ok" &amp;&amp; !Emulator::ErrorDetected)
+            {
+                // send key "z"
+                $result = Emulator::SendKey("Simple window", 100, 200, System\Windows\Forms\Keys::Z, KeyboardEvent::Press);
+                // check result
+                if ($result == "ok" &amp;&amp; !Emulator::ErrorDetected)
+                {
+                    // send text
+                    $result = Emulator::SendText("Simple window",  100, 200, "Simple text", false);
+                    // check result
+                    if (result == "ok" &amp;&amp; !Emulator.ErrorDetected)
+                    {
+                        // mouse move
+                        Emulator::MouseMove("Simple window", 350, 3700);
+                        // mouse click on button as result it will show save file dialog
+                        $result = Emulator::MouseClick("Simple window", MouseButton::Left, MouseButtonEvent::Click, 350, 370);
+                        // check result
+                        if ($result == "ok" &amp;&amp; !Emulator::ErrorDetected)
+                        {
+                            // click on button with text "Save"
+                            return Emulator::ButtonClick("Save as", "Save");
+                        }
+                        else return "Fail";
+                    }
+                    else return "Fail";
+                }
+                else return "Fail";
+            }
+            else return "Fail";
+            // close window
+            $result = Emulator::CloseWindow("Simple window");
+            // check result
+            if ($result != "ok" || Emulator::ErrorDetected) return "Fail";
+            return "All done";</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.SetCursorPos(System.Int32,System.Int32)">
+            <summary>
+            Установить позицию курсора
+            </summary>
+            <param name="x">Координат X</param>
+            <param name="y">Координата Y</param>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.SetFocus(System.IntPtr)">
+            <summary>
+            Установить фокус на указаном окне
+            </summary>
+            <param name="hwnd">Handle окна</param>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.FindWindow(System.String,System.String)">
+            <summary>
+            Найти окно по указанным параметрам
+            </summary>
+            <param name="lpClassName">Имя класса окна</param>
+            <param name="lpWindowName">Имя окна (заголовок)</param>
+            <returns>Handle окна</returns>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.SetActiveWindow(System.IntPtr)">
+            <summary>
+            Установить активноее окно
+            </summary>
+            <param name="hWnd">Handle окна</param>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.ShowWindow(System.IntPtr,System.Int32)">
+            <summary>
+            Показать окно
+            </summary>
+            <param name="hWnd">Handle окна</param>
+            <param name="nCmdShow">Способ отображения</param>
+            <returns></returns>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.SetForegroundWindow(System.IntPtr)">
+            <summary>
+            Переводит окно на передний план
+            </summary>
+            <param name="hWnd">Handle окна</param>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.WindowFromPoint(System.Drawing.Point)">
+            <summary>
+            Получает окно по координатам
+            </summary>
+            <param name="p">Координаты</param>
+            <returns>Handle окна</returns>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.GetWindowRect(System.IntPtr,ZennoLab.Emulation.Emulator.RECT@)">
+            <summary>
+            Получает размер указанного окна
+            </summary>
+            <param name="hWnd">Handle окна</param>
+            <param name="lpRect">Прямоугольник окна</param>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.GetWindowText(System.IntPtr,System.Text.StringBuilder,System.Int32)">
+            <summary>
+            Получает текст окна
+            </summary>
+            <param name="hwnd">Handle окна</param>
+            <param name="s">Куда записать</param>
+            <param name="nMaxCount">Максимальное количество</param>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.SetWindowPos(System.IntPtr,System.IntPtr,System.Int32,System.Int32,System.Int32,System.Int32,System.UInt32)">
+            <summary>
+            Установить полодение и размер окна
+            </summary>
+            <param name="hWnd">Handle окна</param>
+            <param name="hWndInsertAfter">:(</param>
+            <param name="X">Координата X</param>
+            <param name="Y">Координата Y</param>
+            <param name="W">Длина</param>
+            <param name="H">Ширина</param>
+            <param name="uFlags">Флаги</param>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.GetClassName(System.IntPtr,System.Text.StringBuilder,System.Int32)">
+            <summary>
+            Получить имя класса окна
+            </summary>
+            <param name="hWnd">Handle окна</param>
+            <param name="s">Куда записать</param>
+            <param name="nMaxCount">Максимальное количество</param>
+            <returns></returns>
+        </member>
+        <member name="P:ZennoLab.Emulation.Emulator.ErrorDetected">
+            <summary>
+            	<span style="WIDOWS: 2; TEXT-TRANSFORM: none; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; LETTER-SPACING: normal; DISPLAY: inline !important; FONT: 11px Verdana, Arial, Helvetica, sans-serif; WHITE-SPACE: normal; ORPHANS: 2; FLOAT: none; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            Gets information about the error detected in the performance last command.</span>
+            </summary>
+            <value>
+            	<para>
+            		<span style="WIDOWS: 2; TEXT-TRANSFORM: none; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; LETTER-SPACING: normal; DISPLAY: inline !important; FONT: 11px Verdana, Arial, Helvetica, sans-serif; WHITE-SPACE: normal; ORPHANS: 2; FLOAT: none; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.boolean.aspx:">System.Boolean</see></span>
+            	</para>
+            	<para>
+            		<span style="WIDOWS: 2; TEXT-TRANSFORM: none; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; LETTER-SPACING: normal; DISPLAY: inline !important; FONT: 11px Verdana, Arial, Helvetica, sans-serif; WHITE-SPACE: normal; ORPHANS: 2; FLOAT: none; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            true if error detected in the performance last command; otherwise, false.</span>
+            	</para>
+            </value>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.ActiveWindow(System.String,System.Boolean)">ActiveWindow Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.ButtonClick(System.String,System.String,System.Boolean)">ButtonClick Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.CloseWindow(System.String)">CloseWindow Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.MouseClick(System.String,ZennoLab.Emulation.MouseButton,ZennoLab.Emulation.MouseButtonEvent,System.Int32,System.Int32,System.Boolean)">MouseClick Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.MouseMove(System.String,System.Int32,System.Int32,System.Boolean)">MouseMove Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.SendKey(System.String,System.Int32,System.Int32,System.Windows.Forms.Keys,ZennoLab.Emulation.KeyboardEvent,System.Boolean)">SendKey Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.SendText(System.String,System.Int32,System.Int32,System.String,System.Boolean)">SendText Method</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="P:ZennoLab.Emulation.Emulator.ErrorDetected">ErrorDetected</see> property.
+            <code title="Example" description="" lang="C#">
+            // send the text
+            string result = Emulator.SendText("Window", 200, 200, "it's a simple text for send");
+            // if error detected
+            if (Emulator.ErrorDetected) return "Fail";
+            return "Text was sent";</code><code title="Example2" description="" lang="PHP">
+            // send the text
+            $result = ZennoLab\Emulation\Emulator::SendText("Window", 200, 200, "it's a simple text for send");
+            // if error detected
+            if (ZennoLab\Emulation\Emulator::ErrorDetected) return "Fail";
+            return "Text was sent";</code></example>
+            <requirements>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            			<strong>Target Platforms:</strong>
+            			<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</span>
+            	</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.IsWindowExists(System.String)">
+            <summary>Check for window exists.</summary>
+            <param name="name">
+            	<para>Type: <see>System.String
+            	              <cref>!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx</cref></see></para>
+            	<para>The header of the window.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.boolean.aspx">System.Boolean</see></para>
+            	<para>The answer with information about the window existence. If current window exists, this answer is
+            "<em><strong>true</strong></em>"; otherwise false.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.ButtonClick(System.String,System.String,System.Boolean)">ButtonClick Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.MouseClick(System.String,ZennoLab.Emulation.MouseButton,ZennoLab.Emulation.MouseButtonEvent,System.Int32,System.Int32,System.Boolean)">MouseClick Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.MouseMove(System.String,System.Int32,System.Int32,System.Boolean)">MouseMove Method</seealso>
+            <seealso cref="P:ZennoLab.Emulation.Emulator.ErrorDetected">ErrorDetected Property</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.CloseWindow(System.String)">CloseWindow Method</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="M:ZennoLab.Emulation.Emulator.IsWindowExists(System.String)">IsWindowExists</see> method.
+            <code title="Example" description="" lang="C#">
+            // activate the window just show it
+            if (Emulator.IsWindowExists("First window"))
+            {
+                string result = Emulator.ActiveWindow("First window");
+                // if was not any errors 
+                if (result == "ok" &amp;&amp; !Emulator.ErrorDetected)
+                    return "Window activated";
+            }
+            return "Fail in activation window";</code><code title="Example2" description="" lang="PHP">
+            // activate the first window just show it
+            if (ZennoLab\Emulation\Emulator::IsWindowExists("First window"))
+            {
+                $result = ZennoLab\Emulation\Emulator::ActiveWindow("First window");
+                // if was not any errors 
+                if ($result == "ok" &amp;&amp; !ZennoLab\Emulation\Emulator::ErrorDetected)
+                    return "Window activated";
+            }
+            else return "Fail: The first window";</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.ActiveWindow(System.String,System.Boolean)">
+            <summary>Sets the active window.</summary>
+            <param name="name">
+            	<para>Type: <see>System.String
+            	              <cref>!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx</cref></see></para>
+            	<para>The header of the window.</para>
+            </param>
+            <param name="topMost">
+            	<para>
+            		<span style="WIDOWS: 2; TEXT-TRANSFORM: none; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; LETTER-SPACING: normal; DISPLAY: inline !important; FONT: 11px Verdana, Arial, Helvetica, sans-serif; WHITE-SPACE: normal; ORPHANS: 2; FLOAT: none; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.boolean.aspx">System.Boolean</see></span>
+            	</para>
+            	<para>
+            		<span style="WIDOWS: 2; TEXT-TRANSFORM: none; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; LETTER-SPACING: normal; DISPLAY: inline !important; FONT: 11px Verdana, Arial, Helvetica, sans-serif; WHITE-SPACE: normal; ORPHANS: 2; FLOAT: none; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            true if need to show the window on top of all; otherwise, false. Default value is <strong>false</strong>.</span>
+            	</para>
+            </param>
+            <remarks>
+            	<para>There are several ways of calling this method. The parameter <strong>topMost</strong> have the default value and you can call the method without this
+            parameter. See examples.</para>
+            	<para>This method calls automatically every time when you use methods from <see cref="N:ZennoLab.Emulation">ZennoLab.Emulation</see>.</para>
+            </remarks>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The answer with information about the success of the current command's execution. If current command was successful then this answer is
+            "<em><strong>ok</strong></em>"; otherwise message describing the error.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.ButtonClick(System.String,System.String,System.Boolean)">ButtonClick Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.MouseClick(System.String,ZennoLab.Emulation.MouseButton,ZennoLab.Emulation.MouseButtonEvent,System.Int32,System.Int32,System.Boolean)">MouseClick Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.MouseMove(System.String,System.Int32,System.Int32,System.Boolean)">MouseMove Method</seealso>
+            <seealso cref="P:ZennoLab.Emulation.Emulator.ErrorDetected">ErrorDetected Property</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.CloseWindow(System.String)">CloseWindow Method</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="M:ZennoLab.Emulation.Emulator.ActiveWindow(System.String,System.Boolean)">ActiveWindow</see> method. In this code activated the three windows. The first and the second
+            are shown without parameter <strong>topMost</strong> (<strong>topMost</strong> is false). But the third window is shown on top of all.
+            <code title="Example" description="" lang="C#">
+            // activate the first window just show it
+            string result = Emulator.ActiveWindow("First window");
+            // if was not any errors 
+            if (result == "ok" &amp;&amp; !Emulator.ErrorDetected)
+            {
+                // also activate the second window just show it but set the parameters topMost == false
+                result = Emulator.ActiveWindow("Second window", false);
+                // if was not any errors 
+                if (result == "ok" &amp;&amp; !Emulator.ErrorDetected)
+                {
+                    // also activate the third window and show on top of all. Set the parameters topMost == true
+                    result = Emulator.ActiveWindow("Third window", true);
+                    // if all nice
+                    if (result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "All in openwork boss!";
+                    // if bad
+                    else return "Fail: The third window";
+                }
+                else return "Fail: The second window";
+            }
+            else return "Fail: The first window";</code><code title="Example2" description="" lang="PHP">
+            // activate the first window just show it
+            $result = ZennoLab\Emulation\Emulator::ActiveWindow("First window");
+            // if was not any errors 
+            if ($result == "ok" &amp;&amp; !ZennoLab\Emulation\Emulator::ErrorDetected)
+            {
+                // also activate the second window just show it but set the parameters topMost == false
+                $result = ZennoLab\Emulation\Emulator::ActiveWindow("Second window", false);
+                // if was not any errors 
+                if ($result == "ok" &amp;&amp; !ZennoLab\Emulation\Emulator::ErrorDetected)
+                {
+                    // also activate the third window and show on top of all. Set the parameters topMost == true
+                    $result = ZennoLab\Emulation\Emulator::ActiveWindow("Third window", true);
+                    // if all nice
+                    if ($result == "ok" &amp;&amp; !ZennoLab\Emulation\Emulator::ErrorDetected) return "All in openwork boss!";
+                    // if bad
+                    else return "Fail: The third window";
+                }
+                else return "Fail: The second window";
+            }
+            else return "Fail: The first window";</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.MaximizeWindow(System.String,System.Boolean)">
+            <summary>Performs the maximization of the specified window.</summary>
+            <param name="name">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The header of the window.</para>
+            </param>
+            <param name="topMost">
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.boolean.aspx">System.Boolean</see></span>
+            	</para>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            true if need to show the window on top of all; otherwise, false. Default value is <strong>false</strong>.</span>
+            	</para>
+            </param>
+            <remarks>
+            	<para>For using of this method not required the call <see cref="M:ZennoLab.Emulation.Emulator.ActiveWindow(System.String,System.Boolean)">ActivateWindow</see> method.</para>
+            </remarks>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The answer with information about the success of the current command's execution. If current command was successful then this answer is
+            "<strong><em>ok</em></strong>"; otherwise message describing the error.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.ActiveWindow(System.String,System.Boolean)">ActiveWindow Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.MinimizeWindow(System.String,System.Boolean)">MinimizeWindow Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.CloseWindow(System.String)">CloseWindow Method</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="M:ZennoLab.Emulation.Emulator.MaximizeWindow(System.String,System.Boolean)">MaximizeWindow</see> method.
+            <code title="Example" description="" lang="C#">
+            // maximize the window
+            string result = Emulator.MaximizeWindow("TestForm");
+            // check the result
+            if (result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "Window was maximize";
+            else return "Fail";</code><code title="Example2" description="" lang="PHP">
+            // maximize the window
+            $result = ZennoLab\Emulation\Emulator::MaximizeWindow("TestForm");
+            // check the result
+            if ($result == "ok" &amp;&amp; !ZennoLab\Emulation\Emulator::ErrorDetected) return "Window was maximize";
+            else return "Fail";</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.MinimizeWindow(System.String,System.Boolean)">
+            <summary>Performs the minimization of the specified window.</summary>
+            <param name="name">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The header of the window.</para>
+            </param>
+            <param name="topMost">
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.boolean.aspx">System.Boolean</see></span>
+            	</para>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            true if need to show the window on top of all; otherwise, false. Default value is <strong>false</strong>.</span>
+            	</para>
+            </param>
+            <remarks>
+            	<para>For using of this method not required the call <see cref="M:ZennoLab.Emulation.Emulator.ActiveWindow(System.String,System.Boolean)">ActivateWindow</see> method.</para>
+            </remarks>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The answer with information about the success of the current command's execution. If current command was successful then this answer is
+            "<strong><em>ok</em></strong>"; otherwise message describing the error.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.ActiveWindow(System.String,System.Boolean)">ActiveWindow Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.MaximizeWindow(System.String,System.Boolean)">MaximizeWindow Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.CloseWindow(System.String)">CloseWindow Method</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="M:ZennoLab.Emulation.Emulator.MinimizeWindow(System.String,System.Boolean)">MinimizeWindow</see> method.
+            <code title="Example" description="" lang="C#">
+            // minimize the window
+            string result = Emulator.MinimizeWindow("TestForm");
+            // check the result
+            if (result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "Window was minimize";
+            else return "Fail";</code><code title="Example2" description="" lang="PHP">
+            // minimize the window
+            $result = ZennoLab\Emulation\Emulator::MinimizeWindow("TestForm");
+            // check the result
+            if ($result == "ok" &amp;&amp; !ZennoLab\Emulation\Emulator::ErrorDetected) return "Window was minimize";
+            else return "Fail";</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.CloseWindow(System.String)">
+            <summary>Closes a window with specified header.</summary>
+            <param name="name">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The header of the window.</para>
+            </param>
+            <remarks>
+            	<para>For using of this method not required the call <see cref="M:ZennoLab.Emulation.Emulator.ActiveWindow(System.String,System.Boolean)">ActivateWindow</see> method.</para>
+            </remarks>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The answer with information about the success of the current command's execution. If current command was successful then this answer is
+            "<strong><em>ok</em></strong>"; otherwise message describing the error.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.ActiveWindow(System.String,System.Boolean)">ActiveWindow Method</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="M:ZennoLab.Emulation.Emulator.CloseWindow(System.String)">CloseWindow</see> method.
+            <code title="Example" description="" lang="C#">
+            // close the window
+            string result = Emulator.CloseWindow("TestForm");
+            // check the result
+            if (result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "Window was closed";
+            else return "Fail";</code><code title="Example2" description="" lang="PHP">
+            // close the window
+            $result = ZennoLab\Emulation\Emulator::CloseWindow("TestForm");
+            // check the result
+            if ($result == "ok" &amp;&amp; !ZennoLab\Emulation\Emulator::ErrorDetected) return "Window was closed";
+            else return "Fail";</code></example>
+            <requirements>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            			<strong>Target Platforms:</strong>
+            			<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</span>
+            	</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.SendKey(System.Int32,System.Windows.Forms.Keys,ZennoLab.Emulation.KeyboardEvent)">
+            <overloads>Sends the keyboard events.</overloads>
+            <summary>Sends the keyboard events to the window with specified handle.</summary>
+            <param name="key">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.windows.forms.keys.aspx">System.Windows.Forms.Keys</see></para>
+            	<para>The key for send.</para>
+            </param>
+            <param name="keyboardEvent">
+            	<para>Type: <paramref name="KeyboardEvent">ZennoLab.Emulation.KeyboardEvent</paramref></para>
+            	<para>The event of key for emulation.</para>
+            </param>
+            <param name="handle">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The handle of the window.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The answer with information about the success of the current command's execution. If current command was successful then this answer is
+            "<strong><em>ok</em></strong>"; otherwise message describing the error.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.SendText">SendText Method</seealso>
+            <seealso cref="P:ZennoLab.Emulation.Emulator.ErrorDetected">ErrorDetected Property</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="O:ZennoLab.Emulation.Emulator.SendKey">SendKey</see> method.
+            <code title="Example" description="" lang="C#">
+            // find the html element
+            HtmlElement he = instance.ActiveTab.FindElementByTag("input:text", 0);
+            // check the element
+            if (!he.IsVoid)
+            {
+                // send key
+                string result = Emulator.SendKey(instance.ActiveTab.Handle,System.Windows.Forms.Keys.Z, KeyboardEvent.Down); 
+                // send result
+                if (result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "Key was sent";
+                return "Fail";
+            }
+            return "Element not found";</code><code title="Example2" description="" lang="PHP">
+            // find the html element
+            $he = $instance-&gt;ActiveTab-&gt;FindElementByTag("input:text", 0);
+            // check the element
+            if (!$he-&gt;IsVoid)
+            {
+                // send key
+                $result = ZennoLab\Emulation\Emulator::SendKey($instance-&gt;ActiveTab-&gt;Handle, System\Windows\Forms\Keys::Z, KeyboardEvent::Down); 
+                // send result
+                if ($result == "ok" &amp;&amp; !ZennoLab\Emulation\Emulator.ErrorDetected) return "Key was sent";
+                return "Fail";
+            }
+            return "Element not found";</code></example>
+            <requirements>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            			<strong>Target Platforms:</strong>
+            			<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</span>
+            	</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.SendKey(System.String,System.Int32,System.Int32,System.Windows.Forms.Keys,ZennoLab.Emulation.KeyboardEvent,System.Boolean)">
+            <summary>Sends the keyboard events to the specified window.</summary>
+            <overloads>Sends the keyboard events.</overloads>
+            <param name="topMost">
+            	<para>
+            		<span style="WIDOWS: 2; TEXT-TRANSFORM: none; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; LETTER-SPACING: normal; DISPLAY: inline !important; FONT: 11px Verdana, Arial, Helvetica, sans-serif; WHITE-SPACE: normal; ORPHANS: 2; FLOAT: none; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.boolean.aspx">System.Boolean</see></span>
+            	</para>
+            	<para>
+            		<span style="WIDOWS: 2; TEXT-TRANSFORM: none; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; LETTER-SPACING: normal; DISPLAY: inline !important; FONT: 11px Verdana, Arial, Helvetica, sans-serif; WHITE-SPACE: normal; ORPHANS: 2; FLOAT: none; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            true if need to show the window on top of all; otherwise, false. Default value is <strong>false</strong>.</span>
+            	</para>
+            </param>
+            <param name="windowName">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The header of the window.</para>
+            </param>
+            <param name="x">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The x coordinate relative to the window.</para>
+            </param>
+            <param name="y">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The y coordinate relative to the window.</para>
+            </param>
+            <param name="keyboardEvent">
+            	<para>Type: <paramref name="KeyboardEvent">ZennoLab.Emulation.KeyboardEvent</paramref></para>
+            	<para>The event of key for emulation.</para>
+            </param>
+            <param name="key">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/en-us/library/system.windows.forms.keys.aspx">System.Windows.Forms.Keys</see></para>
+            	<para>The key for send.</para>
+            </param>
+            <remarks>
+            	<para>There are several ways of calling this method. The parameter <strong>topMost</strong> have the default value and you can call the method without this
+            parameter.</para>
+            	<para>The <strong>x</strong> and <strong>y</strong> can be <strong>-1</strong>. In this case the key will be sent to the current window.</para>
+            </remarks>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The answer with information about the success of the current command's execution. If current command was successful then this answer is
+            "<strong><em>ok</em></strong>"; otherwise message describing the error.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.SendText(System.String,System.Int32,System.Int32,System.String,System.Boolean)">SendText Method</seealso>
+            <seealso cref="P:ZennoLab.Emulation.Emulator.ErrorDetected">ErrorDetected Property</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="O:ZennoLab.Emulation.Emulator.SendKey">SendKey</see> method.
+            <code title="Example" description="" lang="C#">
+            // send the key "a"
+            string result = Emulator.SendKey("Window", 200, 200, System.Windows.Forms.Keys.A, KeyboardEvent.Press);
+            // check result
+            if (result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "Key was sent";
+            else return "Fail";</code><code title="Example2" description="" lang="PHP">
+            // send the key "a"
+            $result = ZennoLab\Emulation\Emulator::SendKey("Window", 200, 200, System\Windows\Forms\Keys.A, KeyboardEvent::Press);
+            // check result
+            if ($result == "ok" &amp;&amp; !ZennoLab\Emulation\Emulator::ErrorDetected) return "Key was sent";
+            else return "Fail";</code></example>
+            <requirements>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            			<strong>Target Platforms:</strong>
+            			<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</span>
+            	</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.SendText(System.Int32,System.String)">
+            <summary>Sends a text to the window with specified handle.</summary>
+            <overloads>Sends a text to the window.</overloads>
+            <param name="text">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The text for send.</para>
+            </param>
+            <param name="handle">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The handle of the window.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The answer with information about the success of the current command's execution. If current command was successful then this answer is
+            "<strong><em>ok</em></strong>"; otherwise message describing the error.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.SendKey">SendKey Method</seealso>
+            <seealso cref="P:ZennoLab.Emulation.Emulator.ErrorDetected">ErrorDetected Property</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="O:ZennoLab.Emulation.Emulator.SendText">SendText</see> method.
+            <code title="Example" description="" lang="C#">
+            // find the html element
+            HtmlElement he = instance.ActiveTab.FindElementByTag("input:text", 0);
+            // check the element
+            if (!he.IsVoid)
+            {
+                // focus on this element
+                he.Focus();
+                // send text
+                string result = Emulator.SendText(instance.ActiveTab.Handle, "Simple text"); 
+                // send result
+                if (result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "Key was sent";
+                return "Fail";
+            }
+            return "Element not found";</code><code title="Example2" description="" lang="PHP">
+            // find the html element
+            $he = $instance-&gt;ActiveTab-&gt;FindElementByTag("input:text", 0);
+            // check the element
+            if (!$he-&gt;IsVoid)
+            {
+                // focus on this element
+                $he-&gt;Focus();
+                // send text
+                $result = ZennoLab\Emulation\Emulator::SendText($instance-&gt;ActiveTab-&gt;Handle, "Simple text"); 
+                // send result
+                if ($result == "ok" &amp;&amp; !ZennoLab\Emulation\Emulator::ErrorDetected) return "Key was sent";
+                return "Fail";
+            }
+            return "Element not found";</code></example>
+            <requirements>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            			<strong>Target Platforms:</strong>
+            			<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</span>
+            	</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.SendText(System.String,System.Int32,System.Int32,System.String,System.Boolean)">
+            <overloads>Sends a text to the window.</overloads>
+            <summary>Sends a text to the specified window.</summary>
+            <param name="topMost">
+            	<para>
+            		<span style="WIDOWS: 2; TEXT-TRANSFORM: none; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; LETTER-SPACING: normal; DISPLAY: inline !important; FONT: 11px Verdana, Arial, Helvetica, sans-serif; WHITE-SPACE: normal; ORPHANS: 2; FLOAT: none; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.boolean.aspx">System.Boolean</see></span>
+            	</para>
+            	<para>
+            		<span style="WIDOWS: 2; TEXT-TRANSFORM: none; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; LETTER-SPACING: normal; DISPLAY: inline !important; FONT: 11px Verdana, Arial, Helvetica, sans-serif; WHITE-SPACE: normal; ORPHANS: 2; FLOAT: none; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            true if need to show the window on top of all; otherwise, false. Default value is <strong>false</strong>.</span>
+            	</para>
+            </param>
+            <param name="windowName">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The header of the window.</para>
+            </param>
+            <param name="x">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The x coordinate relative to the window.</para>
+            </param>
+            <param name="y">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The y coordinate relative to the window.</para>
+            </param>
+            <param name="text">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The text for send.</para>
+            </param>
+            <remarks>
+            	<para>There are several ways of calling this method. The parameter <strong>topMost</strong> have the default value and you can call the method without this
+            parameter.</para>
+            	<para>The <strong>x</strong> and <strong>y</strong> can be <strong>-1</strong>. In this case the text will be sent to the current window.</para>
+            </remarks>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The answer with information about the success of the current command's execution. If current command was successful then this answer is
+            "<strong><em>ok</em></strong>"; otherwise message describing the error.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.SendKey(System.String,System.Int32,System.Int32,System.Windows.Forms.Keys,ZennoLab.Emulation.KeyboardEvent,System.Boolean)">SendKey Method</seealso>
+            <seealso cref="P:ZennoLab.Emulation.Emulator.ErrorDetected">ErrorDetected Property</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="O:ZennoLab.Emulation.Emulator.SendText">SendText</see> method.
+            <code title="Example" description="" lang="C#">
+            // send the text
+            string result = Emulator.SendText("Window", 200, 200, "it's a simple text for send");
+            // check result
+            if (result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "Text was sent";
+            else return "Fail";</code><code title="Example2" description="" lang="PHP">
+            // send the text
+            $result = ZennoLab\Emulation\Emulator::SendText("Window", 200, 200, "it's a simple text for send");
+            // check result
+            if ($result == "ok" &amp;&amp; !ZennoLab\Emulation\Emulator::ErrorDetected) return "Text was sent";
+            else return "Fail";</code></example>
+            <requirements>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            			<strong>Target Platforms:</strong>
+            			<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</span>
+            	</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.MouseClick(System.String,ZennoLab.Emulation.MouseButton,ZennoLab.Emulation.MouseButtonEvent,System.Int32,System.Int32,System.Boolean)">
+            <summary>Emulates the mouse's events in the specified window.</summary>
+            <overloads>Emulates the mouse's events.</overloads>
+            <param name="topMost">
+            	<para>
+            		<span style="WIDOWS: 2; TEXT-TRANSFORM: none; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; LETTER-SPACING: normal; DISPLAY: inline !important; FONT: 11px Verdana, Arial, Helvetica, sans-serif; WHITE-SPACE: normal; ORPHANS: 2; FLOAT: none; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.boolean.aspx">System.Boolean</see></span>
+            	</para>
+            	<para>
+            		<span style="WIDOWS: 2; TEXT-TRANSFORM: none; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; LETTER-SPACING: normal; DISPLAY: inline !important; FONT: 11px Verdana, Arial, Helvetica, sans-serif; WHITE-SPACE: normal; ORPHANS: 2; FLOAT: none; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            true if need to show the window on top of all; otherwise, false. Default value is <strong>false</strong>.</span>
+            	</para>
+            </param>
+            <param name="windowName">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The header of the window.</para>
+            </param>
+            <param name="buttonEvent">
+            	<para>Type: <see cref="T:ZennoLab.Emulation.MouseButtonEvent">ZennoLab.Emulation.MouseButtonEvent</see></para>
+            	<para>The event of mouse button for emulation.</para>
+            </param>
+            <param name="x">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The x coordinate relative to the window.</para>
+            </param>
+            <param name="y">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The y coordinate relative to the window.</para>
+            </param>
+            <param name="button">
+            	<para>Type: <see cref="T:ZennoLab.Emulation.MouseButton">ZennoLab.Emulation.MouseButton</see></para>
+            	<para>The mouse button for emulation.</para>
+            </param>
+            <remarks>
+            	<para>There are several ways of calling this method. The parameter <strong>topMost</strong> have the default value and you can call the method without this
+            parameter.</para>
+            	<para>The <strong>x</strong> and <strong>y</strong> can be <strong>-1</strong>. In this case the click will be performed to the current window.</para>
+            </remarks>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The answer with information about the success of the current command's execution. If current command was successful then this answer is
+            "<strong><em>ok</em></strong>"; otherwise message describing the error.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.ButtonClick(System.String,System.String,System.Boolean)">ButtonClick Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.MouseMove(System.String,System.Int32,System.Int32,System.Boolean)">MouseMove Method</seealso>
+            <seealso cref="T:ZennoLab.Emulation.MouseButton">MouseButton Enumeration</seealso>
+            <seealso cref="T:ZennoLab.Emulation.MouseButtonEvent">MouseButtonEvent Enumeration</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="O:ZennoLab.Emulation.Emulator.MouseClick">MouseClick</see> method. First of all in this part of code call
+            <see cref="o:MouseClick">MouseClick</see> method and as result it opens the save file dialog. Then waits two seconds (the time to display the window) and clicks on button with
+            caption " <em><strong>Save</strong></em> " in window with header " <em><strong>Save as</strong></em> " using <see cref="M:ZennoLab.Emulation.Emulator.ButtonClick(System.String,System.String,System.Boolean)">ButtonClick</see> method.
+            <code title="Example" description="" lang="C#">
+            // show the save file dialog
+            string result = Emulator.MouseClick("Simple window", MouseButton.Left, MouseButtonEvent.Click, 200, 200);
+            // wait a little bit
+            System.Threading.Thread.Sleep(2000);
+            // if mouse click was successful
+            if (result == "ok" &amp;&amp; !Emulator.ErrorDetected)
+            {
+                // click on button with caption "Save"
+                result = Emulator.ButtonClick("Save as", "Save");
+                // make answer
+                if (result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "All done";
+                else return "Fail";
+            }</code><code title="Example2" description="" lang="PHP">
+            // show the save file dialog
+            $result = ZennoLab\Emulation\Emulator::MouseClick("Simple window", MouseButton::Left, MouseButtonEvent::Click, 200, 200);
+            // wait a little bit
+            System\Threading\Thread::Sleep(2000);
+            // if mouse click was successful
+            if ($result == "ok" &amp;&amp; !Emulator::ErrorDetected)
+            {
+                // click on button with caption "Save"
+                $result = ZennoLab\Emulation\Emulator::ButtonClick("Save as", "Save");
+                // make answer
+                if ($result == "ok" &amp;&amp; !ZennoLab\Emulation\Emulator::ErrorDetected) return "All done";
+                else return "Fail";
+            }</code></example>
+            <requirements>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            			<strong>Target Platforms:</strong>
+            			<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</span>
+            	</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.MouseClick(System.Int32,ZennoLab.Emulation.MouseButton,ZennoLab.Emulation.MouseButtonEvent,System.Int32,System.Int32)">
+            <summary>Emulates the mouse's events in the window with specified handle.</summary>
+            <overloads>Emulates the mouse's events.</overloads>
+            <param name="button">
+            	<para>Type: <see cref="T:ZennoLab.Emulation.MouseButton">ZennoLab.Emulation.MouseButton</see></para>
+            	<para>The mouse button for emulation.</para>
+            </param>
+            <param name="buttonEvent">
+            	<para>Type: <see cref="T:ZennoLab.Emulation.MouseButtonEvent">ZennoLab.Emulation.MouseButtonEvent</see></para>
+            	<para>The event of mouse button for emulation.</para>
+            </param>
+            <param name="x">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The x coordinate relative to the window.</para>
+            </param>
+            <param name="y">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The y coordinate relative to the window.</para>
+            </param>
+            <param name="handle">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The handle of the window.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The answer with information about the success of the current command's execution. If current command was successful then this answer is
+            "<strong><em>ok</em></strong>"; otherwise message describing the error.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.ButtonClick(System.String,System.String,System.Boolean)">ButtonClick Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.MouseMove">MouseMove Method</seealso>
+            <seealso cref="T:ZennoLab.Emulation.MouseButton">MouseButton Enumeration</seealso>
+            <seealso cref="T:ZennoLab.Emulation.MouseButtonEvent">MouseButtonEvent Enumeration</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="O:ZennoLab.Emulation.Emulator.MouseClick">MouseClick</see> method. First of all this code searches the html
+            element by specified search conditions. And next performs the click to the specified point from the active tab's window of the instance.
+            <code title="Example" description="" lang="C#">
+            // find the html element
+            HtmlElement he = instance.ActiveTab.FindElementByTag("input:submit", 0);
+            // check the element
+            if (!he.IsVoid)
+            {
+                // click
+                string result = Emulator.MouseClick(instance.ActiveTab.Handle, 
+                    MouseButton.Left, MouseButtonEvent.Click, he.DisplacementInTabWindow.X + 10, he.DisplacementInTabWindow.Y + 10);
+                // click was performed
+                if (result == "ok") return "All done";
+                // fail
+                return "Fail";
+            }
+            // element not found
+            return "Element not found";</code><code title="Example2" description="" lang="PHP">
+            // find the html element
+            $he = $instance-&gt;ActiveTab-&gt;FindElementByTag("input:submit", 0);
+            // check the element
+            if (!$he-&gt;IsVoid)
+            {
+                // click
+                $result = ZennoLab\Emulation\Emulator::MouseClick($instance-&gt;ActiveTab-&gt;Handle, 
+                    ZennoLab\Emulation\MouseButton::Left, MouseButtonEvent::Click, $he-&gt;DisplacementInTabWindow-&gt;X + 10, $he-&gt;DisplacementInTabWindow-&gt;Y + 10);
+                // click was performed
+                if ($result == "ok") return "All done";
+                // fail
+                return "Fail";
+            }
+            // element not found
+            return "Element not found";</code></example>
+            <requirements>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            			<strong>Target Platforms:</strong>
+            			<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</span>
+            	</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.MouseMove(System.String,System.Int32,System.Int32,System.Boolean)">
+            <summary>Moves the mouse to a specified location in the specified window.</summary>
+            <overloads>Moves the mouse to a specified location.</overloads>
+            <param name="topMost">
+            	<para>
+            		<span style="WIDOWS: 2; TEXT-TRANSFORM: none; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; LETTER-SPACING: normal; DISPLAY: inline !important; FONT: 11px Verdana, Arial, Helvetica, sans-serif; WHITE-SPACE: normal; ORPHANS: 2; FLOAT: none; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.boolean.aspx">System.Boolean</see></span>
+            	</para>
+            	<para>
+            		<span style="WIDOWS: 2; TEXT-TRANSFORM: none; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; LETTER-SPACING: normal; DISPLAY: inline !important; FONT: 11px Verdana, Arial, Helvetica, sans-serif; WHITE-SPACE: normal; ORPHANS: 2; FLOAT: none; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            true if need to show the window on top of all; otherwise, false. Default value is <strong>false</strong>.</span>
+            	</para>
+            </param>
+            <param name="windowName">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The header of the window.</para>
+            </param>
+            <param name="x">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The x coordinate relative to the window.</para>
+            </param>
+            <param name="y">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The y coordinate relative to the window.</para>
+            </param>
+            <remarks>There are several ways of calling this method. The parameter <strong>topMost</strong> have the default value and you can call the method without this
+            parameter.</remarks>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The answer with information about the success of the current command's execution. If current command was successful then this answer is
+            "<strong><em>ok</em></strong>"; otherwise message describing the error.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.ButtonClick(System.String,System.String,System.Boolean)">ButtonClick Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.MouseClick(System.String,ZennoLab.Emulation.MouseButton,ZennoLab.Emulation.MouseButtonEvent,System.Int32,System.Int32,System.Boolean)">MouseClick Method</seealso>
+            <seealso cref="P:ZennoLab.Emulation.Emulator.ErrorDetected">ErrorDetected Property</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="O:ZennoLab.Emulation.Emulator.MouseMove">MouseMove</see> method.
+            <code title="Example" description="" lang="C#">
+            // random
+            Random rnd = new Random();
+            // x location
+            int x = 200;
+            // y location
+            int y = 200;
+            // offset X
+            int offsetX = rnd.Next(100);
+            // offset y
+            int offsetY = rnd.Next(100);
+            // move mouse to start location x = 200 and y = 200 on "Window" window 
+            string result = Emulator.MouseMove("Window", x, y);
+            // check result
+            if (result != "ok" &amp;&amp; Emulator.ErrorDetected) return "Fail";
+            // mouse move to a new location
+            result = Emulator.MouseMove("Window", x + offsetX, y + offsetY);
+            // check result
+            if (result != "ok" &amp;&amp; Emulator.ErrorDetected) return "Fail";
+            // answer
+            return String.Format("Mouse was moved from x = {0}; y = {1} to x = {2}; y = {3}", x, y, x + offsetX, y + offsetY);</code><code title="Example2" description="" lang="PHP">
+            // random
+            $rnd = new Random();
+            // x location
+            $x = 200;
+            // y location
+            $y = 200;
+            // offset X
+            $offsetX = $rnd-&gt;Next(100);
+            // offset y
+            $offsetY = $rnd-&gt;Next(100);
+            // move mouse to start location x = 200 and y = 200 on "Window" window
+            $result = ZennoLab\Emulation\Emulator::MouseMove("Window", $x, $y);
+            // check result
+            if ($result != "ok" &amp;&amp; ZennoLab\Emulation\Emulator::ErrorDetected) return "Fail";
+            // mouse move to a new location
+            $result = ZennoLab\Emulation\Emulator::MouseMove("Window", $x + $offsetX, $y + $offsetY);
+            // check result
+            if ($result != "ok" &amp;&amp; ZennoLab\Emulation\Emulator::ErrorDetected) return "Fail";
+            // answer
+            return String::Format("Mouse was moved from x = {0}; y = {1} to x = {2}; y = {3}", $x, $y, $x + $offsetX, $y + $offsetY);</code></example>
+            <requirements>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            			<strong>Target Platforms:</strong>
+            			<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</span>
+            	</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.MouseMove(System.Int32,System.Int32,System.Int32)">
+            <summary>Moves the mouse to a specified location in the window with specified handle.</summary>
+            <overloads>Moves the mouse to a specified location.</overloads>
+            <param name="handle">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The handle of the window.</para>
+            </param>
+            <param name="x">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The x coordinate relative to the window.</para>
+            </param>
+            <param name="y">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The y coordinate relative to the window.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The answer with information about the success of the current command's execution. If current command was successful then this answer is
+            "<strong><em>ok</em></strong>"; otherwise message describing the error.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.MouseClick">MouseClick Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.MouseMove">MouseMove Method</seealso>
+            <seealso cref="P:ZennoLab.Emulation.Emulator.ErrorDetected">ErrorDetected Property</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="O:ZennoLab.Emulation.Emulator.MouseMove">MouseMove</see> method.
+            <code title="Example" description="" lang="C#">
+            // find the html element
+            HtmlElement he = instance.ActiveTab.FindElementByTag("input:submit", 0);
+            // check the element
+            if (!he.IsVoid)
+            {
+                // move the mouse to the html element location
+                string result = Emulator.MouseMove(instance.ActiveTab.Handle, he.DisplacementInTabWindow.X + 10, he.DisplacementInTabWindow.Y + 10);
+                if (result == "ok" &amp;&amp; !Emulator.ErrorDetected)
+                {    
+                    // wait a little bit
+                    System.Threading.Thread.Sleep(200);
+                    // perform the click
+                    result = Emulator.MouseClick(instance.ActiveTab.Handle, MouseButton.Left, MouseButtonEvent.Click, he.DisplacementInTabWindow.X + 10, he.DisplacementInTabWindow.Y + 10);
+                    if (result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "All done";
+                    return "Mouse click failed";
+                }
+                else return "Mouse move failed";
+            }
+            return "Element not found";</code><code title="Example2" description="" lang="PHP">
+            // find the html element
+            $he = $instance-&gt;ActiveTab-&gt;FindElementByTag("input:submit", 0);
+            // check the element
+            if (!$he-&gt;IsVoid)
+            {
+                // move the mouse to the html element location
+                $result = ZennoLab\Emulation\Emulator::MouseMove($instance-&gt;ActiveTab-&gt;Handle, $he-&gt;DisplacementInTabWindow-&gt;X + 10, $he-&gt;DisplacementInTabWindow-&gt;Y + 10);
+                if ($result == "ok" &amp;&amp; !ZennoLab\Emulation\Emulator::ErrorDetected)
+                {    
+                    // wait a little bit
+                    System\Threading.\Thread\Sleep(200);
+                    // perform the click
+                    $result = ZennoLab\Emulation\Emulator::MouseClick($instance-&gt;ActiveTab-&gt;Handle, MouseButton::Left, MouseButtonEvent::Click, $he-&gt;DisplacementInTabWindow-&gt;X + 10, he-&gt;DisplacementInTabWindow-&gt;Y + 10);
+                    if ($result == "ok" &amp;&amp; !ZennoLab\Emulation\Emulator::ErrorDetected) return "All done";
+                    return "Mouse click failed";
+                }
+                else return "Mouse move failed";
+            }
+            return "Element not found";</code></example>
+            <requirements>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            			<strong>Target Platforms:</strong>
+            			<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</span>
+            	</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.ButtonClick(System.String,System.String,System.Boolean)">
+            <summary>Clicks a button with specified caption in specified window.</summary>
+            <param name="topMost">
+            	<para>
+            		<span style="WIDOWS: 2; TEXT-TRANSFORM: none; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; LETTER-SPACING: normal; DISPLAY: inline !important; FONT: 11px Verdana, Arial, Helvetica, sans-serif; WHITE-SPACE: normal; ORPHANS: 2; FLOAT: none; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.boolean.aspx">System.Boolean</see></span>
+            	</para>
+            	<para>
+            		<span style="WIDOWS: 2; TEXT-TRANSFORM: none; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; LETTER-SPACING: normal; DISPLAY: inline !important; FONT: 11px Verdana, Arial, Helvetica, sans-serif; WHITE-SPACE: normal; ORPHANS: 2; FLOAT: none; COLOR: rgb(0,0,0); WORD-SPACING: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            true if need to show the window on top of all; otherwise, false. Default value is <strong>false</strong>.</span>
+            	</para>
+            </param>
+            <param name="windowName">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The header of the window.</para>
+            </param>
+            <param name="buttonName">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The text displayed on the button.</para>
+            </param>
+            <remarks>
+            	<para>There are several ways of calling this method. The parameter <strong>topMost</strong> have the default value and you can call the method without this
+            parameter.</para>
+            	<para>This method searches the button by the caption and does not case sensitive.</para>
+            </remarks>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The answer with information about the success of the current command's execution. If current command was successful then this answer is
+            "<strong><em>ok</em></strong>"; otherwise message describing the error.</para>
+            </returns>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.MouseClick(System.String,ZennoLab.Emulation.MouseButton,ZennoLab.Emulation.MouseButtonEvent,System.Int32,System.Int32,System.Boolean)">MouseClick Method</seealso>
+            <seealso cref="M:ZennoLab.Emulation.Emulator.MouseMove(System.String,System.Int32,System.Int32,System.Boolean)">MouseMove Method</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="M:ZennoLab.Emulation.Emulator.ButtonClick(System.String,System.String,System.Boolean)">ButtonClick</see> method. First of all in this part of code call <see cref="o:MouseClick">MouseClick</see> method and
+            as result it opens the save file dialog. Then waits two seconds (the time to display the window) and clicks on button with caption "
+            <em><strong>Save</strong></em> " in window with header " <em><strong>Save as</strong></em> " using <see cref="M:ZennoLab.Emulation.Emulator.ButtonClick(System.String,System.String,System.Boolean)">ButtonClick</see> method.
+            <code title="Example" description="" lang="C#">
+            // show the save file dialog
+            string result = Emulator.MouseClick("Simple window", MouseButton.Left, MouseButtonEvent.Click, 200, 200);
+            // wait a little bit
+            System.Threading.Thread.Sleep(2000);
+            // if mouse click was successful
+            if (result == "ok" &amp;&amp; !Emulator.ErrorDetected)
+            {
+                // click on button with caption "Save"
+                result = Emulator.ButtonClick("Save as", "Save");
+                // make answer
+                if (result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "All done";
+                else return "Fail";
+            }</code><code title="Example2" description="" lang="PHP">
+            // show the save file dialog
+            $result = ZennoLab\Emulation\Emulator::MouseClick("Simple window", MouseButton::Left, MouseButtonEvent::Click, 200, 200);
+            // wait a little bit
+            System\Threading\Thread::Sleep(2000);
+            // if mouse click was successful
+            if ($result == "ok" &amp;&amp; !Emulator::ErrorDetected)
+            {
+                // click on button with caption "Save"
+                $result = ZennoLab\Emulation\Emulator::ButtonClick("Save as", "Save");
+                // make answer
+                if ($result == "ok" &amp;&amp; !ZennoLab\Emulation\Emulator::ErrorDetected) return "All done";
+                else return "Fail";
+            }</code></example>
+            <requirements>
+            	<para>
+            		<strong>Target Platforms:</strong>
+            		<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</para>
+            </requirements>
+        </member>
+        <member name="M:ZennoLab.Emulation.Emulator.DragAndDrop(System.Int32,System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>Performs the drag and drop events inside specified window by handle.</summary>
+            <param name="handle">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The handle of the window.</para>
+            </param>
+            <param name="fromX">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The x coordinate in the window for drag event.</para>
+            </param>
+            <param name="formY">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The y coordinate in the window for drag event.</para>
+            </param>
+            <param name="toX">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The x coordinate in the window for drop event.</para>
+            </param>
+            <param name="toY">
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.int32.aspx">System.Int32</see></para>
+            	<para>The y coordinate in the window for drop event.</para>
+            </param>
+            <returns>
+            	<para>Type: <see cref="!:http://msdn.microsoft.com/ru-ru/library/system.string.aspx">System.String</see></para>
+            	<para>The answer with information about the success of the current command's execution. If current command was successful then this answer is
+            "<strong><em>ok</em></strong>"; otherwise message describing the error.</para>
+            </returns>
+            <example>
+            The following code example demonstrates uses of the <see cref="M:ZennoLab.Emulation.Emulator.DragAndDrop(System.Int32,System.Int32,System.Int32,System.Int32,System.Int32)">DragAndDrop</see> method. This code just navigate to some page and perform the drag and drop events
+            in specified coordinates.
+            <code title="Example" description="" lang="C#">
+            // go to page with drag and drop element
+            if (instance.ActiveTab.IsNull || instance.ActiveTab.IsVoid) return "Fail";
+            instance.ActiveTab.Navigate("dragdroppage.com");
+            // wait downloading
+            if (instance.ActiveTab.IsBusy) instance.ActiveTab.WaitDownloading();
+             
+            // do drag and drop event
+            return Emulator.DragAndDrop(instance.ActiveTab.Handle, 100, 100, 200);</code><code title="Example2" description="" lang="PHP">
+            // go to page with drag and drop element
+            if ($instance-&gt;ActiveTab-&gt;IsNull || $instance-&gt;ActiveTab-&gt;IsVoid) return "Fail";
+            $instance-&gt;ActiveTab-&gt;Navigate("dragdroppage.com");
+            // wait downloading
+            if ($instance-&gt;ActiveTab-&gt;IsBusy) $instance-&gt;ActiveTab-&gt;WaitDownloading();
+             
+            // do drag and drop event
+            return ZennoLab\Emulation\Emulator::DragAndDrop($instance-&gt;ActiveTab-&gt;Handle, 100, 100, 200);</code></example>
+            <requirements>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            			<strong>Target Platforms:</strong>
+            			<em>Desktop:</em> Windows XP SP3 and older. <em>Server:</em> Windows Server 2003 and older.</span>
+            	</para>
+            </requirements>
+        </member>
+        <member name="T:ZennoLab.Emulation.MouseButton">
+            <summary>Specifies the mouse button.</summary>
+            <seealso cref="T:ZennoLab.Emulation.KeyboardEvent">KeyboardEvent Enumeration</seealso>
+            <seealso cref="T:ZennoLab.Emulation.MouseButtonEvent">MouseButtonEvent Enumeration</seealso>
+            <seealso cref="O:ZennoLab.Emulation.Emulator.MouseClick">MouseClick Method</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="T:ZennoLab.Emulation.MouseButton">MouseButton</see> enumeration.
+            <code title="Example" description="" lang="C#">
+            // show the save file dialog
+            string result = Emulator.MouseClick("Simple window", MouseButton.Left, MouseButtonEvent.Click, 200, 200);
+            // wait a little bit
+            System.Threading.Thread.Sleep(2000);
+            // if mouse click was successful
+            if (result == "ok" &amp;&amp; !Emulator.ErrorDetected)
+            {
+                // click on button with caption "Save"
+                result = Emulator.ButtonClick("Save as", "Save");
+                // make answer
+                if (result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "All done";
+                else return "Fail";
+            }</code><code title="Example2" description="" lang="PHP">
+            // show the save file dialog
+            $result = Emulator::MouseClick("Simple window", MouseButton::Left, MouseButtonEvent::Click, 200, 200);
+            // wait a little bit
+            System\Threading\Thread::Sleep(2000);
+            // if mouse click was successful
+            if ($result == "ok" &amp;&amp; !Emulator::ErrorDetected)
+            {
+                // click on button with caption "Save"
+                $result = Emulator::ButtonClick("Save as", "Save");
+                // make answer
+                if ($result == "ok" &amp;&amp; !Emulator::ErrorDetected) return "All done";
+                else return "Fail";
+            }</code><code title="Example3" description="" lang="C#">
+            // find the html element
+            HtmlElement he = instance.ActiveTab.FindElementByTag("input:submit", 0);
+            // check the element
+            if (!he.IsVoid)
+            {
+                // click
+                string result = Emulator.MouseClick(instance.ActiveTab.Handle, 
+                    MouseButton.Left, MouseButtonEvent.Click, he.DisplacementInTabWindow.X + 10, he.DisplacementInTabWindow.Y + 10);
+                // click was performed
+                if (result == "ok") return "All done";
+                // fail
+                return "Fail";
+            }
+            // element not found
+            return "Element not found";</code><code title="Example4" description="" lang="PHP">
+            // find the html element
+            $he = $instance-&gt;ActiveTab-&gt;FindElementByTag("input:submit", 0);
+            // check the element
+            if (!$he-&gt;IsVoid)
+            {
+                // click
+                $result = Emulator::MouseClick($instance-&gt;ActiveTab-&gt;Handle, 
+                    MouseButton::Left, MouseButtonEvent::Click, $he-&gt;DisplacementInTabWindow-&gt;X + 10, $he-&gt;DisplacementInTabWindow-&gt;Y + 10);
+                // click was performed
+                if ($result == "ok") return "All done";
+                // fail
+                return "Fail";
+            }
+            // element not found
+            return "Element not found";</code></example>
+            <requirements>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            			<b>Target Platforms:</b> Windows XP Home Edition, Windows XP Professional, Windows Server 2003 family, Windows Vista, Windows Server 2008 family, Windows
+            Seven</span>
+            	</para>
+            </requirements>
+        </member>
+        <member name="F:ZennoLab.Emulation.MouseButton.Left">
+            <summary>The left mouse button.</summary>
+        </member>
+        <member name="F:ZennoLab.Emulation.MouseButton.Right">
+            <summary>The right mouse button.</summary>
+        </member>
+        <member name="T:ZennoLab.Emulation.MouseButtonEvent">
+            <summary>Specifies the mouse button event.</summary>
+            <seealso cref="T:ZennoLab.Emulation.KeyboardEvent">KeyboardEvent Enumeration</seealso>
+            <seealso cref="T:ZennoLab.Emulation.MouseButton">MouseButton Enumeration</seealso>
+            <seealso cref="O:ZennoLab.Emulation.Emulator.MouseClick">MouseClick Method</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="T:ZennoLab.Emulation.MouseButtonEvent">MouseButtonEvent</see> enumeration.
+            <code title="Example" description="" lang="C#">
+            // show the save file dialog
+            string result = Emulator.MouseClick("Simple window", MouseButton.Left, MouseButtonEvent.Click, 200, 200);
+            // wait a little bit
+            System.Threading.Thread.Sleep(2000);
+            // if mouse click was successful
+            if (result == "ok" &amp;&amp; !Emulator.ErrorDetected)
+            {
+                // click on button with caption "Save"
+                result = Emulator.ButtonClick("Save as", "Save");
+                // make answer
+                if (result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "All done";
+                else return "Fail";
+            }</code><code title="Example2" description="" lang="PHP">
+            // show the save file dialog
+            $result = Emulator::MouseClick("Simple window", MouseButton::Left, MouseButtonEvent::Click, 200, 200);
+            // wait a little bit
+            System\Threading\Thread::Sleep(2000);
+            // if mouse click was successful
+            if ($result == "ok" &amp;&amp; !Emulator::ErrorDetected)
+            {
+                // click on button with caption "Save"
+                $result = Emulator::ButtonClick("Save as", "Save");
+                // make answer
+                if ($result == "ok" &amp;&amp; !Emulator::ErrorDetected) return "All done";
+                else return "Fail";
+            }</code></example>
+            <requirements>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            			<b>Target Platforms:</b> Windows XP Home Edition, Windows XP Professional, Windows Server 2003 family, Windows Vista, Windows Server 2008 family, Windows
+            Seven</span>
+            	</para>
+            </requirements>
+        </member>
+        <member name="F:ZennoLab.Emulation.MouseButtonEvent.Down">
+            <summary>The mouse down event.</summary>
+        </member>
+        <member name="F:ZennoLab.Emulation.MouseButtonEvent.Up">
+            <summary>The mouse up event.</summary>
+        </member>
+        <member name="F:ZennoLab.Emulation.MouseButtonEvent.Click">
+            <summary>The mouse click event.</summary>
+        </member>
+        <member name="T:ZennoLab.Emulation.KeyboardEvent">
+            <summary>Specifies the keyboard event.</summary>
+            <seealso cref="T:ZennoLab.Emulation.MouseButton">MouseButton Enumeration</seealso>
+            <seealso cref="T:ZennoLab.Emulation.MouseButtonEvent">MouseButtonEvent Enumeration</seealso>
+            <seealso cref="O:ZennoLab.Emulation.Emulator.SendKey">SendKey Method</seealso>
+            <example>
+            The following code example demonstrates uses of the <see cref="T:ZennoLab.Emulation.KeyboardEvent">KeyboardEvent</see> enumeration.
+            <code title="Example" description="" lang="C#">
+            // send the key "a"
+            string result = Emulator.SendKey("Window", 200, 200, System.Windows.Forms.Keys.A, KeyboardEvent.Press);
+            // check result
+            if (result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "Key was sent";
+            else return "Fail";</code><code title="Example2" description="" lang="PHP">
+            // send the key "a"
+            $result = Emulator::SendKey("Window", 200, 200, System\Windows\Forms\Keys.A, KeyboardEvent::Press);
+            // check result
+            if ($result == "ok" &amp;&amp; !Emulator::ErrorDetected) return "Key was sent";
+            else return "Fail";</code><code title="Example3" description="" lang="C#">
+            // find the html element
+            HtmlElement he = instance.ActiveTab.FindElementByTag("input:text", 0);
+            // check the element
+            if (!he.IsVoid)
+            {
+                // send key
+                string result = Emulator.SendKey(instance.ActiveTab.Handle,System.Windows.Forms.Keys.Z, KeyboardEvent.Down); 
+                // send result
+                if (result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "Key was sent";
+                return "Fail";
+            }
+            return "Element not found";</code><code title="Example4" description="" lang="PHP">
+            // find the html element
+            $he = $instance-&gt;ActiveTab-&gt;FindElementByTag("input:text", 0);
+            // check the element
+            if (!$he-&gt;IsVoid)
+            {
+                // send key
+                $result = Emulator::SendKey($instance-&gt;ActiveTab-&gt;Handle, System\Windows\Forms\Keys::Z, KeyboardEvent::Down); 
+                // send result
+                if ($result == "ok" &amp;&amp; !Emulator.ErrorDetected) return "Key was sent";
+                return "Fail";
+            }
+            return "Element not found";</code></example>
+            <requirements>
+            	<para>
+            		<span style="WHITE-SPACE: normal; WORD-SPACING: 0px; TEXT-TRANSFORM: none; FLOAT: none; COLOR: rgb(0,0,0); FONT: 11px Verdana, Arial, Helvetica, sans-serif; ORPHANS: 2; WIDOWS: 2; DISPLAY: inline !important; LETTER-SPACING: normal; BACKGROUND-COLOR: rgb(255,255,255); TEXT-INDENT: 0px; -webkit-text-size-adjust: auto; -webkit-text-stroke-width: 0px">
+            			<b>Target Platforms:</b> Windows XP Home Edition, Windows XP Professional, Windows Server 2003 family, Windows Vista, Windows Server 2008 family, Windows
+            Seven</span>
+            	</para>
+            </requirements>
+        </member>
+        <member name="F:ZennoLab.Emulation.KeyboardEvent.Down">
+            <summary>The key down event.</summary>
+        </member>
+        <member name="F:ZennoLab.Emulation.KeyboardEvent.Up">
+            <summary>The key up event.</summary>
+        </member>
+        <member name="F:ZennoLab.Emulation.KeyboardEvent.Press">
+            <summary>The key press event.</summary>
+        </member>
+    </members>
+</doc>

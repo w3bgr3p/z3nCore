@@ -44,7 +44,6 @@ namespace z3nCore
             }
             return string.Join(", ", result);
         }
-        //private static readonly Regex ValidNamePattern = new Regex(@"^[a-zA-Z_.-][a-zA-Z0-9_.-]*$", RegexOptions.Compiled);
         private static readonly Regex ValidNamePattern = new Regex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled);
         private static string ValidateName(string name, string paramName)
         {
@@ -98,7 +97,7 @@ namespace z3nCore
                 try
                 {
                     //var accsByQuery = _sql.DbQ(query).Trim();
-                    var accsByQuery = _project.DbQ(query).Trim();
+                    var accsByQuery = _project.DbQ(query,log:log).Trim();
                     if (!string.IsNullOrWhiteSpace(accsByQuery))
                     {
                         var accounts = accsByQuery.Split('\n').Select(x => x.Trim().TrimStart(','));
