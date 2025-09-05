@@ -53,7 +53,7 @@ namespace z3nCore
               .AppendLine($"innerMsg: {innerMsg}")
               .AppendLine($"stackTrace: {stackTrace}");
 
-            if (log) project.SendInfoToLog(sb.ToString());
+            if (log) project.SendInfoToLog(sb.ToString().Replace("\\",""));
 
             //REPORT
             sb.Clear(); 
