@@ -160,7 +160,7 @@ namespace z3nCore
         }
         public static void _SAFU(this IZennoPosterProjectModel project)
         {
-            string tempFilePath = project.Path + "SAFU.zp";
+            string tempFilePath = project.Path + "_SAFU.zp";
             var mapVars = new List<Tuple<string, string>>();
             mapVars.Add(new Tuple<string, string>("acc0", "acc0"));
             mapVars.Add(new Tuple<string, string>("cfgPin", "cfgPin"));
@@ -265,6 +265,41 @@ namespace z3nCore
             }
             return;
         }
+
+
+        public static void PrepareInstance(this IZennoPosterProjectModel project, Instance instance)
+        {
+            int exCnt = 0;
+            string browserType = instance.BrowserType.ToString();
+            bool browser = browserType == "Chromium";
+
+            launchInstance:
+            try 
+            {
+                if (browser && project.Variables["acc0"].Value != "") //if browser					
+                    new Init(project,instance,false).SetBrowser();	
+                else
+                    new NetHttp(project, false).CheckProxy();
+            }
+            catch (Exception ex)
+            {
+                instance.CloseAllTabs();
+                project.L0g($"!W launchInstance Err {ex.Message}");
+                exCnt++;				
+                if (exCnt > 3 ) throw;
+                goto launchInstance;
+            }
+            instance.CloseExtraTabs(true);
+
+            foreach(string task in 	project.Variables["cfgToDo"].Value.Split(','))
+                project.Lists["toDo"].Add(task.Trim());
+            
+            project.L0g($"{browserType} started in {project.Age<string>()} ");
+            project.Var("varSessionId", (DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString());
+
+        }
+
+
     }
     public static class Vars
     {

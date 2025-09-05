@@ -215,7 +215,6 @@ namespace z3nCore
             {
                 result[variableNames[i]] = match.Groups[i + 1].Value;
             }
-
             return result;
         }
 

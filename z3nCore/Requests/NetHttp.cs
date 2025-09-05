@@ -85,8 +85,7 @@ namespace z3nCore
         {
             var defaultHeaders = new Dictionary<string, string>
             {
-                { "User-Agent", _project.Profile.UserAgent }, // Already present
-
+                { "User-Agent", _project.Profile.UserAgent },
             };
 
             if (inputHeaders == null || inputHeaders.Count == 0)
@@ -94,55 +93,56 @@ namespace z3nCore
                 return defaultHeaders;
             }
 
+
+            var forbiddenHeaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "authority",    // HTTP/2 псевдо-заголовок :authority
+                "method",       // HTTP/2 псевдо-заголовок :method  
+                "path",         // HTTP/2 псевдо-заголовок :path
+                "scheme",       // HTTP/2 псевдо-заголовок :scheme
+                "host",         // Автоматически устанавливается HttpClient
+                "content-length", // Автоматически вычисляется
+                "connection",   // Управляется HttpClient
+                "upgrade",      // Управляется HttpClient
+                "proxy-connection", // Управляется HttpClient
+                "transfer-encoding" // Управляется HttpClient
+            };
+
             var mergedHeaders = new Dictionary<string, string>(defaultHeaders);
+    
             foreach (var header in inputHeaders)
             {
-                mergedHeaders[header.Key] = header.Value; // Input headers override defaults
+                if (!forbiddenHeaders.Contains(header.Key))
+                {
+                    mergedHeaders[header.Key] = header.Value;
+                }
+                else
+                {
+                    _logger.Send($"Skipping forbidden header: {header.Key}");
+                }
             }
 
             return mergedHeaders;
         }
-        private Dictionary<string, string> BuildHeaders(object inputHeaders = null)
+        private bool IsRestrictedHeader(string headerName)
         {
-            var headers = new Dictionary<string, string>
+            var restrictedHeaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                { "User-Agent", _project.Profile.UserAgent },
-
+                // HTTP/2 псевдо-заголовки
+                "authority", "method", "path", "scheme",
+        
+                // Заголовки, управляемые HttpClient
+                "host", "content-length", "connection", "upgrade", 
+                "proxy-connection", "transfer-encoding",
+        
+                // Заголовки контента для GET-запросов
+                "content-type", "content-encoding", "content-language",
+        
+                // Другие проблемные заголовки
+                "expect", "if-modified-since", "range",// "referer"
             };
-
-            if (inputHeaders is null)
-            {
-                return headers;
-            }
-            else if (inputHeaders is Dictionary<string, string> dictHeaders) 
-            {
-                foreach (var header in dictHeaders)
-                {
-                    try { headers.Add(header.Key, header.Value); }
-                    catch { headers[header.Key] = header.Value; }
-
-                }
-            }
-            else if (inputHeaders is IEnumerable<string> stringHeaders) 
-            {
-                foreach (string header in stringHeaders)
-                {
-                    string[] parts = header.Split(new[] { ':' }, 2); 
-                    if (parts.Length == 2)
-                    {
-                        string headerKey = parts[0].Trim(); 
-                        string headerValue = parts[1].Trim(); 
-
-                        try { headers.Add(headerKey, headerValue); }
-                        catch { headers[headerKey] = headerValue; }
-
-                    }
-                    // Можно добавить else-блок для обработки некорректных строк заголовков
-                }
-            }
-            // Можно добавить else-блок для обработки неподдерживаемых типов inputHeaders
-
-            return headers;
+    
+            return restrictedHeaders.Contains(headerName);
         }
 
         public string GET(
@@ -151,7 +151,6 @@ namespace z3nCore
             Dictionary<string, string> headers = null,
             bool parse = false,
             int deadline = 15,
-            [CallerMemberName] string callerName = "",
             bool throwOnFail = false)
         {
             string debugHeaders = "";
@@ -163,17 +162,46 @@ namespace z3nCore
                     Proxy = proxy,
                     UseProxy = proxy != null
                 };
-
                 using (var client = new HttpClient(handler))
                 {
+
+
                     client.Timeout = TimeSpan.FromSeconds(deadline);
 
-                    var requestHeaders = BuildHeaders(headers);
+                    // Добавляем User-Agent отдельно
+                    client.DefaultRequestHeaders.Add("User-Agent", _project.Profile.UserAgent);
+                    debugHeaders += $"User-Agent: {_project.Profile.UserAgent}\n";
 
-                    foreach (var header in requestHeaders)
+                    if (headers != null)
                     {
-                        client.DefaultRequestHeaders.Add(header.Key, header.Value);
-                        debugHeaders += $"{header.Key}: {header.Value}; ";
+                        foreach (var header in headers)
+                        {
+                            try
+                            {
+                                // Пропускаем проблемные заголовки
+                                if (IsRestrictedHeader(header.Key))
+                                {
+                                    _logger.Send($"Skipping restricted header: {header.Key}");
+                                    continue;
+                                }
+
+                                // Специальная обработка для cookie
+                                if (header.Key.ToLower() == "cookie")
+                                {
+                                    client.DefaultRequestHeaders.Add("Cookie", header.Value);
+                                    debugHeaders += $"{header.Key}: {header.Value}\n";
+                                }
+                                else
+                                {
+                                    client.DefaultRequestHeaders.Add(header.Key, header.Value);
+                                    debugHeaders += $"{header.Key}: {header.Value}\n";
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.Send($"Failed to add header {header.Key}: {ex.Message}");
+                            }
+                        }
                     }
 
                     HttpResponseMessage response = client.GetAsync(url).GetAwaiter().GetResult();
@@ -202,13 +230,13 @@ namespace z3nCore
             }
             catch (HttpRequestException e)
             {
-                _logger.Send($"[GET] SERVER Err: [{e.Message}] url:[{url}] (proxy: {(proxyString)}), headers: [{debugHeaders.Trim()}]");
+                _logger.Send($"ErrFromServer: [{e.Message}] \nurl:[{url}]  \nheaders: [{debugHeaders}]");
                 if (throwOnFail) throw;
                 return e.Message.Replace("Response status code does not indicate success:", "").Trim('.').Trim();
             }
             catch (Exception e)
             {
-                _logger.Send($"!W [GET] RequestErr: [{e.Message}] url:[{url}] (proxy: {(proxyString)}) headers: [{debugHeaders.Trim()}]");
+                _logger.Send($"!W [GET] ErrSending: [{e.Message}] \nurl:[{url}]  \nheaders: [{debugHeaders}]");
                 if (throwOnFail) throw;
                 return string.Empty;
             }

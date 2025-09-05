@@ -45,7 +45,7 @@ namespace z3nCore
                 };
 
                 string rolesUrl = $"https://discord.com/api/v10/guilds/{guildId}/roles";
-                string rolesResponse = _http.GET(rolesUrl, headers: headers, callerName: callerName);
+                string rolesResponse = _http.GET(rolesUrl, headers: headers);
                 Thread.Sleep(1000);
                 if (rolesResponse.StartsWith("Ошибка"))
                 {

@@ -558,8 +558,17 @@ namespace z3nCore
 
             if (string.IsNullOrEmpty(toDo)) 
                 toDo = project.Variables["cfgToDo"].Value;
+            
+            var toDoItems = new List<string>();
 
-            string[] toDoItems = (toDo ?? "").Split(',');
+            foreach (string task in toDo.Split(','))
+            { 
+                toDoItems.Add(task.Trim());
+            }
+            string customTask  = project.Var("cfgCustomTask");
+            if (!string.IsNullOrEmpty(customTask))
+                toDoItems.Add(customTask);
+            //string[] toDoItems = (toDo ?? "").Split(',');
 
             var allQueries = new List<(string TaskId, string Query)>();
 

@@ -88,7 +88,7 @@
   <ItemGroup>
     <Compile Include="Browser\Cookies.cs" />
     <Compile Include="Browser\Captcha.cs" />
-    <Compile Include="cmnc0de.cs" />
+    <None Include="cmnc0de.cs" />
     <Compile Include="Extensions\Exceptions.cs" />
     <Compile Include="Extensions\Utils.cs" />
     <None Include="HanaGarden.cs" />
