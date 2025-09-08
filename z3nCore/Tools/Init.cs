@@ -148,39 +148,40 @@ namespace z3nCore
         }
         private void LaunchBrowser(string cfgBrowser = null)
         {
+            
+            var folder = _project.Var("pathProfileFolder"); 
+
             if (string.IsNullOrEmpty(cfgBrowser))
-             cfgBrowser = _project.Var("cfgBrowser");
+                cfgBrowser = _project.Var("cfgBrowser");
             var browser = ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium;
 
             switch (cfgBrowser)
             {
-                case "Chromium":
-                    break;
                 case "WithoutBrowser":
                     browser = ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.WithoutBrowser;
                     break;
                 case "ZennoBrowser":
-                    browser = ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.ChromiumFromZB;
+                    browser = ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.ChromiumFromZB;	
+                    break;
+                case "Chromium":
                     break;	
                 default:
                     _project.SendWarningToLog($"unknown browser config {cfgBrowser}");
                     throw new Exception ($"unknown browser config {cfgBrowser}");
             }
-
-
-            ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings settings = 
-                (ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings)
-                ZennoLab.CommandCenter.Classes.BrowserLaunchSettingsFactory.Create(browser);
-            settings.CachePath = _project.Var("pathProfileFolder"); 
-            settings.ConvertProfileFolder = true;
-            settings.UseProfile = true;
-
-            _instance.Launch(settings);
-
-            if (_instance.ActiveTab.IsNull || _instance.ActiveTab.IsVoid) {
-                _project.SendErrorToLog($"Can't start {cfgBrowser} from {settings.CachePath}", false);
-                throw new Exception($"Can't start {cfgBrowser} from {settings.CachePath}");
+            if ( cfgBrowser == "WithoutBrowser")
+                _instance.Launch(ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.WithoutBrowser, false);
+            else
+            {
+                ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings settings = 
+                    (ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings)
+                    ZennoLab.CommandCenter.Classes.BrowserLaunchSettingsFactory.Create(browser);
+                settings.CachePath = _project.Var("pathProfileFolder"); 
+                settings.ConvertProfileFolder = true;
+                settings.UseProfile = true;
+                _instance.Launch(settings);
             }
+
 
         }
         
