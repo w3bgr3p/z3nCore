@@ -133,7 +133,6 @@ namespace z3nCore
         {
             try { _instance.UninstallExtension(ExtToRemove); } catch { }
         }
-
-
+        
     }
 }

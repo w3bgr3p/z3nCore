@@ -110,7 +110,6 @@ namespace z3nCore
             throw new ArgumentException($"Unsupported type: {obj?.GetType()?.ToString() ?? "null"}");
         }
         
-
         //new
         public static string HeGet(this Instance instance, object obj, string method = "", int deadline = 10, string atr = "innertext", int delay = 1, string comment = "", bool thr0w = true)
         {

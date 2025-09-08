@@ -10,7 +10,7 @@ namespace z3nCore
     public static class Reporter
     {
 
-        public static string ErrorReport(this IZennoPosterProjectModel project, Instance instance, bool log = false, bool ToTg = false)
+        public static string ErrorReport(this IZennoPosterProjectModel project, Instance instance, bool log = false, bool toTg = false, bool toDb = false, bool screensot = false)
         {
 
             var error = project.GetLastError();
@@ -78,33 +78,39 @@ namespace z3nCore
                 project.Variables["failReport"].Value = failReport;
 
             //SCREEN
-            if (browser == "Chromium")
-            try
+
+            if (screensot)
             {
-                sb.Clear(); 
-                sb.Append(project?.Path ?? "")
-                  .Append(".failed\\")
-                  .Append(project?.Variables?["projectName"]?.Value ?? "Unknown")
-                  .Append("\\")
-                  .Append(project?.Name ?? "Unknown")
-                  .Append(" • ")
-                  .Append(project?.Variables?["acc0"]?.Value ?? "Unknown")
-                  .Append(" • [")
-                  .Append(project?.LastExecutedActionId ?? "Unknown")
-                  .Append(" - ")
-                  .Append(actionId)
-                  .Append("].jpg");
+                if (browser == "Chromium")
+                    try
+                    {
+                        sb.Clear(); 
+                        sb.Append(project.Path).Append(".failed\\")
+                            .Append(project.Variables?["projectName"]?.Value ?? "Unknown")
+                            .Append("\\")
+                            .Append(project?.Name ?? "Unknown")
+                            .Append(" • ")
+                            .Append(project?.Variables?["acc0"]?.Value ?? "Unknown")
+                            .Append(" • [")
+                            .Append(project?.LastExecutedActionId ?? "Unknown")
+                            .Append(" - ")
+                            .Append(actionId)
+                            .Append("].jpg");
                 
-                string screenshotPath = sb.ToString();
-                project?.SendInfoToLog(screenshotPath);
-                ZennoPoster.ImageProcessingResizeFromScreenshot(instance?.Port ?? 0, screenshotPath, 50, 50, "percent", true, false);
+                        string screenshotPath = sb.ToString();
+                        project?.SendInfoToLog(screenshotPath);
+                        ZennoPoster.ImageProcessingResizeFromScreenshot(instance?.Port ?? 0, screenshotPath, 50, 50, "percent", true, false);
+                    }
+                    catch (Exception e)
+                    {
+                        if (log) project?.SendInfoToLog(e.Message ?? "Error during screenshot processing");
+                    }
+                
             }
-            catch (Exception e)
-            {
-                if (log) project?.SendInfoToLog(e.Message ?? "Error during screenshot processing");
-            }
-            if (ToTg) project.ToTelegram(failReport);
             
+            if (toTg) project.ToTelegram(failReport);
+            
+            if (toDb) project.DbUpd($"status = '! dropped: {failReport.Replace("\\","")}'", log:true);
             return failReport;
             
                         

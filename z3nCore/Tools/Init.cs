@@ -14,27 +14,27 @@ namespace z3nCore
 {
     public class Init
     {
-        protected readonly IZennoPosterProjectModel _project;
-        protected readonly Instance _instance;
+        private readonly IZennoPosterProjectModel _project;
+        private readonly Instance _instance;
         private readonly Logger _logger;
-        protected readonly bool _logShow;
-        protected readonly string _pass;
-        protected readonly Sql _sql;
+        //protected readonly bool _logShow;
+        //protected readonly string _pass;
+        //private readonly Sql _sql;
 
         public Init(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
             _project = project;
-            _sql = new Sql(_project);
-            _logShow = log;
+            //_sql = new Sql(_project);
+            //_logShow = log;
             _logger = new Logger(project, log: log, classEmoji: "►");
             _instance = instance;
         }
         public Init(IZennoPosterProjectModel project, bool log = false)
         {
             _project = project;
-            _logShow = log;
+            //_logShow = log;
             _logger = new Logger(project, log: log, classEmoji: "►");
-            _sql = new Sql(_project);
+            //_sql = new Sql(_project);
         }
 
         public void InitVariables(string author = "")
@@ -100,7 +100,7 @@ namespace z3nCore
                 }
             }
         }
-        public void SetBrowser(bool strictProxy = true, string cookies = null, bool log = false)
+        private void SetBrowser(bool strictProxy = true, string cookies = null, bool log = false)
         {
             _project.Variables["instancePort"].Value = _instance.Port.ToString();
             _logger.Send($"init browser in port: {_instance.Port}");
@@ -146,7 +146,79 @@ namespace z3nCore
             }
 
         }
+        private void LaunchBrowser(string cfgBrowser = null)
+        {
+            if (string.IsNullOrEmpty(cfgBrowser))
+             cfgBrowser = _project.Var("cfgBrowser");
+            var browser = ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium;
 
+            switch (cfgBrowser)
+            {
+                case "Chromium":
+                    break;
+                case "WithoutBrowser":
+                    browser = ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.WithoutBrowser;
+                    break;
+                case "ZennoBrowser":
+                    browser = ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.ChromiumFromZB;
+                    break;	
+                default:
+                    _project.SendWarningToLog($"unknown browser config {cfgBrowser}");
+                    throw new Exception ($"unknown browser config {cfgBrowser}");
+            }
+
+
+            ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings settings = 
+                (ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings)
+                ZennoLab.CommandCenter.Classes.BrowserLaunchSettingsFactory.Create(browser);
+            settings.CachePath = _project.Var("pathProfileFolder"); 
+            settings.ConvertProfileFolder = true;
+            settings.UseProfile = true;
+
+            _instance.Launch(settings);
+
+            if (_instance.ActiveTab.IsNull || _instance.ActiveTab.IsVoid) {
+                _project.SendErrorToLog($"Can't start {cfgBrowser} from {settings.CachePath}", false);
+                throw new Exception($"Can't start {cfgBrowser} from {settings.CachePath}");
+            }
+
+        }
+        
+        public void PrepareInstance()
+        {
+            
+            var newBrowser = new Init(_project, _instance, false);
+            newBrowser.LaunchBrowser();
+            
+            int exCnt = 0;
+            string browserType = _instance.BrowserType.ToString();
+            bool browser = browserType == "Chromium";
+
+            SetInstance:
+            try 
+            {
+                if (browser && _project.Variables["acc0"].Value != "") //if browser					
+                    newBrowser.SetBrowser();	
+                else
+                    new NetHttp(_project, false).CheckProxy();
+            }
+            catch (Exception ex)
+            {
+                _instance.CloseAllTabs();
+                _project.L0g($"!W launchInstance Err {ex.Message}");
+                exCnt++;				
+                if (exCnt > 3 ) throw;
+                goto SetInstance;
+            }
+            _instance.CloseExtraTabs(true);
+
+            foreach(string task in 	_project.Variables["cfgToDo"].Value.Split(','))
+                _project.Lists["toDo"].Add(task.Trim());
+            
+            _project.L0g($"{browserType} started in {_project.Age<string>()} ");
+            _project.Var("varSessionId", (DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString());
+
+        }
         public void FilterAccList(List<string> dbQueries, bool log = false, bool filterSocials = true)
         {
             if (!string.IsNullOrEmpty(_project.Variables["acc0Forced"].Value))
@@ -162,7 +234,7 @@ namespace z3nCore
             {
                 try
                 {
-                    var accsByQuery = _sql.DbQ(query).Trim();
+                    var accsByQuery = _project.DbQ(query).Trim();
                     if (!string.IsNullOrWhiteSpace(accsByQuery))
                     {
                         var accounts = accsByQuery.Split('\n').Select(x => x.Trim().TrimStart(','));
@@ -210,7 +282,7 @@ namespace z3nCore
             _project.Lists["accs"].AddRange(allAccounts);
             _logger.Send($"final list [{string.Join("|", _project.Lists["accs"])}]");
         }
-        public void SetDisplay(string webGl)
+        private void SetDisplay(string webGl)
         {
             if (!string.IsNullOrEmpty(webGl))
             {

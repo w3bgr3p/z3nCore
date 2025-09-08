@@ -17,6 +17,9 @@ namespace z3nCore
 {
     public static class Utils
     {
+        
+        
+        
         public static void L0g(this IZennoPosterProjectModel project, string toLog, [CallerMemberName] string callerName = "", bool show = true, bool thr0w = false, bool toZp = true)
         {
             new Logger(project).Send(toLog, show: show, thr0w: thr0w, toZp: toZp);
@@ -170,6 +173,7 @@ namespace z3nCore
             return;
         }
 
+        
         public static string GetExtVer(string securePrefsPath, string extId)
         {
             string json = File.ReadAllText(securePrefsPath);
@@ -266,18 +270,55 @@ namespace z3nCore
             return;
         }
 
+        public static void BuildNewDatabase (this IZennoPosterProjectModel project)
+        {
+            if (project.Var("cfgBuldDb") != "True") return;
+
+            string filePath = Path.Combine(project.Path, "DbBuilder.zp");
+            if (File.Exists(filePath))
+            {
+                project.Var("projectScript",filePath);
+                project.Var("wkMode","Build");
+                project.Var("cfgAccRange", project.Var("rangeEnd"));
+                
+                var vars =  new List<string> {
+                    "cfgLog",
+                    "cfgPin",
+                    "cfgAccRange",
+                    "DBmode",
+                    "DBpstgrPass",
+                    "DBpstgrUser",
+                    "DBsqltPath",
+                    "debug",
+                    "lastQuery",
+                    "wkMode",
+                };
+                project.RunZp(vars);
+            }
+            else
+            {
+                project.SendWarningToLog($"file {filePath} not found. Last version can be downloaded by link \nhttps://raw.githubusercontent.com/w3bgrep/z3nFarm/master/DbBuilder.zp", false);
+            }
+            
+        }
 
         public static void PrepareInstance(this IZennoPosterProjectModel project, Instance instance)
         {
+            new Init(project, instance).PrepareInstance();
+
+            /*
+            var newBrowser = new Init(project, instance, false);
+            newBrowser.LaunchBrowser();
+
             int exCnt = 0;
             string browserType = instance.BrowserType.ToString();
             bool browser = browserType == "Chromium";
 
-            launchInstance:
-            try 
+            SetInstance:
+            try
             {
-                if (browser && project.Variables["acc0"].Value != "") //if browser					
-                    new Init(project,instance,false).SetBrowser();	
+                if (browser && project.Variables["acc0"].Value != "") //if browser
+                    newBrowser.SetBrowser();
                 else
                     new NetHttp(project, false).CheckProxy();
             }
@@ -285,18 +326,18 @@ namespace z3nCore
             {
                 instance.CloseAllTabs();
                 project.L0g($"!W launchInstance Err {ex.Message}");
-                exCnt++;				
+                exCnt++;
                 if (exCnt > 3 ) throw;
-                goto launchInstance;
+                goto SetInstance;
             }
             instance.CloseExtraTabs(true);
 
             foreach(string task in 	project.Variables["cfgToDo"].Value.Split(','))
                 project.Lists["toDo"].Add(task.Trim());
-            
+
             project.L0g($"{browserType} started in {project.Age<string>()} ");
             project.Var("varSessionId", (DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString());
-
+*/
         }
 
 
