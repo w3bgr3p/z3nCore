@@ -18,8 +18,6 @@ namespace z3nCore
     public static class Utils
     {
         
-        
-        
         public static void L0g(this IZennoPosterProjectModel project, string toLog, [CallerMemberName] string callerName = "", bool show = true, bool thr0w = false, bool toZp = true)
         {
             new Logger(project).Send(toLog, show: show, thr0w: thr0w, toZp: toZp);
@@ -305,39 +303,6 @@ namespace z3nCore
         public static void PrepareInstance(this IZennoPosterProjectModel project, Instance instance)
         {
             new Init(project, instance).PrepareInstance();
-
-            /*
-            var newBrowser = new Init(project, instance, false);
-            newBrowser.LaunchBrowser();
-
-            int exCnt = 0;
-            string browserType = instance.BrowserType.ToString();
-            bool browser = browserType == "Chromium";
-
-            SetInstance:
-            try
-            {
-                if (browser && project.Variables["acc0"].Value != "") //if browser
-                    newBrowser.SetBrowser();
-                else
-                    new NetHttp(project, false).CheckProxy();
-            }
-            catch (Exception ex)
-            {
-                instance.CloseAllTabs();
-                project.L0g($"!W launchInstance Err {ex.Message}");
-                exCnt++;
-                if (exCnt > 3 ) throw;
-                goto SetInstance;
-            }
-            instance.CloseExtraTabs(true);
-
-            foreach(string task in 	project.Variables["cfgToDo"].Value.Split(','))
-                project.Lists["toDo"].Add(task.Trim());
-
-            project.L0g($"{browserType} started in {project.Age<string>()} ");
-            project.Var("varSessionId", (DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString());
-*/
         }
 
 
@@ -359,7 +324,7 @@ namespace z3nCore
                 project.SendInfoToLog(e.Message);
             }
             if (value == string.Empty)
-            { }// project.L0g($"no Value from [{Var}] `w");
+            { }
 
             return value;
         }

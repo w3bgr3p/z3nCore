@@ -23,9 +23,9 @@ Nethereum.Util.dll : 4.29.0
 Nethereum.Util.Rest.dll : 4.29.0
 Nethereum.Web3.dll : 4.29.0
 netstandard.dll : 4.6.26011.1
-Newtonsoft.Json.dll : 11.0.2.21924
+Newtonsoft.Json.dll : 13.0.3.27908
 Npgsql.dll : 4.1.14.0
 Otp.NET.dll : 1.4.0.0
 System.Net.Http.dll : 4.6.26011.01
-z3nCore.dll : 1.1.8.5
+z3nCore.dll : 1.2.0.26
 zxing.dll : 0.16.10.0

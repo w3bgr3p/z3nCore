@@ -92,12 +92,14 @@
     <Compile Include="Extensions\Exceptions.cs" />
     <Compile Include="Extensions\Utils.cs" />
     <None Include="HanaGarden.cs" />
+    <Compile Include="GitHubApi.cs" />
     <Compile Include="Properties\VersionInfo.cs" />
     <Compile Include="Protocols\AI.cs" />
     <Compile Include="Protocols\ChainOperaAI.cs" />
     <Compile Include="Protocols\Guild.cs" />
     <Compile Include="Sql\dSql.cs" />
     <Compile Include="Tools\Debug.cs" />
+    <Compile Include="Tools\Helper.cs" />
     <Compile Include="Tools\Reporter.cs" />
     <Compile Include="W3b\Rpc.cs" />
     <Compile Include="W3b\W3bLegacy.cs" />
