@@ -58,8 +58,6 @@ namespace z3nCore
         private static bool IsValidRange(string range)
         {
             if (string.IsNullOrEmpty(range)) return false;
-
-            // Проверяем что range содержит только числа, запятые, тире и пробелы
             return Regex.IsMatch(range, @"^[\d\s,\-]+$");
         }
 
@@ -74,110 +72,17 @@ namespace z3nCore
             project.SqlUpd(toUpd, tableName, log, throwOnEx, last, key, acc, where);
 
         }
-        public static void MakeAccList(this IZennoPosterProjectModel project, List<string> dbQueries, bool log = false)
-        {
-
-            var _project = project;
-            var _sql = new Sql(project, log);
-            var _logger = new Logger(project, log);
-            var result = new List<string>();
-
-
-            if (!string.IsNullOrEmpty(_project.Variables["acc0Forced"].Value))
-            {
-                _project.Lists["accs"].Clear();
-                _project.Lists["accs"].Add(_project.Variables["acc0Forced"].Value);
-                _logger.Send($@"manual mode on with {_project.Variables["acc0Forced"].Value}");
-                return;
-            }
-
-            var allAccounts = new HashSet<string>();
-            foreach (var query in dbQueries)
-            {
-                try
-                {
-                    //var accsByQuery = _sql.DbQ(query).Trim();
-                    var accsByQuery = _project.DbQ(query,log:log).Trim();
-                    if (!string.IsNullOrWhiteSpace(accsByQuery))
-                    {
-                        var accounts = accsByQuery.Split('\n').Select(x => x.Trim().TrimStart(','));
-                        allAccounts.UnionWith(accounts);
-                    }
-                }
-                catch
-                {
-                    _logger.Send($"{query}");
-                }
-            }
-
-            if (allAccounts.Count == 0)
-            {
-                _project.Variables["noAccsToDo"].Value = "True";
-                _logger.Send($"♻ noAccountsAvailable by queries [{string.Join(" | ", dbQueries)}]");
-                return;
-            }
-            _logger.Send($"Initial availableAccounts: [{string.Join(", ", allAccounts)}]");
-            FilterAccList(project, allAccounts, log);
-        }
-        private static void FilterAccList(IZennoPosterProjectModel project, HashSet<string> allAccounts, bool log = false)
-        {
-            var _project = project;
-            var _sql = new Sql(project, log);
-            var _logger = new Logger(project, log);
-
-            if (!string.IsNullOrEmpty(_project.Variables["requiredSocial"].Value))
-            {
-                string[] demanded = _project.Variables["requiredSocial"].Value.Split(',');
-                _logger.Send($"Filtering by socials: [{string.Join(", ", demanded)}]");
-
-                foreach (string social in demanded)
-                {
-                    string tableName = $"projects_{social.Trim().ToLower()}";
-                    var notOK = _project.SqlGet($"id", tableName, where: "status LIKE '%suspended%' OR status LIKE '%restricted%' OR status LIKE '%ban%' OR status LIKE '%CAPTCHA%' OR status LIKE '%applyed%' OR status LIKE '%Verify%'", log: log)
-                        .Split('\n')
-                        .Select(x => x.Trim())
-                        .Where(x => !string.IsNullOrEmpty(x));
-                    allAccounts.ExceptWith(notOK);
-                    _logger.Send($"After {social} filter: [{string.Join("|", allAccounts)}]");
-                }
-            }
-            _project.Lists["accs"].Clear();
-            _project.Lists["accs"].AddRange(allAccounts);
-            _logger.Send($"final list [{string.Join("|", _project.Lists["accs"])}]");
-
-        }
+        
+   
         public static string Ref(this IZennoPosterProjectModel project, string refCode = null, bool log = false, string limit = null)
         {
-            if (string.IsNullOrEmpty(refCode)) 
-                refCode = project.Variables["cfgRefCode"].Value;
-            if (string.IsNullOrEmpty(refCode))
-                refCode = project.SqlGet("refcode", where: "TRIM(refcode) != '' ORDER BY RANDOM() LIMIT 1;");
-            return refCode;
+            project.OldCode("RndInvite");
+            return project.RndInvite(limit, log);
         }
         public static string Invite(this IZennoPosterProjectModel project,  object limit = null, bool log = false)
         {
-            string refCode = project.Variables["cfgRefCode"].Value;
-
-            if (string.IsNullOrEmpty(refCode))
-            {
-                string parsedLimit = limit is string s ? s : limit?.ToString();
-                string whereClause = "TRIM(refcode) != ''";
-
-                if (int.TryParse(parsedLimit, out int limitValue) && limitValue > 0)
-                {
-                    whereClause += $" AND id <= {limitValue}";
-                }
-                else
-                {
-                    throw new ArgumentException("Invalid limit value. Must be a positive integer.");
-                }
-
-                whereClause += " ORDER BY RANDOM() LIMIT 1";
-                refCode = project.SqlGet("refcode", where: whereClause);
-                project.Variables["cfgRefCode"].Value  = refCode;
-            }
-            
-            return refCode;
+            project.OldCode("RndInvite");
+            return project.RndInvite(limit, log);
         }
 
         public static void DbSettings(this IZennoPosterProjectModel project, bool set = true, bool log = false)
@@ -204,46 +109,7 @@ namespace z3nCore
             }
 
         }
-
-
-        public static List<string> MkToDoQueries(this IZennoPosterProjectModel project, string toDo = null, string defaultRange = null, string defaultDoFail = null)
-        {
-
-            string tableName = project.Var("projectTable");
-            if (string.IsNullOrEmpty(tableName)) throw new Exception("TableName is null");
-
-
-            var nowIso = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
-
-            if (string.IsNullOrEmpty(toDo)) 
-                toDo = project.Variables["cfgToDo"].Value;
-
-            string[] toDoItems = (toDo ?? "").Split(',');
-
-            var allQueries = new List<string>();
-
-            foreach (string taskId in toDoItems)
-            {
-                string trimmedTaskId = taskId.Trim();
-                if (!string.IsNullOrWhiteSpace(trimmedTaskId))
-                {
-                    string range = defaultRange ?? project.Variables["range"].Value;
-
-                    if (!IsValidRange(range))
-                        throw new ArgumentException("Invalid range format");
-
-                    string doFail = defaultDoFail ?? project.Variables["doFail"].Value;
-                    string failCondition = (doFail != "True" ? "AND status NOT LIKE '%fail%'" : "");
-                    string query = $@"SELECT {Quote("id")} FROM {Quote(tableName)} WHERE {Quote("id")} in ({range}) {failCondition} AND {Quote("status")} NOT LIKE '%skip%' AND ({Quote(trimmedTaskId)} < '{nowIso}' OR {Quote(trimmedTaskId)} = '')";
-                    //string query = $@"SELECT id FROM {tableName} WHERE id in ({range}) {failCondition} AND status NOT LIKE '%skip%' AND ({trimmedTaskId} < '{nowIso}' OR {trimmedTaskId} = '')";
-                    allQueries.Add(query);
-                }
-            }
-
-            return allQueries;
-        }
-
-
+        
         public static void MigrateTable(this IZennoPosterProjectModel project, string source, string dest)
         {
             ValidateName(source, "source table");
@@ -548,132 +414,6 @@ namespace z3nCore
             }
 
         }
-
-        public static List<string> ToDoQueries(this IZennoPosterProjectModel project, string toDo = null, string defaultRange = null, string defaultDoFail = null)
-        {
-            string tableName = project.Variables["projectTable"].Value;
-
-            var nowIso = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
-
-            if (string.IsNullOrEmpty(toDo)) 
-                toDo = project.Variables["cfgToDo"].Value;
-            
-            var toDoItems = new List<string>();
-
-            foreach (string task in toDo.Split(','))
-            { 
-                toDoItems.Add(task.Trim());
-            }
-            
-            
-            string customTask  = project.Var("cfgCustomTask");
-            if (!string.IsNullOrEmpty(customTask))
-                toDoItems.Add(customTask);
-            
-            
-            //string[] toDoItems = (toDo ?? "").Split(',');
-
-            var allQueries = new List<(string TaskId, string Query)>();
-
-            foreach (string taskId in toDoItems)
-            {
-                string trimmedTaskId = taskId.Trim();
-                if (!string.IsNullOrWhiteSpace(trimmedTaskId))
-                {
-                    string range = defaultRange ?? project.Variables["range"].Value;
-                    string doFail = defaultDoFail ?? project.Variables["doFail"].Value;
-                    project.ClmnAdd(trimmedTaskId,tableName);
-                    string failCondition = (doFail != "True" ? "AND status NOT LIKE '%fail%'" : "");
-                    string query = $@"SELECT {Quote("id")} 
-                              FROM {Quote(tableName)} 
-                              WHERE {Quote("id")} in ({range}) {failCondition} 
-                              AND {Quote("status")} NOT LIKE '%skip%' 
-                              AND ({Quote(trimmedTaskId)} < '{nowIso}' OR {Quote(trimmedTaskId)} = '')";
-                    allQueries.Add((trimmedTaskId, query));
-                }
-            }
-
-            return allQueries
-                .OrderBy(x =>
-                {
-                    if (string.IsNullOrEmpty(x.TaskId))
-                        return DateTime.MinValue;
-
-                    if (DateTime.TryParseExact(
-                            x.TaskId,
-                            "yyyy-MM-ddTHH:mm:ss.fffZ",
-                            CultureInfo.InvariantCulture,
-                            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-                            out DateTime parsed))
-                    {
-                        return parsed;
-                    }
-
-                    // fallback: если парсинг не удался
-                    return DateTime.MinValue;
-                })
-                .Select(x => x.Query)
-                .ToList();
-        }
-        public static void FilterAccList(this IZennoPosterProjectModel project, List<string> dbQueries, bool log = false)
-        {
-            if (!string.IsNullOrEmpty(project.Variables["acc0Forced"].Value))
-            {
-                project.Lists["accs"].Clear();
-                project.Lists["accs"].Add(project.Variables["acc0Forced"].Value);
-                project.L0g($@"manual mode on with {project.Variables["acc0Forced"].Value}", show:log);
-                return;
-            }
-
-            var allAccounts = new HashSet<string>();
-            foreach (var query in dbQueries)
-            {
-                try
-                {
-                    var accsByQuery = project.DbQ(query).Trim();
-                    if (!string.IsNullOrWhiteSpace(accsByQuery))
-                    {
-                        var accounts = accsByQuery.Split('\n').Select(x => x.Trim().TrimStart(','));
-                        allAccounts.UnionWith(accounts);
-                    }
-                }
-                catch
-                {
-                    project.L0g(query, show: log);
-                }
-            }
-
-            if (allAccounts.Count == 0)
-            {
-                project.Variables["noAccsToDo"].Value = "True";
-                project.L0g($"♻ noAccountsAvailable by queries [{string.Join(" | ", dbQueries)}]");
-                return;
-            }
-            project.L0g($"Initial availableAccounts: [{string.Join(", ", allAccounts)}]", show: log);
-
-            if (!string.IsNullOrEmpty(project.Variables["requiredSocial"].Value))
-            {
-                string[] demanded = project.Variables["requiredSocial"].Value.Split(',');
-                project.L0g($"Filtering by socials: [{string.Join(", ", demanded)}]", show: log);
-
-                foreach (string social in demanded)
-                {
-                    string safeSocial = ValidateName(social.Trim().ToLower(), "social name");
-                    string tableName = ($"__{safeSocial}");
-                    var notOK = project.SqlGet($"id", tableName, where: "status NOT LIKE '%ok%'", log: log)
-
-                        .Split('\n')
-                        .Select(x => x.Trim())
-                        .Where(x => !string.IsNullOrEmpty(x));
-                    allAccounts.ExceptWith(notOK);
-                    project.L0g($"After {social} filter: [{string.Join("|", allAccounts)}]", show: log);
-                }
-            }
-            project.Lists["accs"].Clear();
-            project.Lists["accs"].AddRange(allAccounts);
-            project.L0g($"final list [{string.Join("|", project.Lists["accs"])}]", show: log);
-        }
-
 
 
     }

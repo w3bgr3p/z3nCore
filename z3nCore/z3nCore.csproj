@@ -86,6 +86,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Api\BinanceApi.cs" />
+    <Compile Include="Api\GitHubApi.cs" />
+    <Compile Include="Api\OKXApi.cs" />
     <Compile Include="Browser\Cookies.cs" />
     <Compile Include="Browser\Captcha.cs" />
     <None Include="cmnc0de.cs" />
@@ -93,45 +96,46 @@
     <Compile Include="Extensions\Utils.cs" />
     <None Include="HanaGarden.cs" />
     <Compile Include="GitHubApi.cs" />
+    <Compile Include="ProjectExtentions\Rnd.cs" />
+    <Compile Include="ProjectExtentions\Starter.cs" />
+    <Compile Include="ProjectExtentions\Vars.cs" />
     <Compile Include="Properties\VersionInfo.cs" />
-    <Compile Include="Protocols\AI.cs" />
-    <Compile Include="Protocols\ChainOperaAI.cs" />
-    <Compile Include="Protocols\Guild.cs" />
+    <Compile Include="Api\AI.cs" />
+    <Compile Include="Api\ChainOperaAI.cs" />
+    <Compile Include="Api\Guild.cs" />
     <Compile Include="Sql\dSql.cs" />
     <Compile Include="Tools\Debug.cs" />
     <Compile Include="Tools\Helper.cs" />
     <Compile Include="Tools\Reporter.cs" />
+    <Compile Include="Tools\Snapper.cs" />
     <Compile Include="W3b\Rpc.cs" />
     <Compile Include="W3b\W3bLegacy.cs" />
     <Compile Include="W3b\W3bTools.cs" />
     <Compile Include="Socials\GitHub.cs" />
     <Compile Include="Sql\Db.cs" />
     <Compile Include="Tools\Accountant.cs" />
-    <Compile Include="Protocols\FirstMail.cs" />
+    <Compile Include="Api\FirstMail.cs" />
     <Compile Include="Tools\Init.cs" />
     <Compile Include="Requests\NetHttp.cs" />
     <Compile Include="Browser\BrowserScan.cs" />
-    <Compile Include="CexApi\Refuel.cs" />
     <Compile Include="Browser\ChromeExt.cs" />
     <Compile Include="Browser\Traffic.cs" />
     <Compile Include="W3b\CommonTx.cs" />
     <Compile Include="Tools\Logger.cs" />
     <Compile Include="Extensions\Files.cs" />
-    <Compile Include="Protocols\GazZip.cs" />
-    <Compile Include="Protocols\Relay.cs" />
-    <Compile Include="Tools\Rnd.cs" />
+    <Compile Include="Api\GazZip.cs" />
+    <Compile Include="Api\Relay.cs" />
     <Compile Include="Tools\F0rms.cs" />
-    <Compile Include="Protocols\DMail.cs" />
-    <Compile Include="Protocols\Galxe.cs" />
+    <Compile Include="Api\DMail.cs" />
+    <Compile Include="Api\Galxe.cs" />
     <Compile Include="Sql\TableSvc.cs" />
-    <Compile Include="Protocols\Stargate.cs" />
+    <Compile Include="Api\Stargate.cs" />
     <Compile Include="Socials\Telegram.cs" />
-    <Compile Include="Protocols\Unlock.cs" />
+    <Compile Include="Api\Unlock.cs" />
     <Compile Include="Socials\TikTok.cs" />
     <Compile Include="Wallets\KeplrWallet.cs" />
     <Compile Include="Wallets\RabbyWallet.cs" />
     <Compile Include="Wallets\BackpackWallet.cs" />
-    <Compile Include="CexApi\BinanceApi.cs" />
     <Compile Include="W3b\Blockchain.cs" />
     <Compile Include="Socials\Google.cs" />
     <Compile Include="Tools\Converter.cs" />
@@ -140,7 +144,6 @@
     <Compile Include="Socials\Discord.cs" />
     <Compile Include="Extensions\InstanceExtensions.cs" />
     <Compile Include="Tools\ISAFU.cs" />
-    <Compile Include="CexApi\OKXApi.cs" />
     <Compile Include="Tools\OTP.cs" />
     <Compile Include="Sql\PostgreSQL.cs" />
     <Compile Include="Program.cs" />
@@ -217,5 +220,4 @@
   <ItemGroup>
     <WCFMetadata Include="Connected Services\" />
   </ItemGroup>
-  <ItemGroup />
 </Project>

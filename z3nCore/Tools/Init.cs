@@ -17,9 +17,6 @@ namespace z3nCore
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
         private readonly Logger _logger;
-        //protected readonly bool _logShow;
-        //protected readonly string _pass;
-        //private readonly Sql _sql;
 
         public Init(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
@@ -377,7 +374,7 @@ namespace z3nCore
             //run...
             if (_instance.BrowserType != BrowserType.Chromium) return "noBrowser";
             int exCnt = 0;
-            string key = !string.IsNullOrEmpty(_project.Var("accRnd")) ? new Rnd().Seed() : null;
+            string key = !string.IsNullOrEmpty(_project.Var("accRnd")) ? Rnd.Seed() : null;
             _project.Var("refSeed", key);
 
             string[] wallets = walletsToUse.Split(',');

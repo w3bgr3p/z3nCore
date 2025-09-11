@@ -9,18 +9,18 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
 {
-    public class Rnd
+    public static class Rnd
     {
-
-
-        public string Seed()
+        private static Random random = new Random();
+        
+        public static string Seed()
         {
             return Blockchain.GenerateMnemonic("English", 12);
         }
-        public string RandomHex(int length)
+        public static string RndHexString(int length)
         {
             const string chars = "0123456789abcdef";
-            var random = new Random();
+            //var random = new Random();
             var result = new char[length];
             for (int i = 0; i < length; i++)
             {
@@ -28,14 +28,14 @@ namespace z3nCore
             }
             return "0x" + new string(result);
         }
-        public string RandomHash(int length)
+        public static string RndString(int length)
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-            var random = new Random();
+            //var random = new Random();
             return new string(Enumerable.Repeat(chars, length)
                 .Select(s => s[random.Next(s.Length)]).ToArray());
         }
-        public string Nickname()
+        public static string RndNickname()
         {
             string[] adjectives = {
                 "Sunny", "Mystic", "Wild", "Cosmic", "Shadow", "Lunar", "Blaze", "Dream", "Star", "Vivid",
@@ -70,29 +70,32 @@ namespace z3nCore
 
             return nickname;
         }
-        public int Int(IZennoPosterProjectModel project, string Var)
+        public static string RndInvite(this IZennoPosterProjectModel project,  object limit = null, bool log = false)
         {
-            string value = string.Empty;
-            try
-            {
-                value = project.Variables[Var].Value;
-            }
-            catch (Exception e)
-            {
-                project.SendInfoToLog(e.Message);
-            }
-            if (value == string.Empty) project.L0g($"no Value from [{Var}] `w");
+            string refCode = project.Variables["cfgRefCode"].Value;
 
-            if (value.Contains("-"))
+            if (string.IsNullOrEmpty(refCode))
             {
-                var min = int.Parse(value.Split('-')[0].Trim());
-                var max = int.Parse(value.Split('-')[1].Trim());
-                return new Random().Next(min, max);
+                string parsedLimit = limit is string s ? s : limit?.ToString();
+                string whereClause = "TRIM(refcode) != ''";
+
+                if (int.TryParse(parsedLimit, out int limitValue) && limitValue > 0)
+                {
+                    whereClause += $" AND id <= {limitValue}";
+                }
+                else
+                {
+                    throw new ArgumentException("Invalid limit value. Must be a positive integer.");
+                }
+
+                whereClause += " ORDER BY RANDOM() LIMIT 1";
+                refCode = project.SqlGet("refcode", where: whereClause);
+                project.Variables["cfgRefCode"].Value  = refCode;
             }
-            return int.Parse(value.Trim());
+            
+            return refCode;
         }
-
-        public double RndPercent(double input, double percent, double maxPercent)
+        public static double RndPercent(decimal input, double percent, double maxPercent)
         {
             if (percent < 0 || maxPercent < 0 || percent > 100 || maxPercent > 100)
                 throw new ArgumentException("Percent and MaxPercent must be between 0 and 100");
@@ -102,7 +105,7 @@ namespace z3nCore
 
             double percentageValue = number * (percent / 100.0);
 
-            Random random = new Random();
+            //Random random = new Random();
             double randomReductionPercent = random.NextDouble() * maxPercent;
             double reduction = percentageValue * (randomReductionPercent / 100.0);
 
@@ -115,31 +118,7 @@ namespace z3nCore
 
             return result;
         }
-        public double RndPercent(decimal input, double percent, double maxPercent)
-        {
-            if (percent < 0 || maxPercent < 0 || percent > 100 || maxPercent > 100)
-                throw new ArgumentException("Percent and MaxPercent must be between 0 and 100");
-
-            if (!double.TryParse(input.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out double number))
-                throw new ArgumentException("Input cannot be converted to double");
-
-            double percentageValue = number * (percent / 100.0);
-
-            Random random = new Random();
-            double randomReductionPercent = random.NextDouble() * maxPercent;
-            double reduction = percentageValue * (randomReductionPercent / 100.0);
-
-            double result = percentageValue - reduction;
-
-            if (result <= 0)
-            {
-                result = Math.Max(percentageValue * 0.01, 0.0001);
-            }
-
-            return result;
-        }
-
-        public decimal Decimal(IZennoPosterProjectModel project, string Var)
+        public static decimal RndDecimal(this IZennoPosterProjectModel project, string Var)
         {
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             string value = string.Empty;
@@ -157,11 +136,35 @@ namespace z3nCore
             {
                 var min = decimal.Parse(value.Split('-')[0].Trim());
                 var max = decimal.Parse(value.Split('-')[1].Trim());
-                Random rand = new Random();
-                return min + (decimal)(rand.NextDouble() * (double)(max - min));
+                //Random rand = new Random();
+                return min + (decimal)(random.NextDouble() * (double)(max - min));
             }
             return decimal.Parse(value.Trim());
         }
+        public static int RndInt(this IZennoPosterProjectModel project, string Var)
+        {
+            string value = string.Empty;
+            try
+            {
+                value = project.Variables[Var].Value;
+            }
+            catch (Exception e)
+            {
+                project.SendInfoToLog(e.Message);
+            }
+            if (value == string.Empty) project.L0g($"no Value from [{Var}] `w");
 
+            if (value.Contains("-"))
+            {
+                var min = int.Parse(value.Split('-')[0].Trim());
+                var max = int.Parse(value.Split('-')[1].Trim());
+                random.Next(min, max);
+            }
+            return int.Parse(value.Trim());
+        }
+        public static bool RndBool(this int truePercent)
+        {
+            return random.NextDouble() * 100 < truePercent;
+        }
     }
 }

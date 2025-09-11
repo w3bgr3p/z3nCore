@@ -124,13 +124,6 @@ namespace z3nCore
                     if (!string.IsNullOrEmpty(acc0)) sb.Append( $"  🤖 [{acc0}]");
                 }
                 catch { }
-            if (_port)
-                try
-                {
-                    string port = _project.Var("instancePort");
-                    if (!string.IsNullOrEmpty(port)) sb.Append($"  🔌 [{port}]");
-                }
-                catch { }
             if (_time)
                 try
                 {
@@ -144,6 +137,13 @@ namespace z3nCore
                     CurrentProcess.Refresh(); 
                     long processMemory = CurrentProcess.WorkingSet64 / 1024 / 1024;
                     sb.Append("  📊 [").Append(processMemory).Append(" Mb]");
+                }
+                catch { }
+            if (_port)
+                try
+                {
+                    string port = _project.Var("instancePort");
+                    if (!string.IsNullOrEmpty(port)) sb.Append($"  🔌 [{port}]");
                 }
                 catch { }
             if (_caller)
