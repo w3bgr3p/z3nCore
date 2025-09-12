@@ -1,14 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using ZennoLab.InterfacesLibrary.Enums.Log;
 using ZennoLab.InterfacesLibrary.ProjectModel;
-//using static Global.FileSystem.FileHelper;
+
 
 namespace z3nCore
 {
@@ -55,47 +49,7 @@ namespace z3nCore
                 _logger.Send(ex.Message);
             }
         }
-        public void DisableLogs()
-        {
-            try
-            {
-                StringBuilder logBuilder = new StringBuilder();
-                string basePath = @"C:\Program Files\ZennoLab";
-
-                foreach (string langDir in Directory.GetDirectories(basePath))
-                {
-                    foreach (string programDir in Directory.GetDirectories(langDir))
-                    {
-                        foreach (string versionDir in Directory.GetDirectories(programDir))
-                        {
-                            string logsPath = Path.Combine(versionDir, "Progs", "Logs");
-                            if (Directory.Exists(logsPath))
-                            {
-                                Directory.Delete(logsPath, true);
-                                using (Process process = new Process())
-                                {
-                                    process.StartInfo.FileName = "cmd.exe";
-                                    process.StartInfo.Arguments = $"/c mklink /d \"{logsPath}\" \"NUL\"";
-                                    process.StartInfo.UseShellExecute = false;
-                                    process.StartInfo.CreateNoWindow = true;
-                                    process.StartInfo.RedirectStandardOutput = true;
-                                    process.StartInfo.RedirectStandardError = true;
-
-                                    process.Start();
-                                    string output = process.StandardOutput.ReadToEnd();
-                                    string error = process.StandardError.ReadToEnd();
-                                    process.WaitForExit();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Send(ex.Message);
-            }
-        }
+        
         public void CopyDir(string sourceDir, string destDir)
         {
             if (!Directory.Exists(sourceDir)) throw new DirectoryNotFoundException("Source directory does not exist: " + sourceDir);
@@ -117,7 +71,6 @@ namespace z3nCore
                 CopyDir(subDir.FullName, targetSubDirPath);
             }
         }
-
         public static string GetRandomFile(string directoryPath)
         {
         readrandom:

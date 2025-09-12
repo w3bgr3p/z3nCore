@@ -76,12 +76,12 @@ namespace z3nCore
    
         public static string Ref(this IZennoPosterProjectModel project, string refCode = null, bool log = false, string limit = null)
         {
-            project.OldCode("RndInvite");
+            project.ObsoleteCode("project.RndInvite");
             return project.RndInvite(limit, log);
         }
         public static string Invite(this IZennoPosterProjectModel project,  object limit = null, bool log = false)
         {
-            project.OldCode("RndInvite");
+            project.ObsoleteCode("project.RndInvite");
             return project.RndInvite(limit, log);
         }
 

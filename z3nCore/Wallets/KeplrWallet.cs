@@ -318,7 +318,7 @@ namespace z3nCore
 
         public string KeplrApprove(bool log = false)
         {
-            _project.OldCode("Sign");
+            _project.ObsoleteCode("Sign");
             Sign(log);
             return "done";
         }

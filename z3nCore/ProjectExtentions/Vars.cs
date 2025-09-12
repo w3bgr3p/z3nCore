@@ -14,8 +14,7 @@ namespace z3nCore
     public static class Vars
     {
         private static readonly object LockObject = new object();
-
-
+        
         public static string Var(this IZennoPosterProjectModel project, string Var)
         {
             string value = string.Empty;
@@ -100,43 +99,107 @@ namespace z3nCore
             return result;
         }
         
-        public static void NullVars(this IZennoPosterProjectModel project)
+    }
+
+    public static class GVars
+    {
+          private static readonly object LockObject = new object();
+
+        public static List<string> GGet(this IZennoPosterProjectModel project, bool log = false)
         {
-            project.GlobalNull();
-            project.Var("acc0", "");
-        }
-        public static string Invite(this IZennoPosterProjectModel project, string invite = null, bool log = false)
-        {
-            if (string.IsNullOrEmpty(invite)) invite = project.Variables["cfgRefCode"].Value;
-            
-            string tableName = project.Variables["projectTable"].Value;
-            if (string.IsNullOrEmpty(invite)) invite =
-                    project.SqlGet("refcode", tableName, where: @"TRIM(refcode) != '' ORDER BY RANDOM() LIMIT 1;");                  
-            return invite;
-        }
-        
-
-        
-        #region GlobalVars
-
-        public static bool GlobalSet(this IZennoPosterProjectModel project, bool log = false , bool set = true, bool clean = false )
-        {
-            string nameSpase = Assembly.GetExecutingAssembly()
-            .GetCustomAttribute<AssemblyTitleAttribute>()
-            ?.Title ?? "Unknown";
-            clean = (project.Variables["cleanGlobal"].Value == "True");
-
-
-            var cleaned = new List<int>();
-            var notDeclared = new List<int>();
+            string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
             var busyAccounts = new List<string>();
-
-
+            
             lock (LockObject)
             {
                 try
                 {
+                    for (int i = 1; i <= int.Parse(project.Variables["rangeEnd"].Value); i++)
+                    {
+                        string threadKey = $"acc{i}";
+                        try
+                        {
+                            var globalVar = project.GlobalVariables[nameSpase, threadKey];
+                            if (globalVar != null && !string.IsNullOrEmpty(globalVar.Value))
+                            {
+                                busyAccounts.Add($"{i}:{globalVar.Value}");
+                            }
+                        }
+                        catch { }
+                    }
+                    
+                    if (log)
+                    {
+                        project.L0g($"buzy Accounts: [{string.Join(" | ", busyAccounts)}]");
+                    }
+                    
+                    return busyAccounts;
+                }
+                catch (Exception ex)
+                {
+                    if (log) project.L0g($"⚙ GGet: {ex.Message}");
+                    throw;
+                }
+            }
+        }
 
+        public static bool GSet(this IZennoPosterProjectModel project, string input = null, bool force = false, bool log = false)
+        {
+            string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
+            
+            lock (LockObject)
+            {
+                try
+                {
+                    int currentThread = int.Parse(project.Variables["acc0"].Value);
+                    string currentThreadKey = $"acc{currentThread}";
+                    
+                    string valueToSet = input ?? project.Variables["projectName"].Value;
+                    
+                    if (!force)
+                    {
+                        var busyAccounts = project.GGet(false);
+                        if (busyAccounts.Any(x => x.StartsWith($"{currentThread}:")))
+                        {
+                            if (log) project.L0g($"{currentThreadKey} is already busy!");
+                            return false;
+                        }
+                    }
+                    
+                    try
+                    {
+                        project.GlobalVariables.SetVariable(nameSpase, currentThreadKey, valueToSet);
+                    }
+                    catch
+                    {
+                        project.GlobalVariables[nameSpase, currentThreadKey].Value = valueToSet;
+                    }
+                    
+                    if (log) 
+                    {
+                        string forceText = force ? " (forced)" : "";
+                        project.L0g($"{currentThreadKey} bound to {valueToSet}{forceText}");
+                    }
+                    
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    if (log) project.L0g($"⚙ GSet: {ex.Message}");
+                    throw;
+                }
+            }
+        }
+
+        public static List<int> GClean(this IZennoPosterProjectModel project, bool log = false)
+        {
+            string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
+            var cleaned = new List<int>();
+            
+            lock (LockObject)
+            {
+                try
+                {
                     for (int i = 1; i <= int.Parse(project.Variables["rangeEnd"].Value); i++)
                     {
                         string threadKey = $"acc{i}";
@@ -145,105 +208,28 @@ namespace z3nCore
                             var globalVar = project.GlobalVariables[nameSpase, threadKey];
                             if (globalVar != null)
                             {
-                                if (!string.IsNullOrEmpty(globalVar.Value))
-                                    busyAccounts.Add($"{i}:{globalVar.Value}");
-                                if (clean)
-                                {
-                                    globalVar.Value = string.Empty;
-                                    cleaned.Add(i);
-                                }
-                            }
-                            else notDeclared.Add(i);
-                        }
-                        catch { notDeclared.Add(i); }
-                    }
-
-                    if (clean)
-                        project.L0g($"!W cleanGlobal is [on] Cleaned: {string.Join(",", cleaned)}");
-                    else
-                        project.L0g($"buzy Accounts: [{string.Join(" | ", busyAccounts)}]");
-
-                    int currentThread = int.Parse(project.Variables["acc0"].Value);
-                    string currentThreadKey = $"acc{currentThread}";
-                    if (!busyAccounts.Any(x => x.StartsWith($"{currentThread}:"))) //
-                    {
-                        if (!set) return true;
-                        try
-                        {
-                            project.GlobalVariables.SetVariable(nameSpase, currentThreadKey, project.Variables["projectName"].Value);
-                        }
-                        catch
-                        {
-                            project.GlobalVariables[nameSpase, currentThreadKey].Value = project.Variables["projectName"].Value;
-                        }
-                        if (log) project.L0g($"{currentThreadKey} bound to {project.Variables["projectName"].Value}");
-                        return true;
-                    }
-                    else
-                    {
-                        if (log) project.L0g($"{currentThreadKey} is already busy!");
-                        return false;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    if (log) project.L0g($"⚙  {ex.Message}");
-                    throw;
-                }
-            }
-        }
-        public static void GlobalGet(this IZennoPosterProjectModel project)
-        {
-            string nameSpase = Assembly.GetExecutingAssembly()
-            .GetCustomAttribute<AssemblyTitleAttribute>()
-            ?.Title ?? "Unknown";
-            var cleaned = new List<int>();
-            var notDeclared = new List<int>();
-            var busyAccounts = new List<string>();
-
-            try
-            {
-
-                for (int i = int.Parse(project.Variables["rangeStart"].Value); i <= int.Parse(project.Variables["rangeEnd"].Value); i++)
-                {
-                    string threadKey = $"acc{i}";
-                    try
-                    {
-                        var globalVar = project.GlobalVariables[nameSpase, threadKey];
-                        if (globalVar != null)
-                        {
-                            if (!string.IsNullOrEmpty(globalVar.Value)) busyAccounts.Add(i.ToString());
-                            if (project.Variables["cleanGlobal"].Value == "True")
-                            {
                                 globalVar.Value = string.Empty;
                                 cleaned.Add(i);
                             }
                         }
-                        else notDeclared.Add(i);
+                        catch { }
                     }
-                    catch { notDeclared.Add(i); }
+                    
+                    if (log)
+                    {
+                        project.L0g($"Cleaned accounts: {string.Join(",", cleaned)}");
+                    }
+                    
+                    return cleaned;
                 }
-                if (project.Variables["cleanGlobal"].Value == "True") project.L0g($"GlobalVars cleaned: {string.Join(",", cleaned)}");
-                else project.Variables["busyAccounts"].Value = string.Join(",", busyAccounts);
+                catch (Exception ex)
+                {
+                    if (log) project.L0g($"⚙ GClean: {ex.Message}");
+                    throw;
+                }
             }
-            catch (Exception ex) { project.L0g($"⚙  {ex.Message}"); }
-
         }
-        public static void GlobalNull(this IZennoPosterProjectModel project)
-        {
-            string nameSpase = Assembly.GetExecutingAssembly()
-            .GetCustomAttribute<AssemblyTitleAttribute>()
-            ?.Title ?? "Unknown";
-            try
-            {
-                project.GlobalVariables[nameSpase, $"acc{project.Variables["acc0"].Value}"].Value = "";
-                project.Var("acc0", "");
-            }
-            catch { }
-
-        }
-
-        #endregion
-
+        
     }
+
 }

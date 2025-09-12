@@ -122,7 +122,7 @@
     <Compile Include="Browser\Traffic.cs" />
     <Compile Include="W3b\CommonTx.cs" />
     <Compile Include="Tools\Logger.cs" />
-    <Compile Include="Extensions\Files.cs" />
+    <Compile Include="Extensions\FS.cs" />
     <Compile Include="Api\GazZip.cs" />
     <Compile Include="Api\Relay.cs" />
     <Compile Include="Tools\F0rms.cs" />

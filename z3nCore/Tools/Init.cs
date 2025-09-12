@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.Enums.Browser;
 using ZennoLab.InterfacesLibrary.ProjectModel;
+using System.Diagnostics;
 
 namespace z3nCore
 {
@@ -33,12 +34,50 @@ namespace z3nCore
             _logger = new Logger(project, log: log, classEmoji: "►");
             //_sql = new Sql(_project);
         }
+        private void DisableLogs()
+        {
+            
+            string currentProcessPath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+            string processDir = Path.GetDirectoryName(currentProcessPath);
 
+            string pathLogs = Path.Combine(processDir,"Logs");
+            
+            var lockobj = new object();
+
+            try
+            {
+                lock (lockobj)
+                {
+                    if (Directory.Exists(pathLogs))
+                    {
+                        Directory.Delete(pathLogs, true);
+                        using (Process process = new Process())
+                        {
+                            process.StartInfo.FileName = "cmd.exe";
+                            process.StartInfo.Arguments = $"/c mklink /d \"{pathLogs}\" \"NUL\"";
+                            process.StartInfo.UseShellExecute = false;
+                            process.StartInfo.CreateNoWindow = true;
+                            process.StartInfo.RedirectStandardOutput = true;
+                            process.StartInfo.RedirectStandardError = true;
+
+                            process.Start();
+                            string output = process.StandardOutput.ReadToEnd();
+                            string error = process.StandardError.ReadToEnd();
+                            process.WaitForExit();
+                        }
+                    }
+                
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Send(ex.Message);
+            }
+        }
         public void InitVariables(string author = "")
         {
-            new FS(_project).DisableLogs();
-
-
+            DisableLogs();
+            
             string fileName = System.IO.Path.GetFileName(_project.Variables["projectScript"].Value);
 
             string sessionId = (DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString();
@@ -323,7 +362,6 @@ namespace z3nCore
             }
             catch (Exception ex)
             {
-                _project.GlobalNull();
                 _logger.Send(ex.Message, thr0w: true);
             }
 

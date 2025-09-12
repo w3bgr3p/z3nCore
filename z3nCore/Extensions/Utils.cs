@@ -147,7 +147,8 @@ namespace z3nCore
             if (browser == "Chromium" && !string.IsNullOrEmpty(project.Var("acc0")) && string.IsNullOrEmpty(project.Var("accRnd")))
                 new Cookies(project, instance).Save("all", project.Var("pathCookies"));
             
-            project.NullVars();
+            project.GSet("");
+            project.Var("acc0", "");
         }
 
         public static string ReplaceCreds(this IZennoPosterProjectModel project, string social)
@@ -185,19 +186,18 @@ namespace z3nCore
             return version;
         }
 
-        public static void OldCode(this IZennoPosterProjectModel project, string newName = "unknown")
+        public static void ObsoleteCode(this IZennoPosterProjectModel project, string newName = "unknown")
         {
             try
             {
                 if (project == null) return;
 
                 var sb = new System.Text.StringBuilder();
-                sb.AppendLine($"! using obsolete code. Switch to new call \"{newName}\" ASAP \n");
 
                 try
                 {
                     var trace = new System.Diagnostics.StackTrace(1, true); // пропускаем сам метод
-
+                    var oldName ="";
                     for (int i = 0; i < trace.FrameCount; i++)
                     {
                         var f = trace.GetFrame(i);
@@ -209,10 +209,10 @@ namespace z3nCore
 
                         // фильтрация системных и зенно-методов
                         if (typeName.StartsWith("System.") || typeName.StartsWith("ZennoLab.")) continue;
-
+                        oldName = $"{typeName}.{m.Name}";
                         sb.AppendLine($"{typeName}.{m.Name}");
                     }
-
+                    sb.AppendLine($"![OBSOLETE CODE. UPDATE REQUIRED]. Obsolete: [{oldName}] New: [{newName}]");
                     project.SendToLog(sb.ToString(), LogType.Warning, true, LogColor.Default);
                 }
                 catch (Exception ex)
@@ -255,6 +255,7 @@ namespace z3nCore
             }
             return;
         }
+        
         
     }
 

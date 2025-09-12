@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Linq;
 using System.IO;
+using System.Text;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.Enums.Log;
 using ZennoLab.InterfacesLibrary.ProjectModel;
-
+using System.Diagnostics;
 
 namespace z3nCore
 {
@@ -28,7 +29,7 @@ namespace z3nCore
             var listAccounts = project.Lists["accs"];
             string pathProfiles = project.Var("profiles_folder");
 
-            check:
+            
             if (listAccounts.Count == 0)
             {
                 project.Variables["noAccsToDo"].Value = "True";
@@ -41,8 +42,6 @@ namespace z3nCore
             string acc0 = listAccounts[randomAccount];
             project.Var("acc0", acc0);
             listAccounts.RemoveAt(randomAccount);
-            if (!project.GlobalSet(set:false))
-                goto check;
             project.Var("pathProfileFolder", $"{pathProfiles}accounts\\profilesFolder\\{acc0}");
             project.Var("pathCookies", $"{pathProfiles}accounts\\cookies\\{acc0}.json");
             project.L0g($"`working with: [acc{acc0}] accs left: [{listAccounts.Count}]");
@@ -386,5 +385,7 @@ namespace z3nCore
             
         }
 
+        
+        
     }
 }

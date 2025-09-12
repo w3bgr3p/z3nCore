@@ -206,8 +206,13 @@ namespace z3nCore
         
         public static void Help(this IZennoPosterProjectModel project, string toSearch = null)
         {
-            
-            if (string.IsNullOrEmpty(toSearch)) toSearch = ShowInputDialog("methodToFind:");
+
+            if (string.IsNullOrEmpty(toSearch))
+            {
+                toSearch = ShowInputDialog("methodToFind:");
+            }
+
+            if (string.IsNullOrEmpty(toSearch)) throw new ArgumentException("input can't be empty");
 
             string filesToCheck = "ZennoLab.CommandCenter.xml, ZennoLab.InterfacesLibrary.xml, ZennoLab.Macros.xml, ZennoLab.Emulation.xml";
             var currentProcessPath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
@@ -388,7 +393,8 @@ namespace z3nCore
                     project.SendInfoToLog($"Finished processing file {Filename}: {ex.Message}");
                 }
             }
-            
+
+            if (string.IsNullOrEmpty(result)) result = $"nothing found by [{toSearch}]";
             ShowForm(result.Replace("\n","\r\n"));
         }
 

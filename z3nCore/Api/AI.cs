@@ -4,7 +4,7 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 
 
 
-namespace z3nCore
+namespace z3nCore.Api
 {
     public class AI
     {
