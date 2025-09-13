@@ -207,12 +207,12 @@ namespace z3nCore
                         var typeName = m.DeclaringType.FullName;
                         if (string.IsNullOrEmpty(typeName)) continue;
 
-                        // фильтрация системных и зенно-методов
+                        
                         if (typeName.StartsWith("System.") || typeName.StartsWith("ZennoLab.")) continue;
                         oldName = $"{typeName}.{m.Name}";
-                        sb.AppendLine($"{typeName}.{m.Name}");
+                        //sb.AppendLine($"{typeName}.{m.Name}");
                     }
-                    sb.AppendLine($"![OBSOLETE CODE. UPDATE REQUIRED]. Obsolete: [{oldName}] New: [{newName}]");
+                    sb.AppendLine($"![OBSOLETE CODE]. Obsolete call: [{oldName}] New call: [{newName}]");
                     project.SendToLog(sb.ToString(), LogType.Warning, true, LogColor.Default);
                 }
                 catch (Exception ex)
