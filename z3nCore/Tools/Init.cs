@@ -138,6 +138,9 @@ namespace z3nCore
         }
         private void SetBrowser(bool strictProxy = true, string cookies = null, bool log = false)
         {
+            string acc0 = _project.Var("acc0");
+            if (string.IsNullOrEmpty(acc0)) throw new ArgumentException("acc0 can't be null or empty");
+            
             _project.Variables["instancePort"].Value = _instance.Port.ToString();
             _logger.Send($"init browser in port: {_instance.Port}");
 
@@ -146,9 +149,10 @@ namespace z3nCore
 
             bool goodProxy = new NetHttp(_project, log).ProxySet(_instance);
             if (strictProxy && !goodProxy) throw new Exception($"!E bad proxy");
-
-            string cookiePath = $"{_project.Variables["profiles_folder"].Value}accounts\\cookies\\{_project.Variables["acc0"].Value}.json";
-            _project.Variables["pathCookies"].Value = cookiePath;
+            
+            string cookiePath = Path.Combine(_project.Var("profiles_folder"),"accounts","cookies",acc0 + ".json");
+            _project.Var("pathCookies", cookiePath);
+            
 
             if (cookies != null) 
                 _instance.SetCookie(cookies);
@@ -184,9 +188,12 @@ namespace z3nCore
         }
         private void LaunchBrowser(string cfgBrowser = null)
         {
+            string acc0 = _project.Var("acc0");
+            if (string.IsNullOrEmpty(acc0)) 
+                throw new ArgumentException("acc0 can't be null or empty");
+            string pathProfile = Path.Combine(_project.Var("profiles_folder"),"accounts","profilesFolder",acc0);
+            _project.Var("pathProfileFolder", pathProfile);
             
-            var folder = _project.Var("pathProfileFolder"); 
-
             if (string.IsNullOrEmpty(cfgBrowser))
                 cfgBrowser = _project.Var("cfgBrowser");
             var browser = ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium;
@@ -212,13 +219,12 @@ namespace z3nCore
                 ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings settings = 
                     (ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings)
                     ZennoLab.CommandCenter.Classes.BrowserLaunchSettingsFactory.Create(browser);
-                settings.CachePath = _project.Var("pathProfileFolder"); 
+                settings.CachePath = pathProfile; 
                 settings.ConvertProfileFolder = true;
                 settings.UseProfile = true;
                 _instance.Launch(settings);
             }
-
-
+            
         }
         
         public void PrepareInstance()

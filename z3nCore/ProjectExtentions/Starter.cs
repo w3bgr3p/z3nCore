@@ -42,8 +42,8 @@ namespace z3nCore
             string acc0 = listAccounts[randomAccount];
             project.Var("acc0", acc0);
             listAccounts.RemoveAt(randomAccount);
-            project.Var("pathProfileFolder", $"{pathProfiles}accounts\\profilesFolder\\{acc0}");
-            project.Var("pathCookies", $"{pathProfiles}accounts\\cookies\\{acc0}.json");
+            //project.Var("pathProfileFolder", $"{pathProfiles}accounts\\profilesFolder\\{acc0}");
+            //project.Var("pathCookies", $"{pathProfiles}accounts\\cookies\\{acc0}.json");
             project.L0g($"`working with: [acc{acc0}] accs left: [{listAccounts.Count}]");
             return true;
         }
