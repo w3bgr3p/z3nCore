@@ -10,7 +10,7 @@ using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.Enums.Browser;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 using System.Diagnostics;
-
+using ZennoLab.InterfacesLibrary.Enums.Log;
 namespace z3nCore
 {
     public class Init
@@ -386,6 +386,286 @@ namespace z3nCore
             return new[] { DllVer, ZpVer };
         }
         
+        
+        private void MakeAccList(List<string> dbQueries, bool log = false)
+        {
+
+            if (!string.IsNullOrEmpty(_project.Variables["acc0Forced"].Value))
+            {
+                var forced = _project.Variables["acc0Forced"].Value;
+                _project.Lists["accs"].Clear();
+                _project.Lists["accs"].Add(forced);
+                _logger.Send($@"manual mode on with {forced}");
+                return;
+            }
+
+            var allAccounts = new HashSet<string>();
+            foreach (var query in dbQueries)
+            {
+                try
+                {
+                    var accsByQuery = _project.DbQ(query,log:log).Trim();
+                    if (!string.IsNullOrWhiteSpace(accsByQuery))
+                    {
+                        var accounts = accsByQuery.Split('\n').Select(x => x.Trim().TrimStart(','));
+                        allAccounts.UnionWith(accounts);
+                    }
+                }
+                catch
+                {
+                    _logger.Send($"{query}");
+                }
+            }
+
+            if (allAccounts.Count == 0)
+            {
+                _project.Variables["noAccsToDo"].Value = "True";
+                _logger.Send($"♻ noAccountsAvailable by queries [{string.Join(" | ", dbQueries)}]");
+                return;
+            }
+            _logger.Send($"Initial availableAccounts: [{string.Join(", ", allAccounts)}]");
+            FilterAccList( allAccounts, log);
+        }
+        private void FilterAccList(HashSet<string> allAccounts,bool log=false)
+        {
+            var reqSocials = _project.Var("requiredSocial");
+
+            if (!string.IsNullOrEmpty(reqSocials))
+            {
+                string[] demanded = reqSocials.Split(',');
+                _logger.Send($"Filtering by socials: [{string.Join(", ", demanded)}]");
+
+                foreach (string social in demanded)
+                {
+                    string tableName = $"projects_{social.Trim().ToLower()}";
+                    var notOK = _project.SqlGet($"id", tableName, log: log, where: "status LIKE '%suspended%' OR status LIKE '%restricted%' OR status LIKE '%ban%' OR status LIKE '%CAPTCHA%' OR status LIKE '%applyed%' OR status LIKE '%Verify%'")
+                        .Split('\n')
+                        .Select(x => x.Trim())
+                        .Where(x => !string.IsNullOrEmpty(x));
+                    allAccounts.ExceptWith(notOK);
+                    _logger.Send($"After {social} filter: [{string.Join("|", allAccounts)}]");
+                }
+            }
+            _project.Lists["accs"].Clear();
+            _project.Lists["accs"].AddRange(allAccounts);
+            _logger.Send($"final list [{string.Join("|", allAccounts)}]");
+
+        }
+        
+        
+        
+        private void BlockchainFilter ()
+        {
+            //gasprice
+            if (!string.IsNullOrEmpty(_project.Var("acc0Forced")) ) return ;
+            string[] chains = _project.Var("gateOnchainChain").Split(',');
+            
+            if (_project.Var("gateOnchainMaxGas") != "")
+            {
+                decimal maxGas = decimal.Parse(_project.Var("gateOnchainMaxGas"));
+                foreach (string chain in chains)
+                {
+                    decimal gas = W3bTools.GasPrice(Rpc.Get(chain));
+                    if (gas >= maxGas) 
+                        goto native;
+                }
+                throw new Exception($"gas is over the limit: {maxGas} on {_project.Var("gateOnchainChain")}");
+            }
+            
+            native:
+            //native
+            if( _project.Var("gateOnchainMinNative") != "")
+            {
+	        
+                decimal minNativeInUsd = decimal.Parse(_project.Var("gateOnchainMinNative"));
+                string tiker;
+                string  address = _project.DbGet("evm_pk","_addresses", log:false);
+
+                decimal native = 0;
+                foreach (string chain in chains)
+                {
+                    native = _project.EvmNative(Rpc.Get(chain),address);
+                    _project.SendInfoToLog($"{native}");
+                    switch(chain)
+                    {
+			        
+                        case "bsc":
+                        case "opbnb":
+                            tiker = "BNB";
+                            break;
+                        case "solana":
+                            address = _project.DbGet("sol","public_blockchain", log:false);
+                            native = W3bTools.SolNative(Rpc.Get(chain),address);
+                            tiker = "SOL";
+                            break;
+                        case "avalance":
+                            tiker = "AVAX";
+                            break;
+                        default:			
+                            tiker = "ETH";
+                            break;
+                    }
+                    var required = _project.Var("nativeBy") == "native" ? minNativeInUsd : _project.UsdToToken(minNativeInUsd, tiker,"OKX");
+                    if (native >= required) { 			
+                        _project.SendToLog($"{address} have sufficient [{native}] native in {chain}",LogType.Info ,true ,LogColor.LightBlue);
+                        return ;
+                    }
+                    _project.SendWarningToLog($"!W no balnce required: [{required}${tiker}] in  {chain}. native is [{native}] for {address}");
+                }
+                _project.DbUpd($"status = '! noBalance', daily = '{Time.Cd(60)}'");
+                throw new Exception($"!W no balnce required: [{minNativeInUsd}] in chains {_project.Var("gateOnchainChain")}");
+            }
+        }
+
+        private void SocialFilter()
+        {
+            if (string.IsNullOrEmpty(_project.Var("requiredSocial"))) return ;
+            
+            var requiredSocials = _project.Var("requiredSocial").Split(',').ToList();
+            var badList = new List<string>{
+                "suspended",
+                "restricted",
+                "ban",
+                "CAPTCHA",
+                "applyed",
+                "Verify"};
+            
+            foreach (var social in requiredSocials)
+            {
+                var tableName = "_" + social.ToLower().Trim();
+                var status = _project.DbGet("status",tableName, log:true);
+                foreach (string word in badList)
+                {
+                    if (status.Contains(word)){
+                        string exMsg = $"{social} of {_project.Var("acc0")}: [{status}]";
+                        _project.SendWarningToLog(exMsg);
+                        throw new Exception(exMsg);
+                    }
+                }
+            }
+
+
+        }
+
+        private void GetAccByMode()
+        {
+            
+
+            _logger.Send("accsQueue: " + string.Join(", ",_project.Lists["accs"]));
+
+            if (_project.Var("wkMode") == "Cooldown") //Cooldown
+            {
+                //chose:
+                bool chosen = _project.ChooseSingleAcc();
+	
+                if (!chosen)
+                {
+                    _project.Var("acc0", null);
+                    _project.Var("TimeToChill", "True");
+
+                    throw new Exception($"TimeToChill");
+                }
+            }
+
+            if (_project.Var("wkMode") == "Oldest") //Cooldown
+            {
+
+                bool chosen = _project.ChooseSingleAcc(true);
+	
+                if (!chosen)
+                {
+                    _project.Var("acc0", null);
+                    _project.Var("TimeToChill", "True");
+                    throw new Exception($"TimeToChill");
+                }
+            }
+
+
+            if (_project.Var("wkMode") == "NewRandom") //DeadSouls
+            {
+                string toSet = new Sql(_project).GetRandom("proxy, webgl","private_profile",log:false, acc:true);
+                string acc0 = toSet.Split('|')[0];
+                _project.Var("accRnd", Rnd.RndHexString(64));
+                _project.Var("acc0", acc0);
+                _project.Var("pathProfileFolder",Path.Combine(_project.Var("profiles_folder") , "accounts", "profilesFolder" , _project.Var("accRnd")));
+            }
+            
+
+            if (_project.Var("wkMode") == "UpdateToken") //UpdateToken
+            {
+                string toSet = new Sql(_project).GetRandom("token",log:true, acc:true, invert:true);
+                string acc0 = toSet.Split('|')[0];
+                _project.Var("acc0", acc0);
+                
+            }
+            
+            if (string.IsNullOrEmpty(_project.Var("acc0"))) //Default
+            {
+                _logger.Send($"acc0 is empty. Check {_project.Var("wkMode")} conditions maiby it's TimeToChill",thr0w:true);
+            }
+            
+        }
+
+
+
+        public void Prepare()
+        {
+            InitProject();
+
+            bool forced = !string.IsNullOrEmpty(_project.Var("acc0Forced"));
+
+            if (forced){
+                _project.Var("acc0",_project.Var("acc0Forced"));
+                _project.GSet(force:true);
+                goto run;
+            }
+		
+            getAcc:
+            try
+            {
+                GetAccByMode();
+                if (!_project.GSet("check")) goto getAcc;
+            }
+            catch (Exception ex)
+            {
+                _project.SendWarningToLog(ex.Message);
+                throw;
+            }
+
+
+            
+            try
+            {
+                BlockchainFilter();
+                SocialFilter();
+            }
+            catch (Exception ex)
+            {
+                _project.SendWarningToLog(ex.Message);
+                _project.GSet("", true);
+                goto getAcc;
+            }
+
+            run:
+            try
+            {
+                PrepareInstance();
+            }
+            catch (Exception ex)
+            {
+                _project.GSet("", true);
+                _project.SendWarningToLog(ex.Message);
+                goto getAcc;
+            }
+
+            _project.GSet(force:true);
+
+        }
+
+
+
+
+
         public string LoadSocials(string requiredSocial)
         {
             if (_instance.BrowserType != BrowserType.Chromium) return "noBrowser";
@@ -469,7 +749,7 @@ namespace z3nCore
         }
         public void InitProject( string author = "w3bgr3p", string[] customQueries = null, bool log = false )
         {
-            //_project._SAFU();
+            
             _SAFU();
             InitVariables(author);
             _project.BuildNewDatabase();
@@ -482,7 +762,7 @@ namespace z3nCore
                     allQueries.Add(query);
 
             if (allQueries.Count > 0) 
-                _project.MakeAccList(allQueries, log: log);
+                MakeAccList(allQueries, log: log);
             else 
                 _logger.Send($"unsupported SQLFilter: [{_project.Variables["wkMode"].Value}]",thr0w:true);
             

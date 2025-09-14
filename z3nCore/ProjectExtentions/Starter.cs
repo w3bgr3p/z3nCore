@@ -100,8 +100,6 @@ namespace z3nCore
         public static void MakeAccList(this IZennoPosterProjectModel project, List<string> dbQueries, bool log = false)
         {
 
-            
-            
             var _logger = new Logger(project, log);
             var result = new List<string>();
 
@@ -119,7 +117,6 @@ namespace z3nCore
             {
                 try
                 {
-                    //var accsByQuery = _sql.DbQ(query).Trim();
                     var accsByQuery = project.DbQ(query,log:log).Trim();
                     if (!string.IsNullOrWhiteSpace(accsByQuery))
                     {
