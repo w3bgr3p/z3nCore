@@ -118,6 +118,48 @@ namespace z3nCore
                         ► init {projectName} ░ ▒ ▓ █  {author}";
             _project.SendInfoToLog(logo, true);
         }
+        private void _SAFU()
+        {
+            string tempFilePath = _project.Path + "_SAFU.zp";
+            var mapVars = new List<Tuple<string, string>>();
+            mapVars.Add(new Tuple<string, string>("acc0", "acc0"));
+            mapVars.Add(new Tuple<string, string>("cfgPin", "cfgPin"));
+            mapVars.Add(new Tuple<string, string>("DBpstgrPass", "DBpstgrPass"));
+            try { _project.ExecuteProject(tempFilePath, mapVars, true, true, true); }
+            catch (Exception ex) { _project.SendWarningToLog(ex.Message); }
+            
+        }    
+        private void BuildNewDatabase ()
+        {
+            if (_project.Var("cfgBuildDb") != "True") return;
+
+            string filePath = Path.Combine(_project.Path, "DbBuilder.zp");
+            if (File.Exists(filePath))
+            {
+                _project.Var("projectScript",filePath);
+                _project.Var("wkMode","Build");
+                _project.Var("cfgAccRange", _project.Var("rangeEnd"));
+                
+                var vars =  new List<string> {
+                    "cfgLog",
+                    "cfgPin",
+                    "cfgAccRange",
+                    "DBmode",
+                    "DBpstgrPass",
+                    "DBpstgrUser",
+                    "DBsqltPath",
+                    "debug",
+                    "lastQuery",
+                    "wkMode",
+                };
+                _project.RunZp(vars);
+            }
+            else
+            {
+                _project.SendWarningToLog($"file {filePath} not found. Last version can be downloaded by link \nhttps://raw.githubusercontent.com/w3bgrep/z3nFarm/master/DbBuilder.zp");
+            }
+            
+        }
         private void CheckVariables(string[] vars)
         {
             foreach (string var in vars)
@@ -453,7 +495,7 @@ namespace z3nCore
 
         }
         
-        public bool ChooseSingleAcc(bool oldest = false)
+        private bool ChooseSingleAcc(bool oldest = false)
         {
             var listAccounts = _project.Lists["accs"];
             string pathProfiles = _project.Var("profiles_folder");
@@ -623,60 +665,7 @@ namespace z3nCore
             
         }
 
-        public void Prepare()
-        {
-            InitProject();
 
-            bool forced = !string.IsNullOrEmpty(_project.Var("acc0Forced"));
-
-            if (forced){
-                _project.Var("acc0",_project.Var("acc0Forced"));
-                _project.GSet(force:true);
-                goto run;
-            }
-		
-            getAcc:
-            try
-            {
-                GetAccByMode();
-                if (!_project.GSet("check")) goto getAcc;
-            }
-            catch (Exception ex)
-            {
-                _project.SendWarningToLog(ex.Message);
-                throw;
-            }
-
-
-            
-            try
-            {
-                BlockchainFilter();
-                SocialFilter();
-            }
-            catch (Exception ex)
-            {
-                _project.SendWarningToLog(ex.Message);
-                _project.GSet("", true);
-                goto getAcc;
-            }
-
-            run:
-            try
-            {
-                PrepareInstance();
-            }
-            catch (Exception ex)
-            {
-                _project.GSet("", true);
-                _project.SendWarningToLog(ex.Message);
-                goto getAcc;
-            }
-
-            _project.GSet(force:true);
-
-        }
-        
         public string LoadSocials(string requiredSocial)
         {
             if (_instance.BrowserType != BrowserType.Chromium) return "noBrowser";
@@ -758,12 +747,13 @@ namespace z3nCore
             _instance.CloseExtraTabs(true);
             return walletsToUse;
         }
+        
         public void InitProject( string author = "w3bgr3p", string[] customQueries = null, bool log = false )
         {
             
             _SAFU();
             InitVariables(author);
-            _project.BuildNewDatabase();
+            BuildNewDatabase();
 
             _project.TblPrepareDefault(log:log);
             var allQueries = ToDoQueries();
@@ -778,19 +768,116 @@ namespace z3nCore
                 _logger.Send($"unsupported SQLFilter: [{_project.Variables["wkMode"].Value}]",thr0w:true);
             
         }
-
-        private void _SAFU()
+        public void PrepareProject()
         {
-            string tempFilePath = _project.Path + "_SAFU.zp";
-            var mapVars = new List<Tuple<string, string>>();
-            mapVars.Add(new Tuple<string, string>("acc0", "acc0"));
-            mapVars.Add(new Tuple<string, string>("cfgPin", "cfgPin"));
-            mapVars.Add(new Tuple<string, string>("DBpstgrPass", "DBpstgrPass"));
-            try { _project.ExecuteProject(tempFilePath, mapVars, true, true, true); }
-            catch (Exception ex) { _project.SendWarningToLog(ex.Message); }
             
+            bool forced = !string.IsNullOrEmpty(_project.Var("acc0Forced"));
+
+            if (forced){
+                _project.Var("acc0",_project.Var("acc0Forced"));
+                _project.GSet(force:true);
+                goto run;
+            }
+		
+            getAcc:
+            try
+            {
+                GetAccByMode();
+                if (!_project.GSet("check")) goto getAcc;
+            }
+            catch (Exception ex)
+            {
+                _project.SendWarningToLog(ex.Message);
+                throw;
+            }
+
+
+            
+            try
+            {
+                BlockchainFilter();
+                SocialFilter();
+            }
+            catch (Exception ex)
+            {
+                _project.SendWarningToLog(ex.Message);
+                _project.GSet("", true);
+                goto getAcc;
+            }
+
+            run:
+            try
+            {
+                PrepareInstance();
+            }
+            catch (Exception ex)
+            {
+                _project.GSet("", true);
+                _project.SendWarningToLog(ex.Message);
+                goto getAcc;
+            }
+
+            _project.GSet(force:true);
+
         }
-        
+        public bool RunProject(List<string> additionalVars = null, bool add = true )
+        {
+            string pathZp = _project.Var("projectScript");
+            var vars =  new List<string> {
+                "acc0",
+                "accRnd",
+                "cfgChains",
+                "cfgRefCode",
+                "captchaModule",
+                "cfgDelay",
+                "cfgLog",
+                "cfgPin",
+                "cfgToDo",
+                "DBmode",
+                "DBpstgrPass",
+                "DBpstgrUser",
+                "DBsqltPath",
+                "failReport",
+                "humanNear",          
+                "instancePort", 
+                "ip",
+                "run",
+                "lastQuery",
+                "lastErr",
+                "pathCookies",
+                "projectName",
+                "projectTable", 
+                "projectScript",
+                "proxy",          
+                "requiredSocial",
+                "requiredWallets",
+                "toDo",
+                "varSessionId",
+                "wkMode",
+            };
+
+            if (additionalVars != null)
+            {
+                if (add)
+                {
+                    foreach (var varName in additionalVars)
+                        if (!vars.Contains(varName)) vars.Add(varName);
+                }
+                else
+                {
+                    vars = additionalVars;
+                }
+
+            }
+
+            _logger.Send($"running {pathZp}" );
+            
+            var mapVars = new List<Tuple<string, string>>();
+            if (vars != null)
+                foreach (var v in vars)
+                    mapVars.Add(new Tuple<string, string>(v, v)); 
+            return _project.ExecuteProject(pathZp, mapVars, true, true, true); 
+        }
         
     }
 }

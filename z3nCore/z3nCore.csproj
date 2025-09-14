@@ -98,7 +98,6 @@
     <Compile Include="GitHubApi.cs" />
     <Compile Include="ProjectExtentions\Reporter.cs" />
     <Compile Include="ProjectExtentions\Rnd.cs" />
-    <Compile Include="ProjectExtentions\Starter.cs" />
     <Compile Include="ProjectExtentions\Vars.cs" />
     <Compile Include="Properties\VersionInfo.cs" />
     <Compile Include="Api\AI.cs" />
