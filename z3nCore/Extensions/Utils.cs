@@ -253,8 +253,12 @@ namespace z3nCore
             }
             
         }
-        
-        
+
+        public static string ErrorReport(this IZennoPosterProjectModel project, Instance instance, bool log = false,
+            bool toTg = false, bool toDb = false, bool screensot = false)
+        {
+            return new Reporter(project,instance).ErrorReport(toTg, toDb, screensot);
+        }
     }
 
 }

@@ -14,6 +14,7 @@ using System.Text.RegularExpressions;
 using System.Web.NBitcoin;
 using Newtonsoft.Json.Linq;
 using System.Collections.Specialized;
+
 namespace z3nCore
 {
     public static class StringExtensions

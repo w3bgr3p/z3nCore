@@ -7,27 +7,56 @@ using System.IO;
 using System.Linq;
 namespace z3nCore
 {
-    public static class Reporter
+    public class Reporter
     {
+ 
+        protected readonly IZennoPosterProjectModel _project;
+        protected readonly Instance _instance;
 
-        public static string ErrorReport(this IZennoPosterProjectModel project, Instance instance, bool log = false, bool toTg = false, bool toDb = false, bool screensot = false)
+
+        private string ActionId {get;set; }
+        private string ActionComment {get;set; }
+        private string Acc {get;set; }
+        private string Type {get;set; }
+        private string Msg {get;set; }
+        private string StackTrace {get;set; }
+        private string InnerMsg {get;set; }
+        private string Url {get;set; }
+
+        private string ErrReport {get;set; }
+        private readonly string _projectScript;
+
+        
+        public Reporter(IZennoPosterProjectModel project, Instance instance, bool log = false, string classEmoji = null)
         {
-
-            var error = project.GetLastError();
+            _project = project;
+            _instance = instance;
+            _projectScript = project.Var("projectScript");
+        }
+        
+        public string GetErrorData()
+        {
+            var error = _project.GetLastError();
             if (error == null) 
-                return "errNotFound";
+            {
+                _project.SendInfoToLog("noErrorData");
+                return "";
+            }
+   
 
             var sb = new StringBuilder();
 
-            string actionId = error.ActionId.ToString() ?? "noActionId";
-            string actionComment = error.ActionComment ?? "noActionComment";
-            string actionGroupId = error.ActionGroupId ?? "noGroup";
-
-            string type = "no";
-            string msg = "noException";
-            string stackTrace = "no";
-            string innerMsg = "no";
-
+            string actionId = error.ActionId.ToString() ?? "";
+            string actionComment = error.ActionComment ?? "";
+            string actionGroupId = error.ActionGroupId ?? "";
+            string acc = _project.Var("acc0") ?? "";
+            string type = "";
+            string msg = "";
+            string stackTrace = "";
+            string innerMsg = "";
+            string url = "";
+            
+            
             Exception ex = error.Exception;
             if (ex != null) 
             {
@@ -42,82 +71,111 @@ namespace z3nCore
                 }
                 catch (Exception exp)
                 {
-                    project.SendWarningToLog(exp.Message);
+                    _project.SendWarningToLog(exp.Message);
                 }
             }
+            try { url = _instance.ActiveTab.URL; } catch { }
 
-            sb.AppendLine($"id: {actionId}")
-              .AppendLine($"comment: {actionComment}")
-              .AppendLine($"exType: {type}")
-              .AppendLine($"exMsg: {msg}")
-              .AppendLine($"innerMsg: {innerMsg}")
-              .AppendLine($"stackTrace: {stackTrace}");
+            ActionId = actionId;
+            ActionComment =  actionComment;
+            Acc = acc;
+            Type = type;
+            Msg = msg;
+            StackTrace = stackTrace;
+            InnerMsg = innerMsg;
+            Url = url; 
+            
 
-            if (log) project.SendInfoToLog(sb.ToString().Replace("\\",""));
+            if (!string.IsNullOrEmpty(Acc)) sb.AppendLine($"acc: {Acc}");
+            if (!string.IsNullOrEmpty(ActionId)) sb.AppendLine($"id: {ActionId}");
+            if (!string.IsNullOrEmpty(ActionComment)) sb.AppendLine($"actionComment: {ActionComment}");
+            if (!string.IsNullOrEmpty(Type)) sb.AppendLine($"type: {Type}");
+            if (!string.IsNullOrEmpty(Msg)) sb.AppendLine($"msg: {Msg}");
+            if (!string.IsNullOrEmpty(InnerMsg)) sb.AppendLine($"innerMsg: {InnerMsg}");
+            if (!string.IsNullOrEmpty(StackTrace)) sb.AppendLine($"stackTrace: {StackTrace}");
+            if (!string.IsNullOrEmpty(Url)) sb.AppendLine($"url: {Url}");
+            
+            _project.SendInfoToLog(sb.ToString().Replace("\\",""));
+            
+            ErrReport = sb.ToString();
+            return sb.ToString();
+        }
+
+        public string MkTgReport()
+        {
+            var sb = new StringBuilder();
+            string script = Path.GetFileName(_projectScript).EscapeMarkdown();
 
             //REPORT
-            sb.Clear(); 
-            sb.AppendLine($"⛔️\\#fail  \\#{Path.GetFileName(project.Var("projectScript"))?.EscapeMarkdown() ?? "Unknown"} \\#{project?.Variables?["acc0"]?.Value ?? "Unknown"}")
-              .AppendLine($"Error: `{actionId.EscapeMarkdown()}`")
-              .AppendLine($"Comment: `{actionComment.EscapeMarkdown()}`")
-              .AppendLine($"Type: `{type.EscapeMarkdown()}`")
-              .AppendLine($"Msg: `{msg.EscapeMarkdown()}`")
-              .AppendLine($"Trace: `{stackTrace.EscapeMarkdown()}`");
-
-            if (!string.IsNullOrEmpty(innerMsg))
-                sb.AppendLine($"Inner: `{innerMsg.EscapeMarkdown()}`");
-
-            string browser = string.Empty;
-            try { browser = instance.BrowserType.ToString(); } catch { }
-
-            if (browser == "Chromium")
-                sb.AppendLine($"Page: `{instance.ActiveTab?.URL?.EscapeMarkdown() ?? "Unknown"}`");
-
+            sb.Clear();
+            sb.AppendLine($"⛔️\\#fail  \\#acc{Acc}  \\#{script}");
+            if (!string.IsNullOrEmpty(ActionId)) sb.AppendLine($"ActionId: `{ActionId.EscapeMarkdown()}`");
+            if (!string.IsNullOrEmpty(ActionComment)) sb.AppendLine($"actionComment: `{ActionComment.EscapeMarkdown()}`");
+            if (!string.IsNullOrEmpty(Type)) sb.AppendLine($"type: `{Type.EscapeMarkdown()}`");
+            if (!string.IsNullOrEmpty(Msg)) sb.AppendLine($"msg: `{Msg.EscapeMarkdown()}`");
+            if (!string.IsNullOrEmpty(StackTrace)) sb.AppendLine($"stackTrace: `{StackTrace.EscapeMarkdown()}`");
+            if (!string.IsNullOrEmpty(InnerMsg)) sb.AppendLine($"innerMsg: `{InnerMsg.EscapeMarkdown()}`");
+            if (!string.IsNullOrEmpty(Url)) sb.AppendLine($"url: `{Url.EscapeMarkdown()}`");
+            
             string failReport = sb.ToString();
-            if (project?.Variables?["failReport"] != null)
-                project.Variables["failReport"].Value = failReport;
+            _project.Var("failReport",failReport) ;
+            return failReport;
+        }
+        
+        public void MkScreenshot()
+        {
+            var sb = new StringBuilder();
+            string script = Path.GetFileName(_projectScript).EscapeMarkdown();
+            
+            if (!string.IsNullOrEmpty(Url))
+                try
+                {
+                    sb.Clear(); 
+                    sb.Append(_project.Path).Append(".failed\\")
+                        .Append(_project.Variables?["projectName"]?.Value ?? "Unknown")
+                        .Append("\\")
+                        .Append(_project?.Name ?? "Unknown")
+                        .Append(" • ")
+                        .Append(_project?.Variables?["acc0"]?.Value ?? "Unknown")
+                        .Append(" • [")
+                        .Append(_project?.LastExecutedActionId ?? "Unknown")
+                        .Append(" - ")
+                        .Append(ActionId)
+                        .Append("].jpg");
+                
+                    string screenshotPath = sb.ToString();
+                    _project?.SendInfoToLog(screenshotPath);
+                    ZennoPoster.ImageProcessingResizeFromScreenshot(_instance?.Port ?? 0, screenshotPath, 50, 50, "percent", true, false);
+                }
+                catch (Exception e)
+                {
+                    _project.SendInfoToLog(e.Message ?? "Error during screenshot processing");
+                }
+        }    
+        
+        public string ErrorReport(bool toTg = false, bool toDb = false, bool screensot = false)
+        {
 
-            //SCREEN
-
-            if (screensot)
+            GetErrorData();
+            if (toTg)
             {
-                if (browser == "Chromium")
-                    try
-                    {
-                        sb.Clear(); 
-                        sb.Append(project.Path).Append(".failed\\")
-                            .Append(project.Variables?["projectName"]?.Value ?? "Unknown")
-                            .Append("\\")
-                            .Append(project?.Name ?? "Unknown")
-                            .Append(" • ")
-                            .Append(project?.Variables?["acc0"]?.Value ?? "Unknown")
-                            .Append(" • [")
-                            .Append(project?.LastExecutedActionId ?? "Unknown")
-                            .Append(" - ")
-                            .Append(actionId)
-                            .Append("].jpg");
-                
-                        string screenshotPath = sb.ToString();
-                        project?.SendInfoToLog(screenshotPath);
-                        ZennoPoster.ImageProcessingResizeFromScreenshot(instance?.Port ?? 0, screenshotPath, 50, 50, "percent", true, false);
-                    }
-                    catch (Exception e)
-                    {
-                        if (log) project?.SendInfoToLog(e.Message ?? "Error during screenshot processing");
-                    }
-                
+                string tgRep = MkTgReport();
+                ToTelegram(tgRep);
             }
             
-            if (toTg) project.ToTelegram(failReport);
+            //SCREEN
+            if (screensot)
+            {
+                MkScreenshot();
+            }
             
-            if (toDb) project.DbUpd($"status = '! dropped: {failReport.Replace("\\","")}'", log:true);
-            return failReport;
+            if (toDb) _project.DbUpd($"status = '! dropped: {ErrReport.Replace("\\","")}'", log:true);
+            return ErrReport;
             
-                        
         }
-        private static void ToTelegram(this IZennoPosterProjectModel project, string reportString)
+        private void ToTelegram( string reportString)
         {
-            var creds = project.DbGet("apikey, extra", "_api", where: "id = 'tg_logger'");
+            var creds = _project.DbGet("apikey, extra", "_api", where: "id = 'tg_logger'");
             var credsParts = creds.Split('|');
     
             string token = credsParts[0].Trim();
@@ -125,7 +183,7 @@ namespace z3nCore
             string group = extraParts[0].Trim();
             string topic = extraParts[1].Trim();
 
-            var report = project.Variables["failReport"].Value;
+            var report = _project.Variables["failReport"].Value;
             
             string encodedReport = Uri.EscapeDataString(reportString);
             string url = string.Format(
@@ -133,27 +191,22 @@ namespace z3nCore
                 token, group, encodedReport, topic
             );
     
-            project.GET(url);
+            _project.GET(url);
         }
-        public static string SuccessReport(this IZennoPosterProjectModel project, bool log = false, bool ToTg = false)
+        public string SuccessReport( bool log = false, bool ToTg = false)
         {
             var sb = new StringBuilder();
-            string projectName = Path.GetFileName(project.Var("projectScript")).EscapeMarkdown();
-
-            sb.Append("✅️\\#succsess  \\#")
-                .Append(projectName)
-                .Append(" \\#")
-                .Append(project.Var("acc0").EscapeMarkdown())
-                .AppendLine();
-
+            string script = Path.GetFileName(_projectScript).EscapeMarkdown();
+            sb.AppendLine($"✅️\\#succsess  \\#acc{Acc}  \\#{script}");
+            
             string lastQuery = string.Empty;
             try 
             { 
-                lastQuery = project.Var("lastQuery"); 
+                lastQuery = _project.Var("lastQuery"); 
             }
             catch (Exception ex) 
             { 
-                project.SendWarningToLog(ex.Message); 
+                _project.SendWarningToLog(ex.Message); 
             }
 
             if (!string.IsNullOrEmpty(lastQuery))
@@ -165,12 +218,14 @@ namespace z3nCore
 
 
             sb.Append("TookTime: ")
-                .Append(project.TimeElapsed())
+                .Append(_project.TimeElapsed())
                 .AppendLine("s ");
 
             var reportText = sb.ToString();
-            if (log) project.SendInfoToLog(reportText);
-            if (ToTg)project.ToTelegram(reportText);
+            if (ToTg) ToTelegram(reportText);
+            reportText = reportText.Replace(@"\", "");
+            if (log) _project.SendInfoToLog(reportText);
+            
             return reportText;
         }
 
