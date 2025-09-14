@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
+using System.Globalization;
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.Enums.Browser;
 using ZennoLab.InterfacesLibrary.ProjectModel;
@@ -73,7 +73,7 @@ namespace z3nCore
                 _logger.Send(ex.Message);
             }
         }
-        public void InitVariables(string author = "")
+        private void InitVariables(string author = "")
         {
             DisableLogs();
             
@@ -227,7 +227,7 @@ namespace z3nCore
             
         }
         
-        public void PrepareInstance()
+        private void PrepareInstance()
         {
             
             var newBrowser = new Init(_project, _instance, false);
@@ -261,69 +261,6 @@ namespace z3nCore
             _project.L0g($"{browserType} started in {_project.Age<string>()} ");
             _project.Var("varSessionId", (DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString());
 
-        }
-        public void FilterAccList(List<string> dbQueries, bool log = false, bool filterSocials = true)
-        {
-            if (!string.IsNullOrEmpty(_project.Variables["acc0Forced"].Value))
-            {
-                _project.Lists["accs"].Clear();
-                _project.Lists["accs"].Add(_project.Variables["acc0Forced"].Value);
-                _logger.Send($@"manual mode on with {_project.Variables["acc0Forced"].Value}");
-                return;
-            }
-
-            var allAccounts = new HashSet<string>();
-            foreach (var query in dbQueries)
-            {
-                try
-                {
-                    var accsByQuery = _project.DbQ(query).Trim();
-                    if (!string.IsNullOrWhiteSpace(accsByQuery))
-                    {
-                        var accounts = accsByQuery.Split('\n').Select(x => x.Trim().TrimStart(','));
-                        allAccounts.UnionWith(accounts);
-                    }
-                }
-                catch
-                {
-
-                    _logger.Send($"{query}");
-                }
-            }
-
-            if (allAccounts.Count == 0)
-            {
-                _project.Variables["noAccsToDo"].Value = "True";
-                _logger.Send($"♻ noAccountsAvailable by queries [{string.Join(" | ", dbQueries)}]");
-                return;
-            }
-            _logger.Send($"Initial availableAccounts: [{string.Join(", ", allAccounts)}]");
-
-
-            if (filterSocials)
-            {
-                if (!string.IsNullOrEmpty(_project.Variables["requiredSocial"].Value))
-                {
-                    string[] demanded = _project.Variables["requiredSocial"].Value.Split(',');
-                    _logger.Send($"Filtering by socials: [{string.Join(", ", demanded)}]");
-
-                    foreach (string social in demanded)
-                    {
-                        string tableName = $"private_{social.Trim().ToLower()}";
-
-                        var notOK = _project.SqlGet("id", tableName, where: "status NOT LIKE '%ok%'")//DbQ($"SELECT acc0 FROM {_tableName} WHERE status NOT LIKE '%ok%'", log)
-                            .Split('\n')
-                            .Select(x => x.Trim())
-                            .Where(x => !string.IsNullOrEmpty(x));
-                        allAccounts.ExceptWith(notOK);
-                        _logger.Send($"After {social} filter: [{string.Join("|", allAccounts)}]");
-                    }
-                }
-            }
-
-            _project.Lists["accs"].Clear();
-            _project.Lists["accs"].AddRange(allAccounts);
-            _logger.Send($"final list [{string.Join("|", _project.Lists["accs"])}]");
         }
         private void SetDisplay(string webGl)
         {
@@ -372,7 +309,6 @@ namespace z3nCore
             }
 
         }
-
         private string[] Versions()
         {
             string currentProcessPath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
@@ -385,8 +321,73 @@ namespace z3nCore
             
             return new[] { DllVer, ZpVer };
         }
-        
-        
+        private static string Quote(string name)
+        {
+            return $"\"{name.Replace("\"", "\"\"")}\"";
+        }
+        private List<string> ToDoQueries(string toDo = null, string defaultRange = null, string defaultDoFail = null)
+        {
+            string tableName = _project.ProjectTable();
+
+            var nowIso = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+
+            if (string.IsNullOrEmpty(toDo)) 
+                toDo = _project.Variables["cfgToDo"].Value;
+            
+            var toDoItems = new List<string>();
+
+            foreach (string task in toDo.Split(','))
+            { 
+                toDoItems.Add(task.Trim());
+            }
+            
+            
+            string customTask  = _project.Var("cfgCustomTask");
+            if (!string.IsNullOrEmpty(customTask))
+                toDoItems.Add(customTask);
+            
+
+            var allQueries = new List<(string TaskId, string Query)>();
+
+            foreach (string taskId in toDoItems)
+            {
+                string trimmedTaskId = taskId.Trim();
+                if (!string.IsNullOrWhiteSpace(trimmedTaskId))
+                {
+                    string range = defaultRange ?? _project.Variables["range"].Value;
+                    string doFail = defaultDoFail ?? _project.Variables["doFail"].Value;
+                    _project.ClmnAdd(trimmedTaskId,tableName);
+                    string failCondition = (doFail != "True" ? "AND status NOT LIKE '%fail%'" : "");
+                    string query = $@"SELECT {Quote("id")} 
+                        FROM {Quote(tableName)} 
+                        WHERE {Quote("id")} in ({range}) {failCondition} 
+                        AND {Quote("status")} NOT LIKE '%skip%' 
+                        AND ({Quote(trimmedTaskId)} < '{nowIso}' OR {Quote(trimmedTaskId)} = '')";
+                    allQueries.Add((trimmedTaskId, query));
+                }
+            }
+
+            return allQueries
+                .OrderBy(x =>
+                {
+                    if (string.IsNullOrEmpty(x.TaskId))
+                        return DateTime.MinValue;
+
+                    if (DateTime.TryParseExact(
+                            x.TaskId,
+                            "yyyy-MM-ddTHH:mm:ss.fffZ",
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                            out DateTime parsed))
+                    {
+                        return parsed;
+                    }
+
+                    return DateTime.MinValue;
+                })
+                .Select(x => x.Query)
+                .ToList();
+        }
         private void MakeAccList(List<string> dbQueries, bool log = false)
         {
 
@@ -452,7 +453,26 @@ namespace z3nCore
 
         }
         
-        
+        public bool ChooseSingleAcc(bool oldest = false)
+        {
+            var listAccounts = _project.Lists["accs"];
+            string pathProfiles = _project.Var("profiles_folder");
+
+            
+            if (listAccounts.Count == 0)
+            {
+                _project.Variables["noAccsToDo"].Value = "True";
+                _project.SendToLog($"♻ noAccoutsAvaliable", LogType.Info, true, LogColor.Turquoise);
+                return false;
+            }
+
+            int randomAccount = oldest ? 0 : new Random().Next(0, listAccounts.Count) ;
+            string acc0 = listAccounts[randomAccount];
+            _project.Var("acc0", acc0);
+            listAccounts.RemoveAt(randomAccount);
+            _logger.Send($"`working with: [acc{acc0}] accs left: [{listAccounts.Count}]");
+            return true;
+        }
         
         private void BlockchainFilter ()
         {
@@ -549,16 +569,13 @@ namespace z3nCore
 
         private void GetAccByMode()
         {
-            
-
             _logger.Send("accsQueue: " + string.Join(", ",_project.Lists["accs"]));
-
             if (_project.Var("wkMode") == "Cooldown") //Cooldown
             {
                 //chose:
-                bool chosen = _project.ChooseSingleAcc();
+                //bool chosen = ChooseSingleAcc();
 	
-                if (!chosen)
+                if (!ChooseSingleAcc())
                 {
                     _project.Var("acc0", null);
                     _project.Var("TimeToChill", "True");
@@ -570,9 +587,9 @@ namespace z3nCore
             if (_project.Var("wkMode") == "Oldest") //Cooldown
             {
 
-                bool chosen = _project.ChooseSingleAcc(true);
+                //bool chosen = ChooseSingleAcc(true);
 	
-                if (!chosen)
+                if (!ChooseSingleAcc())
                 {
                     _project.Var("acc0", null);
                     _project.Var("TimeToChill", "True");
@@ -605,8 +622,6 @@ namespace z3nCore
             }
             
         }
-
-
 
         public void Prepare()
         {
@@ -661,11 +676,7 @@ namespace z3nCore
             _project.GSet(force:true);
 
         }
-
-
-
-
-
+        
         public string LoadSocials(string requiredSocial)
         {
             if (_instance.BrowserType != BrowserType.Chromium) return "noBrowser";
@@ -755,7 +766,7 @@ namespace z3nCore
             _project.BuildNewDatabase();
 
             _project.TblPrepareDefault(log:log);
-            var allQueries = _project.ToDoQueries();
+            var allQueries = ToDoQueries();
             
             if (customQueries != null)
                 foreach(var query in customQueries) 
