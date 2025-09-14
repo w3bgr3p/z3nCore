@@ -405,6 +405,64 @@ namespace z3nCore
 
             
         }
+        
+        public static bool RunProject(this IZennoPosterProjectModel project, List<string> additionalVars = null, bool add = true )
+        {
+            string pathZp = project.Var("projectScript");
+            var vars =  new List<string> {
+                "acc0",
+                "accRnd",
+                "cfgChains",
+                "cfgRefCode",
+                "captchaModule",
+                "cfgDelay",
+                "cfgLog",
+                "cfgPin",
+                "cfgToDo",
+                "DBmode",
+                "DBpstgrPass",
+                "DBpstgrUser",
+                "DBsqltPath",
+                "failReport",
+                "humanNear",          
+                "instancePort", 
+                "ip",
+                "run",
+                "lastQuery",
+                "lastErr",
+                "pathCookies",
+                "projectName",
+                "projectTable", 
+                "projectScript",
+                "proxy",          
+                "requiredSocial",
+                "requiredWallets",
+                "toDo",
+                "varSessionId",
+                "wkMode",
+            };
 
+            if (additionalVars != null)
+            {
+                if (add)
+                {
+                    foreach (var varName in additionalVars)
+                        if (!vars.Contains(varName)) vars.Add(varName);
+                }
+                else
+                {
+                    vars = additionalVars;
+                }
+
+            }
+
+            project.L0g($"running {pathZp}" );
+            
+            var mapVars = new List<Tuple<string, string>>();
+            if (vars != null)
+                foreach (var v in vars)
+                    mapVars.Add(new Tuple<string, string>(v, v)); 
+            return project.ExecuteProject(pathZp, mapVars, true, true, true); 
+        }
     }
 }

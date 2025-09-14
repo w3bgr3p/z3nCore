@@ -226,9 +226,8 @@ namespace z3nCore
             }
             catch { }
         }
-        public static void RunZp(this IZennoPosterProjectModel project, List<string> vars = null)
+        public static bool RunZp(this IZennoPosterProjectModel project, List<string> vars = null)
         {
-
             string tempFilePath = project.Var("projectScript");
             var mapVars = new List<Tuple<string, string>>();
 
@@ -243,17 +242,16 @@ namespace z3nCore
                         project.SendWarningToLog(ex.Message, true);
                         throw;
                     }
-
             try 
             { 
-                project.ExecuteProject(tempFilePath, mapVars, true, true, true); 
+                return project.ExecuteProject(tempFilePath, mapVars, true, true, true); 
             }
             catch (Exception ex) 
             { 
                 project.SendWarningToLog(ex.Message, true);
                 throw;
             }
-            return;
+            
         }
         
         
