@@ -76,22 +76,27 @@ namespace z3nCore
 
             if (string.IsNullOrEmpty(refCode))
             {
-                string parsedLimit = limit is string s ? s : limit?.ToString();
                 string whereClause = "TRIM(refcode) != ''";
-
-                if (int.TryParse(parsedLimit, out int limitValue) && limitValue > 0)
+    
+                if (limit != null)
                 {
-                    whereClause += $" AND id <= {limitValue}";
+                    string parsedLimit = limit.ToString();
+                    if (int.TryParse(parsedLimit, out int limitValue) && limitValue > 0)
+                    {
+                        whereClause += $" AND id <= {limitValue}";
+                    }
+                    else
+                    {
+                        project.SendErrorToLog($"Invalid limit. {limit}", log);
+                        throw new Exception($"Invalid limit. {limit}");
+                    }
                 }
-                else
-                {
-                    throw new ArgumentException("Invalid limit value. Must be a positive integer.");
-                }
-
+    
                 whereClause += " ORDER BY RANDOM() LIMIT 1";
-                refCode = project.SqlGet("refcode", where: whereClause);
-                project.Variables["cfgRefCode"].Value  = refCode;
+                refCode = project.SqlGet("refcode", log: log, where: whereClause);
+                project.Variables["cfgRefCode"].Value = refCode;
             }
+
             
             return refCode;
         }
