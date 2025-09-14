@@ -367,7 +367,7 @@ namespace z3nCore
         {
             return $"\"{name.Replace("\"", "\"\"")}\"";
         }
-        private List<string> ToDoQueries(string toDo = null, string defaultRange = null, string defaultDoFail = null)
+        private List<string> ToDoQueriesOld(string toDo = null, string defaultRange = null, string defaultDoFail = null)
         {
             string tableName = _project.ProjectTable();
 
@@ -430,6 +430,58 @@ namespace z3nCore
                 .Select(x => x.Query)
                 .ToList();
         }
+        
+        private List<string> ToDoQueries(string toDo = null, string defaultRange = null, string defaultDoFail = null, string customCondition = null)
+        {
+
+            string tableName = _project.ProjectTable();
+            string nowIso = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+
+
+            if (string.IsNullOrEmpty(toDo)) 
+                toDo = _project.Variables["cfgToDo"].Value;
+            var taskIds = toDo.Split(',').Select(t => t.Trim()).Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
+
+            string customTask = _project.Var("customTask");
+            if (!string.IsNullOrEmpty(customTask))
+                taskIds.Add(customTask);
+
+            if (string.IsNullOrEmpty(customCondition)) 
+                customCondition = _project.Variables["customCondition"].Value;
+
+            var queries = new List<(string taskId, string query)>();
+            foreach (string taskId in taskIds)
+            {
+                string range = defaultRange ?? _project.Variables["range"].Value;
+                string doFail = defaultDoFail ?? _project.Variables["doFail"].Value;
+                string failCondition = doFail != "True" ? "AND status NOT LIKE '%fail%'" : "";
+                string customConditionPart = "";
+                if (!string.IsNullOrEmpty(customCondition)) 
+                    customConditionPart = "\n	AND " + customCondition;
+
+                _project.ClmnAdd(taskId, tableName);
+
+                string query = $@"SELECT {Quote("id")} 
+                FROM {Quote(tableName)} 
+                WHERE {Quote("id")} in ({range}) {failCondition} 
+                AND {Quote("status")} NOT LIKE '%skip%' 
+                AND ({Quote(taskId)} < '{nowIso}' OR {Quote(taskId)} = ''){customConditionPart}";
+
+                queries.Add((taskId, query));
+            }
+
+            var result = queries
+                .OrderBy(x => DateTime.TryParseExact(x.taskId, "yyyy-MM-ddTHH:mm:ss.fffZ", 
+                    CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, 
+                    out DateTime parsed) ? parsed : DateTime.MinValue)
+                .Select(x => x.query)
+                .ToList();
+
+            return result;
+        }
+
+
+
         private void MakeAccList(List<string> dbQueries, bool log = false)
         {
 
@@ -878,6 +930,11 @@ namespace z3nCore
                     mapVars.Add(new Tuple<string, string>(v, v)); 
             return _project.ExecuteProject(pathZp, mapVars, true, true, true); 
         }
+        
+        
+        
+        
+        
         
     }
 }
