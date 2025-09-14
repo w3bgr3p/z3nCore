@@ -385,7 +385,26 @@ namespace z3nCore
             
         }
 
-        
-        
+        public static void InitProject(this IZennoPosterProjectModel project, string author = "w3bgr3p", string[] customQueries = null, bool log = false )
+        {
+            project._SAFU();
+            new Init(project, false).InitVariables(author); 
+            project.BuildNewDatabase();
+
+            project.TblPrepareDefault();
+            var allQueries = project.ToDoQueries();
+            
+            if (customQueries != null)
+                foreach(var query in customQueries) 
+                    allQueries.Add(query);
+
+            if (allQueries.Count > 0) 
+                project.MakeAccList(allQueries, log: true);
+            else 
+                project.L0g($"unsupported SQLFilter: [{project.Variables["wkMode"].Value}]",thr0w:true);
+
+            
+        }
+
     }
 }

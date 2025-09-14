@@ -96,6 +96,7 @@
     <Compile Include="Extensions\Utils.cs" />
     <None Include="HanaGarden.cs" />
     <Compile Include="GitHubApi.cs" />
+    <Compile Include="ProjectExtentions\Reporter.cs" />
     <Compile Include="ProjectExtentions\Rnd.cs" />
     <Compile Include="ProjectExtentions\Starter.cs" />
     <Compile Include="ProjectExtentions\Vars.cs" />
@@ -106,7 +107,6 @@
     <Compile Include="Sql\dSql.cs" />
     <Compile Include="Tools\Debug.cs" />
     <Compile Include="Tools\Helper.cs" />
-    <Compile Include="Tools\Reporter.cs" />
     <Compile Include="Tools\Snapper.cs" />
     <Compile Include="W3b\Rpc.cs" />
     <Compile Include="W3b\W3bLegacy.cs" />

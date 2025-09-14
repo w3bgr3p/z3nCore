@@ -18,7 +18,8 @@ namespace z3nCore
                 if (format == "unix") return ((long)((DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalMilliseconds)).ToString();   //Unix Epoch
                 else if (format == "iso") return DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"); // ISO 8601 
                 else if (format == "short") return DateTime.UtcNow.ToString("MM-ddTHH:mm");
-                throw new ArgumentException("Invalid format. Use 'unix' or 'iso'.");
+                else if (format == "utcToId") return (DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString();
+                throw new ArgumentException("Invalid format. Use: 'unix|iso|short|UtcNow'");
             }
         }
         public static string Cd(object input = null, string o = "iso")

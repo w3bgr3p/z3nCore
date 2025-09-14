@@ -22,17 +22,16 @@ namespace z3nCore
         public Init(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
             _project = project;
-            //_sql = new Sql(_project);
-            //_logShow = log;
+
             _logger = new Logger(project, log: log, classEmoji: "►");
             _instance = instance;
         }
         public Init(IZennoPosterProjectModel project, bool log = false)
         {
             _project = project;
-            //_logShow = log;
+
             _logger = new Logger(project, log: log, classEmoji: "►");
-            //_sql = new Sql(_project);
+
         }
         private void DisableLogs()
         {
@@ -79,41 +78,42 @@ namespace z3nCore
             DisableLogs();
             
             string fileName = System.IO.Path.GetFileName(_project.Variables["projectScript"].Value);
-
-            string sessionId = (DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString();
-            string projectName = fileName.Split('.')[0];
-            string version = Assembly.GetExecutingAssembly()
-               .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-               ?.InformationalVersion ?? "Unknown";
+            string sessionId = _project.SessionId();
+            string projectName = _project.ProjectName();
+            string projectTable = _project.ProjectTable();  
+            
             string dllTitle = Assembly.GetExecutingAssembly()
                 .GetCustomAttribute<AssemblyTitleAttribute>()
-                ?.Title ?? "Unknown";
-
+                ?.Title ?? "z3nCore";
             
-
-            _project.Variables["projectName"].Value = projectName;
-            _project.Variables["varSessionId"].Value = sessionId;
-            try { _project.Variables["nameSpace"].Value = dllTitle; } catch { }
-
             string[] vars = { "cfgAccRange", };
             CheckVariables(vars);
-
-            _project.Variables["projectTable"].Value = "__" + projectName;
-
+            
             _project.Range();
             SAFU.Initialize(_project);
             Logo(author, dllTitle, projectName);
 
         }
-        private void Logo(string author, string dllTitle, string projectName)
+        private void Logo(string author, string dllTitle , string projectName)
         {
-            string version = Assembly.GetExecutingAssembly()
-                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-                ?.InformationalVersion ?? "Unknown";
+            
+            //string currentProcessPath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+            //string processDir = Path.GetDirectoryName(currentProcessPath);
+            //string path_ExternalAssemblies = Path.Combine(processDir,"ExternalAssemblies");
+            //string path_dll = Path.Combine(path_ExternalAssemblies,$"{dllTitle}.dll");
+            //string DllVer = FileVersionInfo.GetVersionInfo(path_dll).FileVersion;
+            //string ZpVer = processDir.Split('\\')[5];
+            var v = Versions();
+            string DllVer = v[0];
+            string ZpVer = v[1];
+            
+            
+            
             if (author != "") author = $" script author: @{author}";
-            string logo = $@"using {dllTitle} v{version};
+            string logo = $@"using ZennoPoster v{ZpVer}; 
+             using {dllTitle} v{DllVer}
             ┌by─┐					
-            │    w3bgrep			
+            │    w3bgr3p;		
             └─→┘
                         ► init {projectName} ░ ▒ ▓ █  {author}";
             _project.SendInfoToLog(logo, true);
@@ -373,6 +373,19 @@ namespace z3nCore
 
         }
 
+        private string[] Versions()
+        {
+            string currentProcessPath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+            string processDir = Path.GetDirectoryName(currentProcessPath);
+
+            string path_ExternalAssemblies = Path.Combine(processDir,"ExternalAssemblies");
+            string path_dll = Path.Combine(path_ExternalAssemblies,"z3nCore.dll");
+            string DllVer = FileVersionInfo.GetVersionInfo(path_dll).FileVersion;
+            string ZpVer = processDir.Split('\\')[5];
+            
+            return new[] { DllVer, ZpVer };
+        }
+        
         public string LoadSocials(string requiredSocial)
         {
             if (_instance.BrowserType != BrowserType.Chromium) return "noBrowser";
@@ -454,6 +467,39 @@ namespace z3nCore
             _instance.CloseExtraTabs(true);
             return walletsToUse;
         }
+        public void InitProject( string author = "w3bgr3p", string[] customQueries = null, bool log = false )
+        {
+            //_project._SAFU();
+            _SAFU();
+            InitVariables(author);
+            _project.BuildNewDatabase();
 
+            _project.TblPrepareDefault(log:log);
+            var allQueries = _project.ToDoQueries();
+            
+            if (customQueries != null)
+                foreach(var query in customQueries) 
+                    allQueries.Add(query);
+
+            if (allQueries.Count > 0) 
+                _project.MakeAccList(allQueries, log: log);
+            else 
+                _logger.Send($"unsupported SQLFilter: [{_project.Variables["wkMode"].Value}]",thr0w:true);
+            
+        }
+
+        private void _SAFU()
+        {
+            string tempFilePath = _project.Path + "_SAFU.zp";
+            var mapVars = new List<Tuple<string, string>>();
+            mapVars.Add(new Tuple<string, string>("acc0", "acc0"));
+            mapVars.Add(new Tuple<string, string>("cfgPin", "cfgPin"));
+            mapVars.Add(new Tuple<string, string>("DBpstgrPass", "DBpstgrPass"));
+            try { _project.ExecuteProject(tempFilePath, mapVars, true, true, true); }
+            catch (Exception ex) { _project.SendWarningToLog(ex.Message); }
+            
+        }
+        
+        
     }
 }

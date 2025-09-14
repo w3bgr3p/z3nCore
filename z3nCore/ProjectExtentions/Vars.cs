@@ -99,6 +99,32 @@ namespace z3nCore
             return result;
         }
         
+        public static string ProjectName(this IZennoPosterProjectModel project)
+        {
+            string name = ProjectName(project.Variables["projectScript"].Value);
+            project.Var("projectName", name);
+            return name;
+        }
+        private static string ProjectName(string projectPath)
+        {
+            if (string.IsNullOrEmpty(projectPath)) throw new ArgumentNullException(nameof(projectPath));
+            return System.IO.Path.GetFileName(projectPath).Split('.')[0];
+        }
+        public static string ProjectTable(this IZennoPosterProjectModel project)
+        {
+            string table  = "__" + ProjectName(project);
+            project.Var("projectTable", table);
+            return table;
+        }
+        public static string SessionId(this IZennoPosterProjectModel project)
+        {
+            string sessionId =  Time.Now("utcToId");
+            project.Var("sessionId", sessionId);
+            return sessionId;
+        }
+
+
+        
     }
 
     public static class GVars
