@@ -13,17 +13,18 @@ using System.Diagnostics;
 using ZennoLab.InterfacesLibrary.Enums.Log;
 namespace z3nCore
 {
-    public class Init
+     public class Init
     {
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
         private readonly Logger _logger;
+        private readonly bool _showLog;
 
         public Init(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
             _project = project;
-
-            _logger = new Logger(project, log: log, classEmoji: "►");
+            _showLog = log;
+            _logger = new Logger(project, log: _showLog, classEmoji: "►");
             _instance = instance;
         }
         public Init(IZennoPosterProjectModel project, bool log = false)
@@ -269,41 +270,6 @@ namespace z3nCore
             
         }
         
-        private void PrepareInstance()
-        {
-            
-            var newBrowser = new Init(_project, _instance, false);
-            newBrowser.LaunchBrowser();
-            
-            int exCnt = 0;
-            string browserType = _instance.BrowserType.ToString();
-            bool browser = browserType == "Chromium";
-
-            SetInstance:
-            try 
-            {
-                if (browser && _project.Variables["acc0"].Value != "") //if browser					
-                    newBrowser.SetBrowser();	
-                else
-                    new NetHttp(_project, false).CheckProxy();
-            }
-            catch (Exception ex)
-            {
-                _instance.CloseAllTabs();
-                _project.L0g($"!W launchInstance Err {ex.Message}");
-                exCnt++;				
-                if (exCnt > 3 ) throw;
-                goto SetInstance;
-            }
-            _instance.CloseExtraTabs(true);
-
-            foreach(string task in 	_project.Variables["cfgToDo"].Value.Split(','))
-                _project.Lists["toDo"].Add(task.Trim());
-            
-            _project.L0g($"{browserType} started in {_project.Age<string>()} ");
-            _project.Var("varSessionId", (DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString());
-
-        }
         private void SetDisplay(string webGl)
         {
             if (!string.IsNullOrEmpty(webGl))
@@ -367,69 +333,6 @@ namespace z3nCore
         {
             return $"\"{name.Replace("\"", "\"\"")}\"";
         }
-        private List<string> ToDoQueriesOld(string toDo = null, string defaultRange = null, string defaultDoFail = null)
-        {
-            string tableName = _project.ProjectTable();
-
-            var nowIso = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
-
-            if (string.IsNullOrEmpty(toDo)) 
-                toDo = _project.Variables["cfgToDo"].Value;
-            
-            var toDoItems = new List<string>();
-
-            foreach (string task in toDo.Split(','))
-            { 
-                toDoItems.Add(task.Trim());
-            }
-            
-            
-            string customTask  = _project.Var("cfgCustomTask");
-            if (!string.IsNullOrEmpty(customTask))
-                toDoItems.Add(customTask);
-            
-
-            var allQueries = new List<(string TaskId, string Query)>();
-
-            foreach (string taskId in toDoItems)
-            {
-                string trimmedTaskId = taskId.Trim();
-                if (!string.IsNullOrWhiteSpace(trimmedTaskId))
-                {
-                    string range = defaultRange ?? _project.Variables["range"].Value;
-                    string doFail = defaultDoFail ?? _project.Variables["doFail"].Value;
-                    _project.ClmnAdd(trimmedTaskId,tableName);
-                    string failCondition = (doFail != "True" ? "AND status NOT LIKE '%fail%'" : "");
-                    string query = $@"SELECT {Quote("id")} 
-                        FROM {Quote(tableName)} 
-                        WHERE {Quote("id")} in ({range}) {failCondition} 
-                        AND {Quote("status")} NOT LIKE '%skip%' 
-                        AND ({Quote(trimmedTaskId)} < '{nowIso}' OR {Quote(trimmedTaskId)} = '')";
-                    allQueries.Add((trimmedTaskId, query));
-                }
-            }
-
-            return allQueries
-                .OrderBy(x =>
-                {
-                    if (string.IsNullOrEmpty(x.TaskId))
-                        return DateTime.MinValue;
-
-                    if (DateTime.TryParseExact(
-                            x.TaskId,
-                            "yyyy-MM-ddTHH:mm:ss.fffZ",
-                            CultureInfo.InvariantCulture,
-                            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-                            out DateTime parsed))
-                    {
-                        return parsed;
-                    }
-
-                    return DateTime.MinValue;
-                })
-                .Select(x => x.Query)
-                .ToList();
-        }
         
         private List<string> ToDoQueries(string toDo = null, string defaultRange = null, string defaultDoFail = null, string customCondition = null)
         {
@@ -476,13 +379,11 @@ namespace z3nCore
                     out DateTime parsed) ? parsed : DateTime.MinValue)
                 .Select(x => x.query)
                 .ToList();
-
+            
             return result;
         }
 
-
-
-        private void MakeAccList(List<string> dbQueries, bool log = false)
+        private void MakeAccList(List<string> dbQueries)
         {
 
             if (!string.IsNullOrEmpty(_project.Variables["acc0Forced"].Value))
@@ -499,7 +400,7 @@ namespace z3nCore
             {
                 try
                 {
-                    var accsByQuery = _project.DbQ(query,log:log).Trim();
+                    var accsByQuery = _project.DbQ(query,log:_showLog).Trim();
                     if (!string.IsNullOrWhiteSpace(accsByQuery))
                     {
                         var accounts = accsByQuery.Split('\n').Select(x => x.Trim().TrimStart(','));
@@ -515,13 +416,13 @@ namespace z3nCore
             if (allAccounts.Count == 0)
             {
                 _project.Variables["noAccsToDo"].Value = "True";
-                _logger.Send($"♻ noAccountsAvailable by queries [{string.Join(" | ", dbQueries)}]");
+                _logger.Send($"♻ noAccountsAvailable by {dbQueries.Count} querie(s)");
                 return;
             }
-            _logger.Send($"Initial availableAccounts: [{string.Join(", ", allAccounts)}]");
-            FilterAccList( allAccounts, log);
+            _logger.Send($"Initial accounts: [{string.Join(", ", allAccounts)}]");
+            FilterAccList( allAccounts);
         }
-        private void FilterAccList(HashSet<string> allAccounts,bool log=false)
+        private void FilterAccList(HashSet<string> allAccounts)
         {
             var reqSocials = _project.Var("requiredSocial");
 
@@ -533,7 +434,7 @@ namespace z3nCore
                 foreach (string social in demanded)
                 {
                     string tableName = $"projects_{social.Trim().ToLower()}";
-                    var notOK = _project.SqlGet($"id", tableName, log: log, where: "status LIKE '%suspended%' OR status LIKE '%restricted%' OR status LIKE '%ban%' OR status LIKE '%CAPTCHA%' OR status LIKE '%applyed%' OR status LIKE '%Verify%'")
+                    var notOK = _project.SqlGet($"id", tableName, log: _showLog, where: "status LIKE '%suspended%' OR status LIKE '%restricted%' OR status LIKE '%ban%' OR status LIKE '%CAPTCHA%' OR status LIKE '%applyed%' OR status LIKE '%Verify%'")
                         .Split('\n')
                         .Select(x => x.Trim())
                         .Where(x => !string.IsNullOrEmpty(x));
@@ -815,7 +716,7 @@ namespace z3nCore
                     allQueries.Add(query);
 
             if (allQueries.Count > 0) 
-                MakeAccList(allQueries, log: log);
+                MakeAccList(allQueries);
             else 
                 _logger.Send($"unsupported SQLFilter: [{_project.Variables["wkMode"].Value}]",thr0w:true);
             
@@ -872,6 +773,41 @@ namespace z3nCore
             _project.GSet(force:true);
 
         }
+        
+        public void PrepareInstance()
+        {
+            
+            LaunchBrowser();
+            
+            int exCnt = 0;
+            string browserType = _instance.BrowserType.ToString();
+            bool browser = browserType == "Chromium";
+
+            SetInstance:
+            try 
+            {
+                if (browser && _project.Variables["acc0"].Value != "") //if browser					
+                    SetBrowser();	
+                else
+                    new NetHttp(_project, false).CheckProxy();
+            }
+            catch (Exception ex)
+            {
+                _instance.CloseAllTabs();
+                _project.L0g($"!W launchInstance Err {ex.Message}");
+                exCnt++;				
+                if (exCnt > 3 ) throw;
+                goto SetInstance;
+            }
+            _instance.CloseExtraTabs(true);
+
+            foreach(string task in 	_project.Variables["cfgToDo"].Value.Split(','))
+                _project.Lists["toDo"].Add(task.Trim());
+            
+            _logger.Send($"{browserType} started in {_project.Age<string>()} ");
+
+        }
+        
         public bool RunProject(List<string> additionalVars = null, bool add = true )
         {
             string pathZp = _project.Var("projectScript");
@@ -930,10 +866,6 @@ namespace z3nCore
                     mapVars.Add(new Tuple<string, string>(v, v)); 
             return _project.ExecuteProject(pathZp, mapVars, true, true, true); 
         }
-        
-        
-        
-        
         
         
     }

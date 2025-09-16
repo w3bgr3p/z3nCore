@@ -3,8 +3,6 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 using ZennoLab.CommandCenter;
 
@@ -15,7 +13,7 @@ namespace z3nCore
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
         private readonly Logger _logger;
-        protected readonly Sql _sql;
+        
         private readonly object LockObject = new object();
 
         public Cookies(IZennoPosterProjectModel project, Instance instance, bool log = false)
@@ -23,7 +21,6 @@ namespace z3nCore
 
             _project = project;
             _instance = instance;
-            _sql = new Sql(_project);
             _logger = new Logger(project, log: log, classEmoji: "🍪");
 
         }

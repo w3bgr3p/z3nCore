@@ -117,7 +117,6 @@ namespace z3nCore.Api
         {
             string systemContent = "You are a web3 developer. Optimize the following code. Return only the optimized code. Do not add explanations, comments, or formatting. Output code only, in plain text.";
             return Query(systemContent, content,log:log);
-
         }
 
         public string GoogleAppeal(bool log = false)

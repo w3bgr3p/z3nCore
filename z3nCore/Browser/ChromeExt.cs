@@ -127,11 +127,7 @@ namespace z3nCore
         {
             if (ExtToRemove != null && ExtToRemove.Length > 0)
                 foreach (string ext in ExtToRemove)
-                    Rm(ext);
-        }
-        public void Rm(string ExtToRemove)
-        {
-            try { _instance.UninstallExtension(ExtToRemove); } catch { }
+                    try { _instance.UninstallExtension(ext); } catch { }
         }
         
     }

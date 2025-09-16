@@ -540,8 +540,8 @@ namespace z3nCore
             try
             {
                 email = email.ToLower();
-                var emails = _project.SqlGet("gmail, icloud, firstmail", "_mail").ToLower();
-                var address = _sql.Address("evm_pk").ToLower();
+                var emails = _project.DbGet("gmail, icloud, firstmail", "_mail").ToLower();
+                var address = _project.DbGet("evm_pk","_addresses").ToLower();
                 var toFill = _project.Lists["editSecurity"];
                 toFill.Clear();
 

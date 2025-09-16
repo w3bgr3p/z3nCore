@@ -1,4 +1,5 @@
 ﻿
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading;
 using ZennoLab.CommandCenter;
@@ -13,7 +14,6 @@ namespace z3nCore
         private readonly Logger _logger;
 
         public BrowserScan(IZennoPosterProjectModel project, Instance instance, bool log = false)
-
         {
             _project = project;
             _instance = instance;
@@ -23,15 +23,15 @@ namespace z3nCore
         private void AddTable()
         {
             var sql = new Sql(_project);
-            string[] columns = { "score", "webgl", "webglreport", "unmaskedrenderer", "audio", "clientRects", "WebGPUReport", "Fonts", "TimeZoneBasedonIP", "TimeFromIP" };
+            var columns = new List<string> { "score", "webgl", "webglreport", "unmaskedrenderer", "audio", "clientRects", "WebGPUReport", "Fonts", "TimeZoneBasedonIP", "TimeFromIP" };
 
-            var tableStructure = sql.TblMapForProject(columns);
-            var tblName = "public_browser";
-
-            sql.TblAdd(tblName, tableStructure);
-            sql.ClmnAdd(tblName, tableStructure);
-            sql.ClmnPrune(tblName, tableStructure);
-            sql.AddRange(tblName);
+            var tableStructure = _project.TblForProject(columns);
+            var tblName = "_browserscan";
+            
+            _project.TblAdd(tableStructure,tblName);
+            _project.ClmnAdd(tableStructure,tblName);
+            _project.ClmnPrune(tableStructure,tblName);
+            _project.AddRange(tblName);
         }
 
         private void LoadStats()
@@ -55,7 +55,7 @@ namespace z3nCore
             AddTable();
             var _sql = new Sql(_project);
             var toParse = "WebGL,WebGLReport, Audio, ClientRects, WebGPUReport,Fonts,TimeZoneBasedonIP,TimeFromIP";
-            var tableName = "public_browser";
+            var tableName = "_browserscan";
             string timezoneOffset = "";
             string timezoneName = "";
 

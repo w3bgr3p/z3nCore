@@ -51,7 +51,7 @@ namespace z3nCore
             aes.Clear();
             return Encoding.UTF8.GetString(resultArray);
         }
-        internal static string ByteArrayToHexString(byte[] inputArray)
+        private static string ByteArrayToHexString(byte[] inputArray)
         {
             if (inputArray == null)
                 return null;
@@ -60,7 +60,7 @@ namespace z3nCore
                 o.Append(inputArray[i].ToString("X2"));
             return o.ToString();
         }
-        internal static byte[] HexStringToByteArray(string inputString)
+        private static byte[] HexStringToByteArray(string inputString)
         {
             if (inputString == null)
                 return null;

@@ -59,35 +59,7 @@ namespace z3nCore
             //_project.L0g(toLog);
         }
 
-        //public string TblName(string tableName, bool name = true)
-        //{
-        //    if (string.IsNullOrEmpty(tableName)) tableName = _project.Var("projectTable");
-        //    string schemaName = "projects";
-        //    if (_dbMode == "PostgreSQL")
-        //    {
-        //        if (tableName.Contains("."))
-        //        {
-        //            schemaName = tableName.Split('.')[0];
-        //            tableName = tableName.Split('.')[1];
-        //        }
-        //        else if (tableName.Contains("_"))
-        //        {
-        //            schemaName = tableName.Split('_')[0];
-        //            tableName = tableName.Split('_')[1];
-        //        }
 
-        //    }
-        //    else if (_dbMode == "SQLite")
-        //    {
-        //        if (tableName.Contains(".")) tableName = tableName.Replace(".", "_");
-        //    }
-
-        //    _tableName = tableName;
-        //    _schemaName = schemaName;
-
-        //    if (name) return tableName;
-        //    else return schemaName;
-        //}
         private string QuoteColumnNames(string updateString)
         {
             var parts = updateString.Split(',').Select(p => p.Trim()).ToList();
@@ -113,6 +85,8 @@ namespace z3nCore
 
         public string DbQ(string query, bool log = false, bool throwOnEx = false)
         {
+            _project.ObsoleteCode("project.DbQ");
+            
             string dbMode = _project.Variables["DBmode"].Value;
             string result = null;
 
@@ -192,7 +166,7 @@ namespace z3nCore
 
         public void Upd(string toUpd, string tableName = null, bool log = false, bool throwOnEx = false, bool last = true, string key = "id", object acc = null, string where = "")
         {
-
+            _project.ObsoleteCode("project.DbUpd");
             string[] keywords = { "blockchain", "browser", "cex_deps", "native", "profile", "settings" };
             if (keywords.Any(keyword => _tableName.Contains(keyword))) last = false;
 
@@ -255,7 +229,7 @@ namespace z3nCore
 
         public string Get(string toGet, string tableName = null, bool log = false, bool throwOnEx = false, string key = "id", string acc = null, string where = "")
         {
-
+            _project.ObsoleteCode("project.DbGet");
             if (string.IsNullOrWhiteSpace(toGet))
                 throw new ArgumentException("Column names cannot be null or empty", nameof(toGet));
 

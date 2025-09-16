@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
@@ -89,8 +88,7 @@ namespace z3nCore
                 _logger.Send($"[{url}] not found in traffic");
             }
         }
-
-
+        
         public Dictionary<string, string> Get(string url, bool reload = false,int deadline = 10)
         {
             _project.Deadline();
@@ -149,7 +147,6 @@ namespace z3nCore
             }
             return headers[headerToGet.ToLower()];
         }
-
         public string GetParam(string url, string parametr, bool reload = false, int deadline = 10)
         {
             _project.Deadline();
@@ -200,24 +197,7 @@ namespace z3nCore
             }
             goto get;
         }
-
-
-
+        
     }
 
-    public static class Traf
-    {
-        public static string Trfk(this IZennoPosterProjectModel project, Instance instance, string url, string parametr = "ResponseBody", bool reload = false)
-        {
-            try
-            {
-                return new Traffic(project, instance).Get(url, parametr);
-            }
-            catch (Exception e)
-            {
-                project.SendWarningToLog(e.Message);
-                throw;
-            }
-        }
-    }
 }

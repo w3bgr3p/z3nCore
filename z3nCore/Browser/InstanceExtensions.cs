@@ -20,6 +20,12 @@ namespace z3nCore
         private static readonly object ClipboardLock = new object();
         private static readonly SemaphoreSlim ClipboardSemaphore = new SemaphoreSlim(1, 1);
         private static readonly object LockObject = new object();
+        
+        private class ElementNotFoundException : Exception
+        {
+            public ElementNotFoundException(string message) : base(message) { }
+        }
+        
         public static HtmlElement GetHe(this Instance instance, object obj, string method = "")
         {
 
@@ -126,7 +132,7 @@ namespace z3nCore
                     }
                     else if (thr0w)
                     {
-                        throw new TimeoutException($"{comment} not found in {deadline}s: {lastExceptionMessage}");
+                        throw new ElementNotFoundException($"{comment} not found in {deadline}s: {lastExceptionMessage}");
                     }
                     else
                     {
@@ -168,6 +174,65 @@ namespace z3nCore
                 Thread.Sleep(500);
             }
         }
+        public static string HeGet(this Instance instance, IZennoPosterProjectModel project , object obj, string method = "", int deadline = 10, string atr = "innertext", int delay = 1, bool Throw = true)
+        {
+            DateTime functionStart = DateTime.Now;
+            string lastExceptionMessage = "";
+
+            while (true)
+            {
+                if ((DateTime.Now - functionStart).TotalSeconds > deadline)
+                {
+                    if (method == "!")
+                    {
+                        return null;
+                    }
+                    else if (Throw)
+                    {
+                        project.SendWarningToLog(lastExceptionMessage);
+                        throw new ElementNotFoundException($"! NotFound in {deadline}s: {lastExceptionMessage}");
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+
+                try
+                {
+                    HtmlElement he = instance.GetHe(obj, method);
+                    if (method == "!")
+                    {
+                        throw new Exception($"element detected when it should not be: {atr}='{he.GetAttribute(atr)}'");
+                    }
+                    else
+                    {
+                        Thread.Sleep(delay * 1000);
+                        return he.GetAttribute(atr);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lastExceptionMessage = ex.Message;
+                    if (method == "!" && ex.Message.Contains("no element by"))
+                    {
+                        // Элемент не найден — это нормально, продолжаем ждать
+                    }
+                    else if (method != "!")
+                    {
+                        // Обычное поведение: элемент не найден, записываем ошибку и ждём
+                    }
+                    else
+                    {
+                        // Неожиданная ошибка при method = "!", пробрасываем её
+                        throw;
+                    }
+                }
+
+                Thread.Sleep(500);
+            }
+        }
+   
         public static void HeClick(this Instance instance, object obj, string method = "", int deadline = 10, int delay = 1, string comment = "", bool thr0w = true, int emu = 0)
         {
             bool emuSnap = instance.UseFullMouseEmulation;
@@ -336,6 +401,8 @@ namespace z3nCore
         //cf
         public static void ClFlv2(this Instance instance)
         {
+            //!!!OLD METHOD WILL BE DEPRECATED SOON!!! use "instance.CFSolve" instead 
+            
             Random rnd = new Random(); string strX = ""; string strY = ""; Thread.Sleep(3000);
             HtmlElement he1 = instance.ActiveTab.FindElementById("cf-turnstile");
             HtmlElement he2 = instance.ActiveTab.FindElementByAttribute("div", "outerhtml", "<div><input type=\"hidden\" name=\"cf-turnstile-response\"", "regexp", 4);
@@ -359,6 +426,7 @@ namespace z3nCore
         }
         public static string ClFl(this Instance instance, int deadline = 60, bool strict = false)
         {
+            //!!!OLD METHOD WILL BE DEPRECATED SOON!!! use "instance.CFToken" instead 
             DateTime timeout = DateTime.Now.AddSeconds(deadline);
             while (true)
             {
