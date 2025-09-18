@@ -155,33 +155,15 @@ namespace z3nCore
         {
             string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
             string localModule = project.Var("captchaModule");
-            string globalVar = "CAPTCHA_" + project.ProjectName();
-            string gModule = string.Empty;
-            lock (LockObject)
-            {
-                try
-                {
-                    try
-                    {
-                        gModule = project.GlobalVariables[nameSpase, globalVar].Value;
-                        
-                    }
-                    catch
-                    {
-                        if (string.IsNullOrEmpty(gModule)) 
-                            throw new Exception("captchaModule not set globally and empty in settings");
-                        project.GlobalVariables.SetVariable(nameSpase, globalVar, gModule);
-                    }
-                    if (string.IsNullOrEmpty(gModule)) 
-                        throw new Exception("captchaModule not set");
-                    return gModule;
-                }
-                catch (Exception ex)
-                {
-                    project.SendWarningToLog($"⚙ GSet: {ex.Message}");
-                    throw;
-                }
-            }
+
+            if (!string.IsNullOrEmpty(localModule))
+                project.GVar("captcha",localModule);
+
+            else localModule = project.GVar("capcha");
+
+            if (string.IsNullOrEmpty(localModule))
+                throw new Exception ("captchModule not set");
+            return localModule;
         }
         
     }

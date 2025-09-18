@@ -81,8 +81,8 @@ namespace z3nCore
             string fileName = System.IO.Path.GetFileName(_project.Variables["projectScript"].Value);
             string sessionId = _project.SessionId();
             string projectName = _project.ProjectName();
-            string projectTable = _project.ProjectTable();  
-            
+            string projectTable = _project.ProjectTable();
+            if (_project.Var("captchaModule") == "") _project.CaptchaModule();
             string dllTitle = Assembly.GetExecutingAssembly()
                 .GetCustomAttribute<AssemblyTitleAttribute>()
                 ?.Title ?? "z3nCore";
