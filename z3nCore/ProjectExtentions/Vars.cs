@@ -98,31 +98,7 @@ namespace z3nCore
                 try { project.Var(varRslt, $"{result}"); } catch { }
             return result;
         }
-        /*
-        public static string ProjectName(this IZennoPosterProjectModel project)
-        {
-            string name = ProjectName(project.Variables["projectScript"].Value);
-            project.Var("projectName", name);
-            return name;
-        }
-        private static string ProjectName(string projectPath)
-        {
-            if (string.IsNullOrEmpty(projectPath)) throw new ArgumentNullException(nameof(projectPath));
-            return System.IO.Path.GetFileName(projectPath).Split('.')[0];
-        }
-        public static string ProjectTable(this IZennoPosterProjectModel project)
-        {
-            string table  = "__" + ProjectName(project);
-            project.Var("projectTable", table);
-            return table;
-        }
-        public static string SessionId(this IZennoPosterProjectModel project)
-        {
-            string sessionId =  Time.Now("utcToId");
-            project.Var("sessionId", sessionId);
-            return sessionId;
-        }
-        */
+        
     }
 
     public static class Constantas
@@ -130,7 +106,10 @@ namespace z3nCore
         private static readonly object LockObject = new object();
         public static string ProjectName(this IZennoPosterProjectModel project)
         {
+            var path = project.Var("projectScript");
+            if (string.IsNullOrEmpty(path)) throw new Exception("projectScript no definded");
             string name = ProjectName(project.Variables["projectScript"].Value);
+             
             project.Var("projectName", name);
             return name;
         }
@@ -159,10 +138,10 @@ namespace z3nCore
             if (!string.IsNullOrEmpty(localModule))
                 project.GVar("captcha",localModule);
 
-            else localModule = project.GVar("capcha");
+            else localModule = project.GVar("captcha");
 
             if (string.IsNullOrEmpty(localModule))
-                throw new Exception ("captchModule not set");
+                throw new Exception ("captchaModule not set");
             return localModule;
         }
         
