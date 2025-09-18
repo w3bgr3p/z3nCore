@@ -12,47 +12,30 @@ using Newtonsoft.Json;
 
 namespace z3nCore
 {
-    public class OKXApi
+    public class OkxApi
     {
         private readonly IZennoPosterProjectModel _project;
-        private readonly string[] _apiKeys;
-        private readonly Sql _sql;
-
-        private readonly bool _logShow;
-        private readonly string _apiKey;
-        private readonly string _secretKey;
-        private readonly string _passphrase;
-        public OKXApi(IZennoPosterProjectModel project, bool log = false)
+        private readonly Logger _logger;
+        private string _apiKey;
+        private string _secretKey;
+        private string _passphrase;
+        public OkxApi(IZennoPosterProjectModel project, bool log = false)
         {
             _project = project;
-            _sql = new Sql(_project);
-            _logShow = log;
-            _apiKeys = OkxKeys();
-            _apiKey = _apiKeys[0];
-            _secretKey = _apiKeys[1];
-            _passphrase = _apiKeys[2];
+            _logger = new Logger(project, log: log, classEmoji: "OKX");
+            LoadKeys();
+
         }
-        public void CexLog(string toSend = "", [CallerMemberName] string callerName = "", bool log = false)
+        private void LoadKeys()
         {
-            if (!_logShow && !log) return;
-            var stackFrame = new System.Diagnostics.StackFrame(1);
-            var callingMethod = stackFrame.GetMethod();
-            if (callingMethod == null || callingMethod.DeclaringType == null || callingMethod.DeclaringType.FullName.Contains("Zenno")) callerName = "null";
-            _project.L0g($"[ 💸  {callerName}] {toSend} ");
-        }
-        public string[] OkxKeys()
-        {
-            string table = (_project.Variables["DBmode"].Value == "PostgreSQL" ? $"accounts." : null) + "settings";
-            _sql.DbQ($"SELECT value FROM {table} WHERE var = 'okx_apikey';");
-            var key = _sql.DbQ($"SELECT value FROM {table} WHERE var = 'okx_apikey';");
-            var secret = _sql.DbQ($"SELECT value FROM {table} WHERE var = 'okx_secret';");
-            var passphrase = _sql.DbQ($"SELECT value FROM {table} WHERE var = 'okx_passphrase';");
-            string[] result = new string[] { key, secret, passphrase };
-            return result;
+            var creds = _project.DbGet("apikey, apisecret, passphrase", "_api", where: "id = 'okx'").Split('|');
+            _apiKey = creds[0];
+            _secretKey = creds[1];
+            _passphrase = creds[2];
         }
         private string MapNetwork(string chain, bool log)
         {
-            CexLog("Mapping network: " + chain, log:log);
+            _logger.Send("Mapping network: " + chain);
             //if (log) Loggers.l0g(_project, "Mapping network: " + chain);
             chain = chain.ToLower();
             switch (chain)
@@ -68,7 +51,7 @@ namespace z3nCore
                 case "zksync": return "zkSync Era";
                 case "aptos": return "Aptos";
                 default:
-                    CexLog("Unsupported network: " + chain, log: log);
+                    _logger.Send("Unsupported network: " + chain);
                     throw new ArgumentException("Unsupported network: " + chain);
             }
         }
@@ -146,7 +129,7 @@ namespace z3nCore
                 null);
             
             _project.Json.FromString(result);
-            CexLog($"json received: [{result}]");
+            _logger.Send($"json received: [{result}]");
             return result;
         }
         private string OKXGet(string url, string proxy = null, bool log = false)
@@ -204,7 +187,7 @@ namespace z3nCore
                 false,
                 null);
 
-            CexLog($"json received: [{result}]");
+            _logger.Send($"json received: [{result}]");
             _project.Json.FromString(result);
             return result;
         }
@@ -229,7 +212,7 @@ namespace z3nCore
                         string subAcct = item.subAcct;                   // "subName"
                         string label = item.label;
                         subsList.Add($"{subAcct}");
-                        CexLog($"found: {subAcct}:{label}");
+                        _logger.Send($"found: {subAcct}:{label}");
                     }
                 }
 
@@ -256,7 +239,7 @@ namespace z3nCore
                         string ccy = item.ccy;                   // "EGLD"
                         string maxWd = item.maxWd;               // "0.22193226"
                         balanceList.Add($"{ccy}:{maxWd}");
-                        CexLog($"Currency: {ccy}, Max Withdrawal: {maxWd}");
+                        _logger.Send($"Currency: {ccy}, Max Withdrawal: {maxWd}");
                     }
                 }
             }
@@ -282,7 +265,7 @@ namespace z3nCore
                         string adjEq = item.adjEq;                   // "EGLD"
 
                         balanceList.Add($"{adjEq}");
-                        CexLog($"adjEq: {adjEq}");
+                        _logger.Send($"adjEq: {adjEq}");
                     }
                 }
             }
@@ -308,7 +291,7 @@ namespace z3nCore
                         string ccy = item.ccy;
                         string availBal = item.availBal;                    // "EGLD"
                         balanceList.Add($"{ccy}:{availBal}");
-                        CexLog($"{ccy}:{availBal}");
+                        _logger.Send($"{ccy}:{availBal}");
                         //Loggers.l0g(_project, $"{ccy}:{availBal}");
                     }
                 }
@@ -344,7 +327,7 @@ namespace z3nCore
                         }
                         catch
                         {
-                            CexLog($"!W failed to add [{maxWd}]$[{ccy}] from [{sub}] to main");
+                            _logger.Send($"!W failed to add [{maxWd}]$[{ccy}] from [{sub}] to main");
                         }
                 }
 
@@ -365,7 +348,7 @@ namespace z3nCore
                         }
                         catch
                         {
-                            CexLog($"!W failed to add [{maxWd}]$[{ccy}] from [{sub}] to main");
+                            _logger.Send($"!W failed to add [{maxWd}]$[{ccy}] from [{sub}] to main");
                         }
                 }
             }
@@ -386,7 +369,7 @@ namespace z3nCore
                 toAddr = toAddress
             };
             var jsonResponse = OKXPost("/api/v5/asset/withdrawal", body, proxy, log);
-            CexLog($"raw response: {jsonResponse}");
+            _logger.Send($"raw response: {jsonResponse}");
 
             var response = JsonConvert.DeserializeObject<dynamic>(jsonResponse);
             string msg = response.msg;
@@ -395,7 +378,7 @@ namespace z3nCore
             if (code != "0") throw new Exception($"Err [{code}]; Сообщение [{msg}]");
             else
             {
-                CexLog($"Refueled {toAddress} for {amount} `b");
+                _logger.Send($"Refueled {toAddress} for {amount} `b");
             }
             _project.Json.FromString(jsonResponse);
         }
@@ -416,7 +399,7 @@ namespace z3nCore
             };
             var jsonResponse = OKXPost("/api/v5/asset/transfer", body, proxy, log);
 
-            CexLog($"raw response: {jsonResponse}");
+            _logger.Send($"raw response: {jsonResponse}");
 
             var response = JsonConvert.DeserializeObject<dynamic>(jsonResponse);
             string msg = response.msg;
@@ -425,7 +408,7 @@ namespace z3nCore
             if (code != "0") throw new Exception("Err [{code}]; Сообщение [{msg}] amt:[{strAmount}] ccy:[{currency}]");
             else
             {
-                CexLog($"raw response: {jsonResponse}");
+                _logger.Send($"raw response: {jsonResponse}");
             }
 
         }
@@ -438,7 +421,7 @@ namespace z3nCore
             };
             var jsonResponse = OKXPost("/api/v5/users/subaccount/create-subaccount", body, proxy, log);
 
-            CexLog($"raw response: {jsonResponse}");
+            _logger.Send($"raw response: {jsonResponse}");
 
             var response = JsonConvert.DeserializeObject<dynamic>(jsonResponse);
             string msg = response.msg;
@@ -447,7 +430,7 @@ namespace z3nCore
             if (code != "0") throw new Exception($"Err [{code}]; Сообщение [{msg}]");
             else
             {
-                CexLog($"raw response: {jsonResponse}");
+                _logger.Send($"raw response: {jsonResponse}");
             }
 
         }
@@ -550,7 +533,7 @@ namespace z3nCore
                         if (!string.IsNullOrEmpty(lastPrice))
                         {
                             last = lastPrice;
-                            CexLog($"{pair}:{lastPrice}");
+                            _logger.Send($"{pair}:{lastPrice}");
                             break;
                         }
                     }

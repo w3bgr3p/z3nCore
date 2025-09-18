@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using ZennoLab.CommandCenter;
@@ -126,6 +125,7 @@ namespace z3nCore
                 case "zksync": return "ZkSync";
                 case "aptos": return "APT";
                 default:
+                    return chain.ToUpper();
                     throw new ArgumentException("Unsupported network: " + chain);
             }
         }

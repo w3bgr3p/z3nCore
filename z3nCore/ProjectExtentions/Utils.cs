@@ -22,67 +22,7 @@ namespace z3nCore
         {
             new Logger(project).Send(toLog, show: show, thr0w: thr0w, toZp: toZp);
         }
-        public static string[] GetErr(this IZennoPosterProjectModel project, Instance instance, bool log = false)
-        {
-            var error = project?.GetLastError();
-            if (error == null) return null;
-
-            string actionId = error.ActionId.ToString() ?? "noActionId";
-            string actionComment = error.ActionComment ??"noActionComment";
-
-            string type = "";
-            string msg = "";
-            string stackTrace = "";
-            string innerMsg = "";
-
-            try {
-	            var exception = error.Exception;
-	            var typeEx = exception.GetType();
-	            type = typeEx?.Name ?? "Unknown";
-	            msg = exception.Message ?? string.Empty;
-	            stackTrace = exception.StackTrace ?? string.Empty;
-	            stackTrace = stackTrace.Split(new[] { 'в' }, StringSplitOptions.None).Skip(1).FirstOrDefault()?.Trim() ?? string.Empty;
-	            innerMsg = exception.InnerException?.Message ?? string.Empty;
-            }
-            catch (Exception ex)
-            {
-	            project.SendWarningToLog(ex.Message);
-            }
-            
-            string toLog = $"{actionId}: {actionComment}\n{type}\n{msg}\n{stackTrace}\n{innerMsg}".Trim();
-            if (log) project?.SendWarningToLog(toLog);
-
-            string failReport = $"⛔️\\#fail  \\#{project?.Var("projectScript")?.EscapeMarkdown() ?? "Unknown"} \\#{project?.Variables?["acc0"]?.Value ?? "Unknown"} \n" +
-                               $"Error: `{actionId.EscapeMarkdown()}` \n" +
-                               $"Type: `{type.EscapeMarkdown()}` \n" +
-                               $"Msg: `{msg.EscapeMarkdown()}` \n" +
-                               $"Trace: `{stackTrace.EscapeMarkdown()}` \n";
-            if (!string.IsNullOrEmpty(innerMsg))
-                failReport += $"Inner: `{innerMsg.EscapeMarkdown()}` \n";
-
-
-            var browser = string.Empty;
-            try { browser = instance.BrowserType.ToString(); } catch { }
-            if (browser == "Chromium") failReport += $"Page: `{instance.ActiveTab?.URL?.EscapeMarkdown() ?? "Unknown"}`";
-
-
-
-            if (project?.Variables?["failReport"] != null)
-                project.Variables["failReport"].Value = failReport;
-
-            try
-            {
-                string path = $"{project?.Path ?? ""}.failed\\{project?.Variables?["projectName"]?.Value ?? "Unknown"}\\{project?.Name ?? "Unknown"} • {project?.Variables?["acc0"]?.Value ?? "Unknown"} • [{project?.LastExecutedActionId ?? "Unknown"} - {actionId}].jpg";
-                project?.SendInfoToLog(path);
-	            ZennoPoster.ImageProcessingResizeFromScreenshot(instance?.Port ?? 0, path, 50, 50, "percent", true, false);
-            }
-            catch (Exception e)
-            {
-                if (log) project?.SendInfoToLog(e.Message ?? "Error during screenshot processing");
-            }
-
-            return new string[] { actionId, type, msg, stackTrace, innerMsg };
-        }
+        
         public static int Range(this IZennoPosterProjectModel project, string accRange = null, string output = null, bool log = false)
         {
             if (string.IsNullOrEmpty(accRange)) accRange = project.Variables["cfgAccRange"].Value;
@@ -147,17 +87,14 @@ namespace z3nCore
             if (browser == "Chromium" && !string.IsNullOrEmpty(project.Var("acc0")) && string.IsNullOrEmpty(project.Var("accRnd")))
                 new Cookies(project, instance).Save("all", project.Var("pathCookies"));
             
-            project.GSet("");
+            project.GSetAcc("");
             project.Var("acc0", "");
         }
-
-        public static string ReplaceCreds(this IZennoPosterProjectModel project, string social)
+        
+        public static void WaitTx(this IZennoPosterProjectModel project, string rpc = null, string hash = null, int deadline = 60, string proxy = "", bool log = false, bool extended = false)
         {
-            return new  FS(project).GetNewCreds(social);   
-        }
-        public static void WaitTx(this IZennoPosterProjectModel project, string rpc = null, string hash = null, int deadline = 60, string proxy = "", bool log = false)
-        {
-            //new W3b(project, log: log).WaitTx(rpc, hash, deadline);
+            project.ObsoleteCode("W3bTools.WaitTx");
+            W3bTools.WaitTx(rpc, hash, deadline, extended: extended);
             return;
         }
 

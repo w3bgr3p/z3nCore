@@ -7,7 +7,7 @@ using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
+
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
@@ -27,12 +27,12 @@ namespace z3nCore
             _logger = new Logger(project, log: log, classEmoji: "↑↓");
         }
 
-        protected void Log(string message, [CallerMemberName] string callerName = "", bool forceLog = false)
+        private void Log(string message, [CallerMemberName] string callerName = "", bool forceLog = false)
         {
             if (!_logShow && !forceLog) return;
             _logger.Send($"({callerName}) [{message}]");
         }
-        protected void ParseJson(string json)
+        private void ParseJson(string json)
         {
             try
             {
@@ -43,7 +43,7 @@ namespace z3nCore
                 _logger.Send($"[!W {ex.Message}] [{json}]");
             }
         }
-        public WebProxy ParseProxy(string proxyString, [CallerMemberName] string callerName = "")
+        private WebProxy ParseProxy(string proxyString, [CallerMemberName] string callerName = "")
         {
             if (string.IsNullOrEmpty(proxyString))
             {

@@ -99,11 +99,11 @@ namespace z3nCore
             {
                 case "project":
                     cookies = Get(".").Replace("'", "''").Trim(); ;
-                    new Sql(_project).Upd($"cookies = '{cookies}'");
+                    _project.DbUpd($"cookies = '{cookies}'");
                     return;
                 case "all":
                     cookies = Get().Replace("'", "''").Trim();
-                    new Sql(_project).Upd($"cookies = '{cookies}'", "_instance");
+                    _project.DbUpd($"cookies = '{cookies}'", "_instance");
                     if (!string.IsNullOrEmpty(jsonPath)) 
                         lock (LockObject) { File.WriteAllText(jsonPath, cookies); }
                     return;

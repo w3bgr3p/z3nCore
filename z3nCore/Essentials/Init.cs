@@ -595,20 +595,18 @@ namespace z3nCore
 
             if (_project.Var("wkMode") == "NewRandom") //DeadSouls
             {
-                string toSet = new Sql(_project).GetRandom("proxy, webgl","private_profile",log:false, acc:true);
+                string toSet = _project.DbGetRandom("proxy, webgl","_instance",log:false, acc:true);
                 string acc0 = toSet.Split('|')[0];
                 _project.Var("accRnd", Rnd.RndHexString(64));
                 _project.Var("acc0", acc0);
                 _project.Var("pathProfileFolder",Path.Combine(_project.Var("profiles_folder") , "accounts", "profilesFolder" , _project.Var("accRnd")));
             }
             
-
             if (_project.Var("wkMode") == "UpdateToken") //UpdateToken
             {
-                string toSet = new Sql(_project).GetRandom("token",log:true, acc:true, invert:true);
+                string toSet = _project.DbGetRandom("token",log:true, acc:true, invert:true);
                 string acc0 = toSet.Split('|')[0];
                 _project.Var("acc0", acc0);
-                
             }
             
             if (string.IsNullOrEmpty(_project.Var("acc0"))) //Default
@@ -728,7 +726,7 @@ namespace z3nCore
 
             if (forced){
                 _project.Var("acc0",_project.Var("acc0Forced"));
-                _project.GSet(force:true);
+                _project.GSetAcc(force:true);
                 goto run;
             }
 		
@@ -736,7 +734,7 @@ namespace z3nCore
             try
             {
                 GetAccByMode();
-                if (!_project.GSet("check")) goto getAcc;
+                if (!_project.GSetAcc("check")) goto getAcc;
             }
             catch (Exception ex)
             {
@@ -754,7 +752,7 @@ namespace z3nCore
             catch (Exception ex)
             {
                 _project.SendWarningToLog(ex.Message);
-                _project.GSet("", true);
+                _project.GSetAcc("", true);
                 goto getAcc;
             }
 
@@ -765,12 +763,12 @@ namespace z3nCore
             }
             catch (Exception ex)
             {
-                _project.GSet("", true);
+                _project.GSetAcc("", true);
                 _project.SendWarningToLog(ex.Message);
                 goto getAcc;
             }
 
-            _project.GSet(force:true);
+            _project.GSetAcc(force:true);
 
         }
         
@@ -816,7 +814,6 @@ namespace z3nCore
                 "accRnd",
                 "cfgChains",
                 "cfgRefCode",
-                "captchaModule",
                 "cfgDelay",
                 "cfgLog",
                 "cfgPin",
@@ -829,9 +826,7 @@ namespace z3nCore
                 "humanNear",          
                 "instancePort", 
                 "ip",
-                "run",
                 "lastQuery",
-                "lastErr",
                 "pathCookies",
                 "projectName",
                 "projectTable", 

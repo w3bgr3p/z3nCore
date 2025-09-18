@@ -1,9 +1,8 @@
 ﻿using System;
-
 using ZennoLab.CommandCenter;
 using ZXing;
 
-namespace ZBS
+namespace z3nCore
 {
     public static class HtmlExtensions
     {

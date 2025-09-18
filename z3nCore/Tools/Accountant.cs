@@ -10,7 +10,7 @@ namespace z3nCore
     public class Accountant
     {
         private readonly IZennoPosterProjectModel _project;
-        private readonly Sql _sql;
+        //private readonly Sql _sql;
         private readonly Logger _logger;
         private int _offset;
 
@@ -19,7 +19,7 @@ namespace z3nCore
             _project = project;
 
             _logger = new Logger(project, log: log, classEmoji: "$");
-            _sql = new Sql(project, log: log);
+            //_sql = new Sql(project, log: log);
         }
 
         public void ShowBalanceTable(string chains = null)
@@ -28,7 +28,7 @@ namespace z3nCore
             var columns = new List<string>();
 
             if (string.IsNullOrEmpty(chains))
-                columns = new Sql(_project).GetColumnList("public_native");
+                columns = _project.ClmnList("_native");
 
             else
                 columns = chains.Split(',').ToList();

@@ -98,7 +98,7 @@ namespace z3nCore
                 try { project.Var(varRslt, $"{result}"); } catch { }
             return result;
         }
-        
+        /*
         public static string ProjectName(this IZennoPosterProjectModel project)
         {
             string name = ProjectName(project.Variables["projectScript"].Value);
@@ -122,16 +122,127 @@ namespace z3nCore
             project.Var("sessionId", sessionId);
             return sessionId;
         }
+        */
+    }
 
-
+    public static class Constantas
+    {
+        private static readonly object LockObject = new object();
+        public static string ProjectName(this IZennoPosterProjectModel project)
+        {
+            string name = ProjectName(project.Variables["projectScript"].Value);
+            project.Var("projectName", name);
+            return name;
+        }
+        private static string ProjectName(string projectPath)
+        {
+            if (string.IsNullOrEmpty(projectPath)) throw new ArgumentNullException(nameof(projectPath));
+            return System.IO.Path.GetFileName(projectPath).Split('.')[0];
+        }
+        public static string ProjectTable(this IZennoPosterProjectModel project)
+        {
+            string table  = "__" + ProjectName(project);
+            project.Var("projectTable", table);
+            return table;
+        }
+        public static string SessionId(this IZennoPosterProjectModel project)
+        {
+            string sessionId =  Time.Now("utcToId");
+            project.Var("sessionId", sessionId);
+            return sessionId;
+        }
+        public static string CaptchaModule(this IZennoPosterProjectModel project)
+        {
+            string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
+            string localModule = project.Var("captchaModule");
+            string globalVar = "CAPTCHA_" + project.ProjectName();
+            string gModule = string.Empty;
+            lock (LockObject)
+            {
+                try
+                {
+                    try
+                    {
+                        gModule = project.GlobalVariables[nameSpase, globalVar].Value;
+                        
+                    }
+                    catch
+                    {
+                        if (string.IsNullOrEmpty(gModule)) 
+                            throw new Exception("captchaModule not set globally and empty in settings");
+                        project.GlobalVariables.SetVariable(nameSpase, globalVar, gModule);
+                    }
+                    if (string.IsNullOrEmpty(gModule)) 
+                        throw new Exception("captchaModule not set");
+                    return gModule;
+                }
+                catch (Exception ex)
+                {
+                    project.SendWarningToLog($"⚙ GSet: {ex.Message}");
+                    throw;
+                }
+            }
+        }
         
     }
 
+
+
+
     public static class GVars
     {
-          private static readonly object LockObject = new object();
+        private static readonly object LockObject = new object();
 
-        public static List<string> GGet(this IZennoPosterProjectModel project, bool log = false)
+        public static string GVar(this IZennoPosterProjectModel project, string var)
+        {
+            string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
+            string globalVar = $"_{project.ProjectName()}_" + var;
+            
+            string value = string.Empty;
+            lock (LockObject)
+            {
+                try
+                {
+                    value = project.GlobalVariables[nameSpase, globalVar].Value;
+                }
+                catch (Exception e)
+                {
+                    project.SendInfoToLog(e.Message);
+                }
+            }
+
+            return value;
+        }
+        public static string GVar(this IZennoPosterProjectModel project, string var, object value)
+        {
+
+            string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
+            string globalVar = $"_{project.ProjectName()}_" + var;
+            lock (LockObject)
+            {
+                try
+                {
+                    project.GlobalVariables[nameSpase, globalVar].Value = value.ToString();
+                }
+                catch
+                {
+                    try
+                    {
+                        project.GlobalVariables.SetVariable(nameSpase, globalVar, value.ToString());
+                    }
+                    catch (Exception e)
+                    {
+                        project.SendWarningToLog(e.Message);
+                    }
+
+                }
+            }
+            return string.Empty;
+        }
+
+
+        
+        public static List<string> GGetBusyList(this IZennoPosterProjectModel project, bool log = false)
         {
             string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
             var busyAccounts = new List<string>();
@@ -169,7 +280,7 @@ namespace z3nCore
             }
         }
 
-        public static bool GSet(this IZennoPosterProjectModel project, string input = null, bool force = false, bool log = false)
+        public static bool GSetAcc(this IZennoPosterProjectModel project, string input = null, bool force = false, bool log = false)
         {
             string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
             
@@ -184,7 +295,7 @@ namespace z3nCore
                     
                     if (!force)
                     {
-                        var busyAccounts = project.GGet(false);
+                        var busyAccounts = project.GGetBusyList(false);
                         if (busyAccounts.Any(x => x.StartsWith($"{currentThread}:")))
                         {
                             if (log) project.L0g($"{currentThreadKey} is already busy!");

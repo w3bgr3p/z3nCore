@@ -477,8 +477,6 @@ namespace z3nCore
 
             return password.ToString();
         }
-
-        
-        
+  
     }
 }

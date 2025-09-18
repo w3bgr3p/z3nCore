@@ -87,10 +87,17 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Api\BinanceApi.cs" />
+    <Compile Include="Api\DiscordApi.cs" />
     <Compile Include="Api\GitHubApi.cs" />
     <Compile Include="Api\OKXApi.cs" />
     <Compile Include="Browser\Cookies.cs" />
     <Compile Include="Browser\Captcha.cs" />
+    <Compile Include="Browser\HtmlExtensions.cs" />
+    <Compile Include="MethodExtensions\StringExtentions.cs" />
+    <Compile Include="ProjectExtentions\Exceptions.cs" />
+    <Compile Include="ProjectExtentions\FS.cs" />
+    <Compile Include="ProjectExtentions\Utils.cs" />
+    <Compile Include="_projects\HackQuest.cs" />
     <None Include="cmnc0de.cs" />
     <Compile Include="Browser\InstanceExtensions.cs" />
     <Compile Include="Essentials\Cryptography.cs" />
@@ -98,24 +105,19 @@
     <Compile Include="Essentials\ISAFU.cs" />
     <Compile Include="Essentials\Logger.cs" />
     <Compile Include="Essentials\Time.cs" />
-    <Compile Include="Extensions\Exceptions.cs" />
-    <Compile Include="Extensions\Utils.cs" />
-    <None Include="HanaGarden.cs" />
-    <Compile Include="GitHubApi.cs" />
     <Compile Include="ProjectExtentions\Reporter.cs" />
     <Compile Include="ProjectExtentions\Rnd.cs" />
     <Compile Include="ProjectExtentions\Vars.cs" />
     <Compile Include="Properties\VersionInfo.cs" />
     <Compile Include="Api\AI.cs" />
-    <Compile Include="Api\ChainOperaAI.cs" />
-    <Compile Include="Api\Guild.cs" />
+    <Compile Include="Socials\Guild.cs" />
     <Compile Include="Sql\dSql.cs" />
     <Compile Include="Tools\Debug.cs" />
     <Compile Include="Tools\Helper.cs" />
     <Compile Include="Tools\Snapper.cs" />
     <Compile Include="W3b\Rpc.cs" />
     <Compile Include="W3b\W3bLegacy.cs" />
-    <Compile Include="W3b\W3bTools.cs" />
+    <Compile Include="W3b\W3b.cs" />
     <Compile Include="Socials\GitHub.cs" />
     <Compile Include="Sql\Db.cs" />
     <Compile Include="Tools\Accountant.cs" />
@@ -124,17 +126,13 @@
     <Compile Include="Browser\BrowserScan.cs" />
     <Compile Include="Browser\ChromeExt.cs" />
     <Compile Include="Browser\Traffic.cs" />
-    <Compile Include="W3b\CommonTx.cs" />
-    <Compile Include="Extensions\FS.cs" />
+    <Compile Include="W3b\Tx.cs" />
     <Compile Include="Api\GazZip.cs" />
-    <Compile Include="Api\Relay.cs" />
     <Compile Include="Tools\F0rms.cs" />
     <Compile Include="Api\DMail.cs" />
     <Compile Include="Api\Galxe.cs" />
-    <Compile Include="Api\Stargate.cs" />
     <Compile Include="Socials\Telegram.cs" />
     <Compile Include="Api\Unlock.cs" />
-    <Compile Include="Socials\TikTok.cs" />
     <Compile Include="Wallets\KeplrWallet.cs" />
     <Compile Include="Wallets\RabbyWallet.cs" />
     <Compile Include="Wallets\BackpackWallet.cs" />
@@ -144,16 +142,13 @@
     <Compile Include="Socials\Discord.cs" />
     <Compile Include="Tools\OTP.cs" />
     <Compile Include="Sql\PostgreSQL.cs" />
-    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Sql\Sql.cs" />
     <Compile Include="Sql\SQLite.cs" />
-    <Compile Include="Extensions\HtmlExtensions.cs" />
-    <Compile Include="Extensions\StringExtentions.cs" />
     <Compile Include="Requests\Requests.cs" />
     <Compile Include="Socials\X.cs" />
     <Compile Include="Wallets\ZerionWallet.cs" />
-    <Compile Include="W3b\W3b.cs" />
+    <None Include="_projects\HanaGarden.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="ValidateZennoPosterDllPath" BeforeTargets="BeforeBuild">

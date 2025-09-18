@@ -30,7 +30,5 @@ namespace z3nCore
                 throw new Exception($"invalid input:[{email}]");
             return new FirstMail(project).GetOTP(email);
         }
-
-
     }
 }

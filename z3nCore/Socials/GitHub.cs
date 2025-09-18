@@ -16,7 +16,7 @@ namespace z3nCore
         private readonly Logger _logger;
 
         protected readonly bool _logShow;
-        protected readonly Sql _sql;
+
 
         protected string _status;
         protected string _login;
@@ -29,7 +29,7 @@ namespace z3nCore
 
             _project = project;
             _instance = instance;
-            _sql = new Sql(_project);
+
             _logger = new Logger(project, log: log, classEmoji: "GITHUB");
             LoadCreds();
 
@@ -149,7 +149,7 @@ namespace z3nCore
         public void SaveCookies()
         {
             string gCookies = new Cookies(_project, _instance).Get(".");
-            _sql.Upd($"cookies = '{gCookies}'", "projects_github");
+            _project.DbUpd($"cookies = '{gCookies}'", "projects_github");
         }
     }
 }

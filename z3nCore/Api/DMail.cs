@@ -5,56 +5,38 @@ using System;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Security.Policy;
-using System.Text;
-using System.Threading.Tasks;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
 {
     public class DMail
     {
-        //private readonly string _key;
         private string _encstring;
         private string _pid;
         private string _key;
-
+        private readonly Logger _logger;
         private dynamic _allMail;
         private Dictionary<string, string> _headers;
         private readonly NetHttp _h;
-        private readonly Sql _sql;
         private readonly IZennoPosterProjectModel _project;
-        private readonly bool _logShow;
 
 
         //private readonly string _postRead = "https://icp.dmail.ai/api/node/v6/dmail/inbox_all/read_by_page_with_content";
         //private readonly string _postWrite = "https://icp.dmail.ai/api/node/v6/dmail/inbox_all/update_by_bulk";
-
-
-
+        
         public DMail(IZennoPosterProjectModel project, string key = null, bool log = false)
         {
             _project = project;
             _h = new NetHttp(_project, log: log);
-            _sql = new Sql(project, log: log);
-            _logShow = log;
+            _logger = new Logger(project, log: log, classEmoji: "DMail");
             _key = KeyCheck(key);
             CheckAuth();
 
         }
 
-        protected void Log(string tolog = "", [CallerMemberName] string callerName = "", bool log = false)
-        {
-            if (!_logShow && !log) return;
-            var stackFrame = new System.Diagnostics.StackFrame(1);
-            var callingMethod = stackFrame.GetMethod();
-            if (callingMethod == null || callingMethod.DeclaringType == null || callingMethod.DeclaringType.FullName.Contains("Zenno")) callerName = "null";
-            _project.L0g($"[ 💠  {callerName}] [{tolog}] ");
-        }
 
-        public void Auth()
+
+        private void Auth()
         {
 
             var signer = new EthereumMessageSigner();
@@ -101,7 +83,7 @@ namespace z3nCore
             dynamic data_dic = JsonConvert.DeserializeObject<System.Dynamic.ExpandoObject>(get_verify_json);
             string encstring = data_dic.data.token;
             string pid = data_dic.data.pid;
-            Log($"{encstring} {pid}");
+            _logger.Send($"{encstring} {pid}");
 
 
             try
@@ -135,7 +117,7 @@ namespace z3nCore
             }
             catch (Exception e)
             {
-                Log($"!W {e.Message}");
+                _logger.Send($"!W {e.Message}");
             }
 
             try //login
@@ -146,7 +128,7 @@ namespace z3nCore
             }
             catch (Exception e)
             {
-                Log($"!W {e.Message}");
+                _logger.Send($"!W {e.Message}");
             }
 
         setHeaders:
@@ -237,7 +219,7 @@ namespace z3nCore
         {
             CheckAuth();
             string url = $"https://icp.dmail.ai/api2/v2/credits/getUsedMailInfo?pid={_pid}";
-            Log(url);
+            _logger.Send(url);
             string GetUnread = _h.GET(url, headers: _headers, parse: true);
             if (!string.IsNullOrEmpty(key))
             {
@@ -248,7 +230,7 @@ namespace z3nCore
                     var dataDict = (IDictionary<string, object>)unrd.data;
                     return dataDict[key].ToString();
                 }
-                Log($"!W no object with key [{key}] in json [{GetUnread}]");
+                _logger.Send($"!W no object with key [{key}] in json [{GetUnread}]");
                 return string.Empty;
             }
 
@@ -332,8 +314,7 @@ namespace z3nCore
             _h.POST("https://icp.dmail.ai/api/node/v6/dmail/inbox_all/update_by_bulk", body, headers: _headers, parse: false);
         }
 
-
-
+        
     }
 
 

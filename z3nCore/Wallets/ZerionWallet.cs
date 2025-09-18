@@ -220,16 +220,7 @@ namespace z3nCore
             key = key.Trim().StartsWith("0x") ? key.Substring(2) : key;
             string keyType = key.KeyType();
             _instance.Go(_urlOnboardingTab);
-
-            if (string.IsNullOrWhiteSpace(refCode))
-            {
-                refCode = new Sql(_project).DbQ(@"SELECT referralCode
-                FROM __zerion
-                WHERE referralCode != '_' 
-                AND TRIM(referralCode) != ''
-                ORDER BY RANDOM()
-                LIMIT 1;");
-            }
+            
             if (string.IsNullOrWhiteSpace(refCode)) refCode = "";
 
             _logger.Send(keyType);

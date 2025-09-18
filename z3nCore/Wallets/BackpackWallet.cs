@@ -1,11 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
@@ -95,7 +90,7 @@ namespace z3nCore
             return adr;
         }
 
-        public bool Import(bool log = false)
+        private bool Import(bool log = false)
         {
             var key = _key;
             var password = _pass;

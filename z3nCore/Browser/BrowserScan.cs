@@ -22,7 +22,7 @@ namespace z3nCore
 
         private void AddTable()
         {
-            var sql = new Sql(_project);
+            //var sql = new Sql(_project);
             var columns = new List<string> { "score", "webgl", "webglreport", "unmaskedrenderer", "audio", "clientRects", "WebGPUReport", "Fonts", "TimeZoneBasedonIP", "TimeFromIP" };
 
             var tableStructure = _project.TblForProject(columns);
@@ -53,7 +53,7 @@ namespace z3nCore
         public void ParseStats()
         {
             AddTable();
-            var _sql = new Sql(_project);
+            //var _sql = new Sql(_project);
             var toParse = "WebGL,WebGLReport, Audio, ClientRects, WebGPUReport,Fonts,TimeZoneBasedonIP,TimeFromIP";
             var tableName = "_browserscan";
             string timezoneOffset = "";
@@ -73,7 +73,7 @@ namespace z3nCore
                     try { varValue = text.Split('\n')[2]; } catch { Thread.Sleep(2000); continue; }
                     var upd = $"{varName} = '{varValue}'";
                     //upd = QuoteColumnNames(upd);
-                    _sql.Upd(upd, tableName);
+                    _project.DbUpd(upd, tableName);
                 }
             }
 
@@ -91,7 +91,7 @@ namespace z3nCore
                     if (varName == "TimeZoneBasedonIP") timezoneName = varValue;
                     var upd = $"{varName} = '{varValue}'";
                     //upd = QuoteColumnNames(upd);
-                    _sql.Upd(upd, tableName);
+                    _project.DbUpd(upd, tableName);
                 }
             }
 

@@ -34,7 +34,7 @@ namespace z3nCore
             _projectScript = project.Var("projectScript");
         }
         
-        public string GetErrorData()
+        private string GetErrorData()
         {
             var error = _project.GetLastError();
             if (error == null) 
@@ -101,7 +101,7 @@ namespace z3nCore
             return sb.ToString();
         }
 
-        public string MkTgReport()
+        private string MkTgReport()
         {
             var sb = new StringBuilder();
             string script = Path.GetFileName(_projectScript).EscapeMarkdown();
@@ -122,7 +122,7 @@ namespace z3nCore
             return failReport;
         }
         
-        public void MkScreenshot()
+        private void MkScreenshot()
         {
             var sb = new StringBuilder();
             string script = Path.GetFileName(_projectScript).EscapeMarkdown();

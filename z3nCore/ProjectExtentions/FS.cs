@@ -9,15 +9,14 @@ namespace z3nCore
     public class FS
     {
         protected readonly IZennoPosterProjectModel _project;
-        protected bool _logShow = false;
+
         private readonly Logger _logger;
         private readonly object LockObject = new object();
-        private readonly object FileLock = new object();
 
-        public FS(IZennoPosterProjectModel project, bool log = false, string classEmoji = null)
+
+        public FS(IZennoPosterProjectModel project, bool log = false)
         {
             _project = project;
-            if (!log) _logShow = _project.Var("debug") == "True";
             _logger = new Logger(project, log: log, classEmoji: "⚙️");
 
         }

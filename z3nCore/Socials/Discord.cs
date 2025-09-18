@@ -32,68 +32,7 @@ namespace z3nCore
             if (callingMethod == null || callingMethod.DeclaringType == null || callingMethod.DeclaringType.FullName.Contains("Zenno")) callerName = "null";
             _project.L0g($"[ 👾  {callerName}] [{tolog}] ");
         }
-
-        public bool ManageRole(string botToken, string guildId, string roleName, string userId, bool assignRole, [CallerMemberName] string callerName = "")
-        {
-            Thread.Sleep(1000);
-            try
-            {
-                var headers = new Dictionary<string, string>
-                {
-                    { "Authorization", $"Bot {botToken}" },
-                    { "User-Agent", "DiscordBot/1.0" }
-                };
-
-                string rolesUrl = $"https://discord.com/api/v10/guilds/{guildId}/roles";
-                string rolesResponse = _http.GET(rolesUrl, headers: headers);
-                Thread.Sleep(1000);
-                if (rolesResponse.StartsWith("Ошибка"))
-                {
-                    Log($"!W Не удалось получить роли сервера:{rolesUrl} {rolesResponse}", callerName, true);
-                    return false;
-                }
-
-                JArray roles = JArray.Parse(rolesResponse);
-                var role = roles.FirstOrDefault(r => r["name"].ToString().Equals(roleName, StringComparison.OrdinalIgnoreCase));
-                if (role == null)
-                {
-                    Log($"!W Роль с именем '{roleName}' не найдена на сервере", callerName, true);
-                    return false;
-                }
-                string roleId = role["id"].ToString();
-                Log($"found : {roleName} (ID: {roleId})", callerName);
-
-                string url = $"https://discord.com/api/v10/guilds/{guildId}/members/{userId}/roles/{roleId}";
-
-                string result;
-                if (assignRole)
-                {
-                    result = _http.PUT(url, "", proxyString: null, headers: headers, callerName: callerName);
-                    Thread.Sleep(1000);
-                }
-                else
-                {
-                    result = _http.DELETE(url, proxyString: null, headers: headers, callerName: callerName);
-                    Thread.Sleep(1000);
-                }
-
-                if (result.StartsWith("Ошибка"))
-                {
-                    Log($"!W Не удалось {(assignRole ? "выдать" : "удалить")} роль:{url} {result}", callerName, true);
-                    return false;
-                }
-
-                Log($"{(assignRole ? "Роль успешно выдана" : "Роль успешно удалена")}: {roleName} для пользователя {userId}", callerName);
-                return true;
-            }
-            catch (Exception e)
-            {
-                Log($"!W Ошибка при управлении ролью: [{e.Message}]", callerName, true);
-                return false;
-            }
-        }
-
-
+        
         public string CredsFromDb()
         {
 
@@ -109,9 +48,7 @@ namespace z3nCore
 
             return _project.Variables["discordSTATUS"].Value;
         }
-
-
-
+        
         private void DSsetToken()
         {
             var jsCode = "function login(token) {\r\n    setInterval(() => {\r\n        document.body.appendChild(document.createElement `iframe`).contentWindow.localStorage.token = `\"${token}\"`\r\n    }, 50);\r\n    setTimeout(() => {\r\n        location.reload();\r\n    }, 1000);\r\n}\r\n    login(\'discordTOKEN\');\r\n".Replace("discordTOKEN", _project.Variables["discordTOKEN"].Value);

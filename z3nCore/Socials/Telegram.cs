@@ -11,7 +11,7 @@ namespace z3nCore
     {
         protected readonly IZennoPosterProjectModel _project;
         protected readonly bool _logShow;
-        protected readonly Sql _sql;
+        
         protected readonly NetHttp _http;
 
         protected string _token;
@@ -22,7 +22,7 @@ namespace z3nCore
         {
 
             _project = project;
-            _sql = new Sql(_project);
+            
             _http = new NetHttp(_project);
             _logShow = log;
             LoadCreds();
@@ -45,7 +45,7 @@ namespace z3nCore
 
         }
 
-        public void report()
+        public void Report()
         {
 
 

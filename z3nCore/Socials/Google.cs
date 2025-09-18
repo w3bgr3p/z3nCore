@@ -15,7 +15,7 @@ namespace z3nCore
         private readonly Logger _logger;
 
         protected readonly bool _logShow;
-        protected readonly Sql _sql;
+
 
         protected string _status;
         protected string _login;
@@ -31,7 +31,7 @@ namespace z3nCore
 
             _project = project;
             _instance = instance;
-            _sql = new Sql(_project);
+
             _logger = new Logger(project, log: log, classEmoji: "G");
             DbCreds();
 
@@ -106,8 +106,7 @@ namespace z3nCore
 
                 case "phoneVerify":
                 case "badBrowser":
-                    _sql.Upd($"status = '{state}'", "projects_google");
-                    _sql.Upd($"status = '{state}'", "private_google");
+                    _project.DbUpd($"status = '{state}'", "_google");
 
                     throw new Exception(state);
 
@@ -244,8 +243,7 @@ namespace z3nCore
             //Thread.Sleep(5000);
             _instance.Go("https://myaccount.google.com/");
             string gCookies = new Cookies(_project, _instance).Get(".");
-            _sql.Upd($"status = 'ok', cookies = '{gCookies}'", "private_google");
-            _sql.Upd($"status = 'ok', cookies = '{gCookies}'", "projects_google");
+            _project.DbUpd($"status = 'ok', cookies = '{gCookies}'", "_google");
         }
         public void ParseSecurity()
         {
@@ -269,7 +267,7 @@ namespace z3nCore
 	            {statusBackupCodes[0]} [{statusBackupCodes[1]}]";
 
 
-            new Sql(_project, true).Upd($"security = '{todb}'", "_projects_google");
+            _project.DbUpd($"security = '{todb}'", "__google");
 
         }
 

@@ -17,7 +17,7 @@ namespace z3nCore
         private readonly Logger _logger;
 
         protected readonly bool _logShow;
-        protected readonly Sql _sql;
+        //protected readonly Sql _sql;
 
         protected string _status;
         protected string _token;
@@ -32,13 +32,13 @@ namespace z3nCore
 
             _project = project;
             _instance = instance;
-            _logShow = log;
+            //_logShow = log;
             _logger = new Logger(project, log: log, classEmoji: "X");
 
             LoadCreds();
 
         }
-        public void LoadCreds()
+        private void LoadCreds()
         {
             string[] creds = _project.SqlGet(" status, token, login, password, otpsecret, email, emailpass", "_twitter").Split('|');
             try { _status = creds[0].Trim(); _project.Variables["twitterSTATUS"].Value = _status; } catch (Exception ex) { _logger.Send(ex.Message); }
@@ -52,8 +52,7 @@ namespace z3nCore
             if (string.IsNullOrEmpty(_login) || string.IsNullOrEmpty(_pass))
                 throw new Exception($"invalid credentials login:[{_login}] pass:[{_pass}]");
         }
-
-
+        
         private string XcheckState(bool log = false)
         {
             log = _project.Variables["debug"].Value == "True";
@@ -99,7 +98,7 @@ namespace z3nCore
             _project.L0g($"{status} {DateTime.Now - start}");
             return status;
         }
-        public string Xload(bool log = false)
+        private string Xload(bool log = false) //DEPRECATED
         {
             bool tokenUsed = false;
             DateTime deadline = DateTime.Now.AddSeconds(60);
@@ -134,7 +133,7 @@ namespace z3nCore
             if (status == "restricted" || status == "suspended" || status == "emailCapcha")
             {
 
-                _sql.Upd($"status = '{status}'", "twitter");
+                _project.DbUpd($"status = '{status}'", "_twitter");
                 return status;
             }
             else if (status == "ok")
@@ -169,7 +168,7 @@ namespace z3nCore
                 i++;
             }
             _project.Variables["twitterTOKEN"].Value = token;
-            _sql.Upd($"token = '{token}'", "private_twitter");
+            _project.DbUpd($"token = '{token}'", "_twitter");
             return token;
         }
 
@@ -279,7 +278,7 @@ namespace z3nCore
                 case "Suspended":
                 case "SuspiciousLogin":
                 case "WrongPass":
-                    _sql.Upd($"status = '{state}'", "twitter");
+                    _project.DbUpd($"status = '{state}'", "_twitter");
                     throw new Exception($"{state}");
                 case "ClickLogin":
                     _instance.HeClick(("a", "data-testid", "login", "regexp", 0));

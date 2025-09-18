@@ -6,8 +6,6 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 using System.Security.Cryptography;
 using System.Linq;
 using ZennoLab.InterfacesLibrary.Enums.Log;
-using System.Net.Http;
-using System.Text;
 using System.Collections.Generic;
 
 namespace z3nCore

@@ -1,27 +1,12 @@
 ﻿
-using Nethereum.Signer;
 using System;
-
 using System.Globalization;
-
-using System.Numerics;
-
 using System.Threading;
-
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
 
 namespace z3nCore
 {
-    public enum GZto
-    {
-        Sepolia,
-        Soneum,
-        BNB,
-        OpBNB,
-        Gravity,
-        Zero,
-    }
 
     public class GazZip 
     {
@@ -33,34 +18,32 @@ namespace z3nCore
             _project = project;
             _logger = new Logger(project, log: log, classEmoji: " GZ ");
         }
-        public string GzTarget(GZto destination, bool log = false)
+        private string Target(string destination, bool log = false)
         {
             // 0x010066 Sepolia | 0x01019e Soneum | 0x01000e BNB | 0x0100f0 Gravity | 0x010169 Zero
-
+            if (destination.StartsWith("0x")) return destination;
             switch (destination)
             {
-                case GZto.Sepolia:
+                case "sepolia":
                     return "0x010066";
-                case GZto.Soneum:
+                case "soneum":
                     return "0x01019e";
-                case GZto.BNB:
+                case "bsc":
                     return "0x01000e";
-                case GZto.Gravity:
+                case "gravity":
                     return "0x0100f0";
-                case GZto.Zero:
+                case "zero":
                     return "0x010169";
-                case GZto.OpBNB:
+                case "opbnb":
                     return "0x01003a";
                 default:
                     return "null";
             }
 
         }
-        public string GZ(string chainTo, decimal value, string rpc = null, bool log = false)
-
+        public string Refuel(string chainTo, decimal value, string rpc = null, bool log = false)
         {
-
-            // 0x010066 Sepolia | 0x01019e Soneum | 0x01000e BNB | 0x0100f0 Gravity | 0x010169 Zero
+            chainTo = Target(chainTo);
             string txHash = null;
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             Random rnd = new Random();
@@ -70,20 +53,12 @@ namespace z3nCore
 
             if (string.IsNullOrEmpty(rpc))
             {
-                string chainList = @"https://mainnet.era.zksync.io,
-				https://linea-rpc.publicnode.com,
-				https://arb1.arbitrum.io/rpc,
-				https://optimism-rpc.publicnode.com,
-				https://scroll.blockpi.network/v1/rpc/public,
-				https://rpc.taiko.xyz,
-				https://base.blockpi.network/v1/rpc/public,
-				https://rpc.zora.energy";
-
+                string[] defaultChains = { "zksync","linea","arbitrum","optimism","scroll","base","zora"};
 
                 bool found = false;
-                foreach (string RPC in chainList.Split(','))
+                foreach (string RPC in defaultChains)
                 {
-                    rpc = RPC.Trim();
+                    rpc = Rpc.Get(RPC);
                     var native = W3bTools.EvmNative(rpc, accountAddress);
                     var required = value + 0.00015m;
                     if (native > required)
@@ -94,14 +69,11 @@ namespace z3nCore
                     if (log) _logger.Send($"rpc:[{rpc}] native:[{native}] lower than [{required}]");
                     Thread.Sleep(1000);
                 }
-
-
                 if (!found)
                 {
                     return $"fail: no balance over {value}ETH found by all Chains";
                 }
             }
-
             else
             {
                 var native = W3bTools.EvmNative(rpc, accountAddress);
@@ -113,12 +85,10 @@ namespace z3nCore
             }
             string[] types = { };
             object[] values = { };
-
-
             try
             {
-                string dataEncoded = chainTo;//0x010066 for Sepolia | 0x01019e Soneum | 0x01000e BNB
-                txHash = new W3b(_project).SendTx(rpc, "0x391E7C679d29bD940d63be94AD22A25d25b5A604", dataEncoded, value, key, 2, 3);
+                string dataEncoded = chainTo;
+                txHash = new Tx(_project).SendTx(rpc, "0x391E7C679d29bD940d63be94AD22A25d25b5A604", dataEncoded, value, key, 2, 3);
                 Thread.Sleep(1000);
                 _project.Variables["blockchainHash"].Value = txHash;
             }

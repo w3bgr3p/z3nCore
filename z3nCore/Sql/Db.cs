@@ -115,12 +115,30 @@ namespace z3nCore
             ValidateName(source, "source table");
             ValidateName(dest, "destination table");
             project.SendInfoToLog($"{source} -> {dest}", true);
-            project.SqlTableCopy(source, dest);
+            project.TableCopy(source, dest);
             try { project.DbQ($"ALTER TABLE {Quote(dest)} RENAME COLUMN {Quote("acc0")} to {Quote("id")}"); } catch { }
             try { project.DbQ($"ALTER TABLE {Quote(dest)} RENAME COLUMN {Quote("key")} to {Quote("id")}"); } catch { }
         }
 
+        public static string DbGetRandom(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool acc = false, bool throwOnEx = false, int range = 0, bool single = true, bool invert = false)
+        {
+            if (range == 0) range = project.Range();
+            if (string.IsNullOrEmpty(tableName)) tableName = project.ProjectTable();;
 
+            string acc0 = string.Empty;
+            if (acc) acc0 = "id, ";
+            string query = $@"
+                SELECT {acc0}{toGet.Trim().TrimEnd(',')} 
+                from {tableName} 
+                WHERE TRIM({toGet}) != ''
+	            AND id < {range}
+                ORDER BY RANDOM()";
+
+            if (single) query += " LIMIT 1;";
+            if (invert) query = query.Replace("!=", "=");
+
+            return project.DbQ(query, log: log, throwOnEx: throwOnEx);
+        }
         public static string DbKey(this IZennoPosterProjectModel project, string chainType = "evm")
         {
             chainType = chainType.ToLower().Trim();
@@ -352,7 +370,14 @@ namespace z3nCore
                 }
             }
         }
-      
+        public static List<string> ClmnList(this IZennoPosterProjectModel project, string tableName, bool log = false)
+        {
+            string dbMode = project.Var("DBmode");
+            string Q = (dbMode == "PostgreSQL") ?
+                $@"SELECT column_name FROM information_schema.columns WHERE table_schema = '{_schemaName}' AND table_name = '{tableName}'" :
+                $@"SELECT name FROM pragma_table_info('{tableName}')";
+            return project.DbQ(Q, log: log).Split('\n').ToList();
+        }
         public static void ClmnDrop(this IZennoPosterProjectModel project, string clmnName, string tblName,  bool log = false)
         {
             var current = project.TblColumns(tblName, log: log);
@@ -415,12 +440,7 @@ namespace z3nCore
 
         }
 
-
-    }
-
-    public static class DbCore
-    {
-        public static int SqlTableCopy(this IZennoPosterProjectModel project, string sourceTable, string destinationTable, string sqLitePath = null, string pgHost = null, string pgPort = null, string pgDbName = null, string pgUser = null, string pgPass = null, bool throwOnEx = false)
+        private static int TableCopy(this IZennoPosterProjectModel project, string sourceTable, string destinationTable, string sqLitePath = null, string pgHost = null, string pgPort = null, string pgDbName = null, string pgUser = null, string pgPass = null, bool throwOnEx = false)
         {
             if (string.IsNullOrEmpty(sourceTable)) throw new ArgumentNullException(nameof(sourceTable));
             if (string.IsNullOrEmpty(destinationTable)) throw new ArgumentNullException(nameof(destinationTable));
@@ -433,8 +453,8 @@ namespace z3nCore
             string dbMode = project.Var("DBmode");
 
             using (var db = dbMode == "PostgreSQL"
-                ? new dSql($"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;")
-                : new dSql(sqLitePath, null))
+                       ? new dSql($"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;")
+                       : new dSql(sqLitePath, null))
             {
                 try
                 {
@@ -448,7 +468,44 @@ namespace z3nCore
                 }
             }
         }
-        public static string DbQ(this IZennoPosterProjectModel project, string query, bool log = false, string sqLitePath = null, string pgHost = null, string pgPort = null, string pgDbName = null, string pgUser = null, string pgPass = null, bool throwOnEx = false)
+        public static void MigrateAllTables(this IZennoPosterProjectModel project)
+        {
+            string dbMode = project.Var("DBmode");
+            if (dbMode != "PostgreSQL" && dbMode != "SQLite") throw new ArgumentException("DBmode must be 'PostgreSQL' or 'SQLite'");
+
+            string direction = dbMode == "PostgreSQL" ? "toSQLite" : "toPostgreSQL";
+
+            string sqLitePath = project.Var("DBsqltPath");
+            string pgHost = "localhost";
+            string pgPort = "5432";
+            string pgDbName = "postgres";
+            string pgUser = "postgres";
+            string pgPass = project.Var("DBpstgrPass");
+
+            string pgConnection = $"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;";
+
+            project.SendInfoToLog($"Migrating all tables from {dbMode} to {(direction == "toSQLite" ? "SQLite" : "PostgreSQL")}", true);
+
+            using (var sourceDb = dbMode == "PostgreSQL" ? new dSql(pgConnection) : new dSql(sqLitePath, null))
+            using (var destinationDb = dbMode == "PostgreSQL" ? new dSql(sqLitePath, null) : new dSql(pgConnection))
+            {
+                try
+                {
+                    int rowsMigrated = dSql.MigrateAllTablesAsync(sourceDb, destinationDb).GetAwaiter().GetResult();
+                    project.SendInfoToLog($"Successfully migrated {rowsMigrated} rows", true);
+                }
+                catch (Exception ex)
+                {
+                    project.SendWarningToLog($"Error during migration: {ex.Message}", true);
+                }
+            }
+        }
+
+    }
+
+    public static class DbCore
+    {
+        internal static string DbQ(this IZennoPosterProjectModel project, string query, bool log = false, string sqLitePath = null, string pgHost = null, string pgPort = null, string pgDbName = null, string pgUser = null, string pgPass = null, bool throwOnEx = false)
         {
             string dbMode = project.Var("DBmode");
 
@@ -491,39 +548,6 @@ namespace z3nCore
             new Logger(project, log: log, classEmoji: dbMode == "PostgreSQL" ? "🐘" : "SQLite").Send(toLog);
             return result;
 
-        }
-
-        public static void MigrateAllTables(this IZennoPosterProjectModel project)
-        {
-            string dbMode = project.Var("DBmode");
-            if (dbMode != "PostgreSQL" && dbMode != "SQLite") throw new ArgumentException("DBmode must be 'PostgreSQL' or 'SQLite'");
-
-            string direction = dbMode == "PostgreSQL" ? "toSQLite" : "toPostgreSQL";
-
-            string sqLitePath = project.Var("DBsqltPath");
-            string pgHost = "localhost";
-            string pgPort = "5432";
-            string pgDbName = "postgres";
-            string pgUser = "postgres";
-            string pgPass = project.Var("DBpstgrPass");
-
-            string pgConnection = $"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;";
-
-            project.SendInfoToLog($"Migrating all tables from {dbMode} to {(direction == "toSQLite" ? "SQLite" : "PostgreSQL")}", true);
-
-            using (var sourceDb = dbMode == "PostgreSQL" ? new dSql(pgConnection) : new dSql(sqLitePath, null))
-            using (var destinationDb = dbMode == "PostgreSQL" ? new dSql(sqLitePath, null) : new dSql(pgConnection))
-            {
-                try
-                {
-                    int rowsMigrated = dSql.MigrateAllTablesAsync(sourceDb, destinationDb).GetAwaiter().GetResult();
-                    project.SendInfoToLog($"Successfully migrated {rowsMigrated} rows", true);
-                }
-                catch (Exception ex)
-                {
-                    project.SendWarningToLog($"Error during migration: {ex.Message}", true);
-                }
-            }
         }
     }
 }

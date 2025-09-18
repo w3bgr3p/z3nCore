@@ -18,20 +18,11 @@ namespace z3nCore
         protected readonly Instance _instance;
         private readonly Logger _logger;
 
-        protected readonly bool _logShow;
-        protected readonly Sql _sql;
-
-        protected string _status;
-        protected string _login;
-        protected string _pass;
-        protected string _2fa;
-
         public Guild(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
 
             _project = project;
             _instance = instance;
-            _sql = new Sql(_project, log);
             _logger = new Logger(project, log: log, classEmoji: "GUILD");
 
         }
@@ -40,8 +31,8 @@ namespace z3nCore
         {
 
             var roles = _instance.ActiveTab.FindElementsByAttribute("div", "id", "role-", "regexp").ToList();
-            _sql.ClmnAdd(tablename, "guild_done");
-            _sql.ClmnAdd(tablename, "guild_undone");
+            _project.ClmnAdd( "guild_done",tablename);
+            _project.ClmnAdd( "guild_undone",tablename);
 
             var doneData = new List<Dictionary<string, string>>();
             var undoneData = new List<Dictionary<string, object>>();
@@ -127,7 +118,7 @@ namespace z3nCore
             string wUndone = JsonConvert.SerializeObject(undoneData, Formatting.Indented).Replace("'", "");
             _project.Var("guildDone", wDone);
             _project.Var("guildUndone", wUndone);
-            _sql.Upd($"guild_done = '{wDone}', guild_undone = '{wUndone}'", tablename);
+            _project.DbUpd($"guild_done = '{wDone}', guild_undone = '{wUndone}'", tablename);
 
         }
 

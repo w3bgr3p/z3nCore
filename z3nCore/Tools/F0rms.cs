@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
@@ -16,8 +13,7 @@ namespace z3nCore
             _project = project;
         }
 
-
-
+        
         public static string InputBox(string message = "input data please", int width = 600, int height = 600)
         {
             //System.Windows.Forms.Form form = new System.Windows.Forms.Form();
@@ -731,8 +727,7 @@ namespace z3nCore
             // Объединяем пары в строку
             return string.Join(", ", pairs);
         }
-
-
+        
         public string GetSelectedItem(
         List<string> items,
         string title = "Select an Item",
@@ -818,16 +813,8 @@ namespace z3nCore
             _project.SendInfoToLog($"Selected item: {selectedItem}", false);
             return selectedItem;
         }
-
-
-
-
-
-
+        
 
     }
-
-
-
-
+    
 }

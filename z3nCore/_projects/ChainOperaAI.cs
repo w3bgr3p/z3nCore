@@ -8,14 +8,14 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
 {
-    public class ChainOpera
+    public class ChainOperaAI
     {
 
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
         private readonly Logger _logger;
 
-        public ChainOpera(IZennoPosterProjectModel project, Instance instance, bool log = false)
+        public ChainOperaAI(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
             _project = project;
             _instance = instance;
@@ -193,6 +193,7 @@ namespace z3nCore
 
 
         }
+
 
     }
 }

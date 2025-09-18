@@ -83,7 +83,7 @@ namespace z3nCore
         }
 
 
-        public string DbQ(string query, bool log = false, bool throwOnEx = false)
+        private string DbQ(string query, bool log = false, bool throwOnEx = false)
         {
             _project.ObsoleteCode("project.DbQ");
             
@@ -140,8 +140,7 @@ namespace z3nCore
             else throw new Exception($"unknown DBmode: {_dbMode}");
             return;
         }
-
-
+        
         public void Write(Dictionary<string, string> toWrite, string tableName = null, bool log = false, bool throwOnEx = false, bool last = true)
         {
             if (string.IsNullOrEmpty(tableName)) tableName = _project.Variables["projectTable"].Value;

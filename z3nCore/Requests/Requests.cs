@@ -1,9 +1,7 @@
-﻿using Nethereum.Model;
-using System;
+﻿using System;
 using System.Threading;
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.Enums.Http;
-using ZennoLab.InterfacesLibrary.Enums.Log;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
