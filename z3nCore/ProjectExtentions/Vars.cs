@@ -178,7 +178,7 @@ namespace z3nCore
         public static string GVar(this IZennoPosterProjectModel project, string var)
         {
             string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
-            string globalVar = $"_{project.ProjectName()}_" + var;
+            string globalVar = $"{project.ProjectName()}_" + var;
             
             string value = string.Empty;
             lock (LockObject)
@@ -199,7 +199,7 @@ namespace z3nCore
         {
 
             string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
-            string globalVar = $"_{project.ProjectName()}_" + var;
+            string globalVar = $"{project.ProjectName()}_" + var;
             lock (LockObject)
             {
                 try
