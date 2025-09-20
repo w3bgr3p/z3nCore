@@ -174,65 +174,6 @@ namespace z3nCore
                 Thread.Sleep(500);
             }
         }
-        public static string HeGet(this Instance instance, IZennoPosterProjectModel project , object obj, string method = "", int deadline = 10, string atr = "innertext", int delay = 1, bool Throw = true)
-        {
-            DateTime functionStart = DateTime.Now;
-            string lastExceptionMessage = "";
-
-            while (true)
-            {
-                if ((DateTime.Now - functionStart).TotalSeconds > deadline)
-                {
-                    if (method == "!")
-                    {
-                        return null;
-                    }
-                    else if (Throw)
-                    {
-                        project.SendWarningToLog(lastExceptionMessage);
-                        throw new ElementNotFoundException($"! NotFound in {deadline}s: {lastExceptionMessage}");
-                    }
-                    else
-                    {
-                        return null;
-                    }
-                }
-
-                try
-                {
-                    HtmlElement he = instance.GetHe(obj, method);
-                    if (method == "!")
-                    {
-                        throw new Exception($"element detected when it should not be: {atr}='{he.GetAttribute(atr)}'");
-                    }
-                    else
-                    {
-                        Thread.Sleep(delay * 1000);
-                        return he.GetAttribute(atr);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    lastExceptionMessage = ex.Message;
-                    if (method == "!" && ex.Message.Contains("no element by"))
-                    {
-                        // Элемент не найден — это нормально, продолжаем ждать
-                    }
-                    else if (method != "!")
-                    {
-                        // Обычное поведение: элемент не найден, записываем ошибку и ждём
-                    }
-                    else
-                    {
-                        // Неожиданная ошибка при method = "!", пробрасываем её
-                        throw;
-                    }
-                }
-
-                Thread.Sleep(500);
-            }
-        }
-   
         public static void HeClick(this Instance instance, object obj, string method = "", int deadline = 10, int delay = 1, string comment = "", bool thr0w = true, int emu = 0)
         {
             bool emuSnap = instance.UseFullMouseEmulation;

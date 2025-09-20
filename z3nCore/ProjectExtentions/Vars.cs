@@ -124,7 +124,7 @@ namespace z3nCore
             project.Var("projectTable", table);
             return table;
         }
-        public static string SessionId(this IZennoPosterProjectModel project)
+        public static string SetSessionId(this IZennoPosterProjectModel project)
         {
             string sessionId =  Time.Now("utcToId");
             project.Var("sessionId", sessionId);
@@ -142,6 +142,7 @@ namespace z3nCore
 
             if (string.IsNullOrEmpty(localModule))
                 throw new Exception ("captchaModule not set");
+            project.Var("captchaModule",localModule);
             return localModule;
         }
         

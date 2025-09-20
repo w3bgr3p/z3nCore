@@ -71,7 +71,7 @@ namespace z3nCore
             }
             catch (Exception ex)
             {
-                _logger.Send(ex.Message);
+                _project.SendWarningToLog(ex.Message);
             }
         }
         private void InitVariables(string author = "")
@@ -79,7 +79,7 @@ namespace z3nCore
             DisableLogs();
             
             string fileName = System.IO.Path.GetFileName(_project.Variables["projectScript"].Value);
-            string sessionId = _project.SessionId();
+            string sessionId = _project.SetSessionId();
             string projectName = _project.ProjectName();
             string projectTable = _project.ProjectTable();
             if (_project.Var("captchaModule") != "") _project.CaptchaModule();
@@ -861,6 +861,7 @@ namespace z3nCore
                     mapVars.Add(new Tuple<string, string>(v, v)); 
             return _project.ExecuteProject(pathZp, mapVars, true, true, true); 
         }
+        
         
         
     }

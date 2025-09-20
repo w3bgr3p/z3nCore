@@ -17,6 +17,7 @@ namespace z3nCore
     public interface ISAFU
     {
         string Encode(IZennoPosterProjectModel project, string toEncrypt, bool log);
+        string EncodeV2(IZennoPosterProjectModel project, string toEncrypt, bool log);
         string Decode(IZennoPosterProjectModel project, string toDecrypt, bool log);
         string HWPass(IZennoPosterProjectModel project, bool log);
     }
@@ -24,6 +25,13 @@ namespace z3nCore
     internal class SimpleSAFU : ISAFU
     {
         public string Encode(IZennoPosterProjectModel project, string toEncrypt, bool log)
+        {
+
+            if (project.Variables["cfgPin"].Value == "") return toEncrypt;
+            if (string.IsNullOrEmpty(toEncrypt)) return string.Empty;
+            return AES.EncryptAES(toEncrypt, project.Variables["cfgPin"].Value, true);
+        }
+        public string EncodeV2(IZennoPosterProjectModel project, string toEncrypt, bool log)
         {
 
             if (project.Variables["cfgPin"].Value == "") return toEncrypt;
@@ -55,6 +63,7 @@ namespace z3nCore
             return pass;
         }
     }
+    
 
     public static class SAFU
     {
@@ -80,7 +89,14 @@ namespace z3nCore
             string result = encodeFunc(project, toEncrypt, log);
             return result;
         }
-
+        public static string EncodeV2(IZennoPosterProjectModel project, string toEncrypt, bool log = false)
+        {
+            if (string.IsNullOrEmpty(project.Variables["cfgPin"].Value)) return toEncrypt;
+            var encodeFunc = (Func<IZennoPosterProjectModel, string, bool, string>)FunctionStorage.Functions["SAFU_EncodeV2"];
+            string result = encodeFunc(project, toEncrypt, log);
+            return result;
+        }
+        
         public static string Decode(IZennoPosterProjectModel project, string toDecrypt, bool log = false)
         {
             if (string.IsNullOrEmpty(project.Variables["cfgPin"].Value)) return toDecrypt;

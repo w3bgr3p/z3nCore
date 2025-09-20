@@ -76,7 +76,8 @@ namespace z3nCore
             try
             {
                 if (!string.IsNullOrEmpty(project.Var("acc0")))
-                new Logger(project).SendToTelegram();
+                    new Reporter(project, instance).SuccessReport(true, true);
+                //new Logger(project).SendToTelegram();
             }
             catch (Exception ex)
             {
@@ -191,10 +192,20 @@ namespace z3nCore
             
         }
 
-        public static string ErrorReport(this IZennoPosterProjectModel project, Instance instance, bool log = false,
-            bool toTg = false, bool toDb = false, bool screensot = false)
+        public static void SessionInfo(this IZennoPosterProjectModel project, Instance instance,bool showInZp = false,bool resetSessionId = true)
         {
-            return new Reporter(project,instance).ErrorReport(toTg, toDb, screensot);
+            var startInfo = new StringBuilder();
+            startInfo.AppendLine($"► instance with {instance.BrowserType.ToString()} started in {project.Age<string>()}");
+            startInfo.AppendLine($"running {project.Var("projectScript")}");
+            startInfo.AppendLine($"acc: [{project.Var("acc0")}] toDo: [{project.Var("cfgToDo")}] socials: [{project.Var("requiredSocials")}]");
+            project.SendInfoToLog(startInfo.ToString(),showInZp);
+            if (resetSessionId) project.Var("varSessionId",(DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString());
+        }
+
+
+        public static string ErrorReport(this IZennoPosterProjectModel project, Instance instance, bool log = false, bool toTg = false, bool toDb = false, bool screensot = false)
+        {
+            return new Reporter(project,instance,log).ErrorReport(toTg, toDb, screensot);
         }
     }
 

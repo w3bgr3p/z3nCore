@@ -10,20 +10,12 @@ using System.IO;
 
 namespace z3nCore
 {
-         public class Logger
+    public class Logger
     {
         protected readonly IZennoPosterProjectModel _project;
         protected bool _logShow = false;
         private string _emoji = null;
         private static readonly Process CurrentProcess = Process.GetCurrentProcess();
-
-        private bool _acc = false;
-        private bool _port = false;
-        private bool _time = false;
-        private bool _memory = false;
-        private bool _caller = false;
-        private bool _wrap = false;
-        private bool _force = false;
 
         private static readonly Dictionary<string, LogColor> ColorMap = new Dictionary<string, LogColor> { 
             { "`.", LogColor.Default },
@@ -43,95 +35,99 @@ namespace z3nCore
             { "Err", LogColor.Orange },
         };
 
-
         public Logger(IZennoPosterProjectModel project, bool log = false, string classEmoji = null)
         {
             _project = project;
             _logShow = log || _project.Var("debug") == "True";
             _emoji = classEmoji;
-            SetFromConfig();
         }
 
-        private void SetFromConfig()
+        private (bool acc, bool port, bool time, bool memory, bool caller, bool wrap, bool force) GetConfigFlags()
         {
+            bool acc = false, port = false, time = false, memory = false, caller = false, wrap = false, force = false;
+            
             var flags = _project.Var("cfgLog").Split(',').Select(x => x.Trim()).ToList();
             foreach (string flag in flags)
             {
                 switch (flag)
                 {
                     case "acc":
-                        _acc = true;
+                        acc = true;
                         continue;
                     case "port":
-                        _port = true;
+                        port = true;
                         continue;
                     case "time":
-                        _time = true;
+                        time = true;
                         continue;
                     case "memory":
-                        _memory = true;
+                        memory = true;
                         continue;
                     case "caller":
-                        _caller = true;
+                        caller = true;
                         continue;
                     case "wrap": 
-                        _wrap = true;
+                        wrap = true;
                         continue;
                     case "force":
-                        _force = true;
+                        force = true;
                         continue;
                     default:
                         continue;
                 }
             }
             
+            return (acc, port, time, memory, caller, wrap, force);
         }
 
         public void Send(string toLog, [CallerMemberName] string callerName = "", bool show = false, bool thr0w = false, bool toZp = true, int cut = 0, bool wrap = true)
         {
-            if (_force)
+            var (acc, port, time, memory, caller, wrapFlag, force) = GetConfigFlags();
+            
+            if (force)
             {
                 show = true;
                 toZp = true;
             }
 
             if (!show && !_logShow) return;
+            
             string header = string.Empty;
             string body = toLog;
 
-            if (_wrap)
+            if (wrapFlag)
             {
                 var stackFrame = new System.Diagnostics.StackFrame(1);
-                header = LogHeader(stackFrame, callerName);
+                header = LogHeader(stackFrame, callerName, acc, port, time, memory, caller);
                 body = LogBody(toLog, cut);
             }
+            
             string toSend = header + body;
             (LogType type, LogColor color) = LogColour(header, toLog);
             Execute(toSend, type, color, toZp, thr0w);
-
         }
 
-        private string LogHeader(System.Diagnostics.StackFrame stackFrame, string callerName)
+        private string LogHeader(System.Diagnostics.StackFrame stackFrame, string callerName, bool acc, bool port, bool time, bool memory, bool caller)
         {
-            
             var sb = new StringBuilder(128);
             
-            
-            if (_acc)
+            if (acc)
                 try
                 {
                     string acc0 = _project.Var("acc0");
-                    if (!string.IsNullOrEmpty(acc0)) sb.Append( $"  🤖 [{acc0}]");
+                    if (!string.IsNullOrEmpty(acc0)) sb.Append($"  🤖 [{acc0}]");
                 }
                 catch { }
-            if (_time)
+                
+            if (time)
                 try
                 {
                     string totalAge = _project.Age<string>();
                     if (!string.IsNullOrEmpty(totalAge)) sb.Append($"  ⏱️ [{totalAge}]");
                 }
                 catch { }
-            if (_memory)
+                
+            if (memory)
                 try
                 {
                     CurrentProcess.Refresh(); 
@@ -139,14 +135,16 @@ namespace z3nCore
                     sb.Append("  📊 [").Append(processMemory).Append(" Mb]");
                 }
                 catch { }
-            if (_port)
+                
+            if (port)
                 try
                 {
-                    string port = _project.Var("instancePort");
-                    if (!string.IsNullOrEmpty(port)) sb.Append($"  🔌 [{port}]");
+                    string portValue = _project.Var("instancePort");
+                    if (!string.IsNullOrEmpty(portValue)) sb.Append($"  🔌 [{portValue}]");
                 }
                 catch { }
-            if (_caller)
+                
+            if (caller)
                 try
                 {
                     var callingMethod = stackFrame.GetMethod();
@@ -159,6 +157,7 @@ namespace z3nCore
 
             return sb.Length > 0 ? sb.ToString() : string.Empty;
         }
+
         private string LogBody(string toLog, int cut)
         {
             if (!string.IsNullOrEmpty(toLog))
@@ -170,7 +169,7 @@ namespace z3nCore
                     {
                         if (toLog[i] == '\n') lineCount++;
                     }
-    
+
                     if (lineCount > cut)
                     {
                         var sb = new StringBuilder(toLog.Length);
@@ -185,6 +184,7 @@ namespace z3nCore
                         toLog = sb.ToString();
                     }
                 }
+                
                 if (!string.IsNullOrEmpty(_emoji))
                 {
                     toLog = $"[ {_emoji} ] {toLog}";
@@ -192,8 +192,8 @@ namespace z3nCore
                 return $"\n          {toLog.Trim()}";
             }
             return string.Empty;
-
         }
+
         private (LogType, LogColor) LogColour(string header, string toLog)
         {
             LogType type = LogType.Info;
@@ -214,127 +214,13 @@ namespace z3nCore
 
             return (type, color);
         }
+
         private void Execute(string toSend, LogType type, LogColor color, bool toZp, bool thr0w)
         {
             _project.SendToLog(toSend, type, toZp, color);
             if (thr0w) throw new Exception($"{toSend}");
         }
-        private static string EscapeMarkdownV2(string text)
-        {
-            if (string.IsNullOrEmpty(text)) return text;
-            var sb = new StringBuilder(text.Length * 2); 
-            foreach (char c in text)
-            {
-                switch (c)
-                {
-                    case '_':
-                    case '*':
-                    case '[':
-                    case ']':
-                    case '(':
-                    case ')':
-                    case '~':
-                    case '`':
-                    case '>':
-                    case '#':
-                    case '+':
-                    case '-':
-                    case '=':
-                    case '|':
-                    case '{':
-                    case '}':
-                    case '.':
-                    case '!':
-                        sb.Append('\\').Append(c);
-                        break;
-                    default:
-                        sb.Append(c);
-                        break;
-                }
-            }
-            return sb.ToString();
-        }
-        public void SendToTelegram(string message = null)
-        {
-            var creds = _project.DbGet("apikey, extra", "_api", where: "id = 'tg_logger'");
-            var credsParts = creds.Split('|');
-            
-            string token = credsParts[0].Trim();
-            var extraParts = credsParts[1].Trim().Split('/');
-            string group = extraParts[0].Trim();
-            string topic = extraParts[1].Trim();
-            
-            string reportText;
-            
-            var failReportValue = _project.Variables["failReport"].Value;
-            if (!string.IsNullOrEmpty(failReportValue))
-            {
-                reportText = EscapeMarkdownV2(failReportValue);
-            }
-            else
-            {
-                var sb = new StringBuilder();
-                string projectName = Path.GetFileName(_project.Var("projectScript"));
-                
-                sb.Append("✅️\\#succsess  \\#")
-                  .Append(EscapeMarkdownV2(projectName))
-                  .Append(" \\#")
-                  .Append(EscapeMarkdownV2(_project.Var("acc0")))
-                  .AppendLine();
-                
-                string lastQuery = string.Empty;
-                try 
-                { 
-                    lastQuery = _project.Var("lastQuery"); 
-                }
-                catch (Exception ex) 
-                { 
-                    _project.SendWarningToLog(ex.Message); 
-                }
-                
-                if (!string.IsNullOrEmpty(lastQuery))
-                {
-                    sb.Append("LastUpd: `")
-                      .Append(EscapeMarkdownV2(lastQuery))
-                      .AppendLine("` ");
-                }
-                
-                if (!string.IsNullOrEmpty(message))
-                {
-                    sb.Append("Message:`")
-                      .Append(EscapeMarkdownV2(message))
-                      .AppendLine("` ");
-                }
-                
-                sb.Append("TookTime: ")
-                  .Append(_project.TimeElapsed())
-                  .AppendLine("s ");
-                
-                reportText = sb.ToString();
-            }
-            
-            string encodedReport = Uri.EscapeDataString(reportText);
-            string url = string.Format(
-                "https://api.telegram.org/bot{0}/sendMessage?chat_id={1}&text={2}&reply_to_message_id={3}&parse_mode=MarkdownV2",
-                token, group, encodedReport, topic
-            );
-            
-            _project.GET(url);
-            
-            string lastQueryForLog = string.Empty;
-            try 
-            { 
-                lastQueryForLog = _project.Var("lastQuery"); 
-            }
-            catch { }
-            
-            string toLog = string.Format(
-                "{0}✔️ All jobs done. Elapsed: {1}s \n███ ██ ██  ██ █  █  █  ▓▓▓ ▓▓ ▓▓  ▓  ▓  ▓  ▒▒▒ ▒▒ ▒▒ ▒  ▒  ░░░ ░░  ░░ ░ ░ ░ ░ ░ ░  ░  ░  ░   ░   ░   ░    ░    ░    ░     ░        ░",
-                lastQueryForLog, _project.TimeElapsed()
-            );
-            LogColor logColor = toLog.Contains("fail") ? LogColor.Orange : LogColor.Green;
-            _project.SendToLog(toLog.Trim(), LogType.Info, true, logColor);
-        }
+        
+        
     }
-    
 }
