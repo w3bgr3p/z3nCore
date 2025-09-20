@@ -74,7 +74,7 @@ namespace z3nCore
                 _project.SendWarningToLog(ex.Message);
             }
         }
-        private void InitVariables(string author = "")
+        public void InitVariables(string author = "")
         {
             DisableLogs();
             
