@@ -145,7 +145,23 @@ namespace z3nCore
             project.Var("captchaModule",localModule);
             return localModule;
         }
-        
+        public static string Safu2(this IZennoPosterProjectModel project)
+        {
+            string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
+            string localModule = project.Var("safu2");
+
+            if (!string.IsNullOrEmpty(localModule))
+                project.GVar("safu2",localModule);
+
+            else localModule = project.GVar("safu2");
+
+            if (string.IsNullOrEmpty(localModule))
+                localModule = "False";
+            project.GVar("safu2",localModule);
+            project.Var("safu2",localModule);
+            return localModule;
+        }
+
     }
 
 

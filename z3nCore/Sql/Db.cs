@@ -141,6 +141,7 @@ namespace z3nCore
         }
         public static string DbKey(this IZennoPosterProjectModel project, string chainType = "evm")
         {
+
             chainType = chainType.ToLower().Trim();
             switch (chainType)
             {
@@ -157,7 +158,7 @@ namespace z3nCore
                     throw new Exception("unexpected input. Use (evm|sol|seed|pkFromSeed)");
             }
 
-            var resp = project.SqlGet(chainType, "_wallets");
+            var resp = project.DbGet(chainType, "_wallets");
             string decoded = !string.IsNullOrEmpty(project.Var("cfgPin")) ? SAFU.Decode(project, resp) : resp;
             //if (!string.IsNullOrEmpty(project.Var("cfgPin")))
             //return SAFU.Decode(project, resp);

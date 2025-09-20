@@ -64,7 +64,6 @@ namespace z3nCore
         }
     }
     
-
     public static class SAFU
     {
         private static readonly SimpleSAFU _defaultSAFU = new SimpleSAFU();
@@ -107,6 +106,7 @@ namespace z3nCore
 
         public static string HWPass(IZennoPosterProjectModel project, bool v2 = false)
         {
+            try {v2 = (project.Safu2()=="True")?true:false;}catch{}
             var hwPassFunc = (Func<IZennoPosterProjectModel, bool, string>)FunctionStorage.Functions["SAFU_HWPass"];
             string result = hwPassFunc(project, v2);
             return result;
