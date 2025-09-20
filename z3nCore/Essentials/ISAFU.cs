@@ -19,7 +19,7 @@ namespace z3nCore
         string Encode(IZennoPosterProjectModel project, string toEncrypt, bool log);
         string EncodeV2(IZennoPosterProjectModel project, string toEncrypt, bool log);
         string Decode(IZennoPosterProjectModel project, string toDecrypt, bool log);
-        string HWPass(IZennoPosterProjectModel project, bool log);
+        string HWPass(IZennoPosterProjectModel project, bool v2);
     }
 
     internal class SimpleSAFU : ISAFU
@@ -105,10 +105,10 @@ namespace z3nCore
             return result;
         }
 
-        public static string HWPass(IZennoPosterProjectModel project, bool log = false)
+        public static string HWPass(IZennoPosterProjectModel project, bool v2 = false)
         {
             var hwPassFunc = (Func<IZennoPosterProjectModel, bool, string>)FunctionStorage.Functions["SAFU_HWPass"];
-            string result = hwPassFunc(project, log);
+            string result = hwPassFunc(project, v2);
             return result;
         }
     }

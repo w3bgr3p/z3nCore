@@ -127,7 +127,7 @@ namespace z3nCore
         public static string SetSessionId(this IZennoPosterProjectModel project)
         {
             string sessionId =  Time.Now("utcToId");
-            project.Var("sessionId", sessionId);
+            project.Var("varSessionId", sessionId);
             return sessionId;
         }
         public static string CaptchaModule(this IZennoPosterProjectModel project)

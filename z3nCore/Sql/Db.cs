@@ -505,7 +505,7 @@ namespace z3nCore
 
     public static class DbCore
     {
-        internal static string DbQ(this IZennoPosterProjectModel project, string query, bool log = false, string sqLitePath = null, string pgHost = null, string pgPort = null, string pgDbName = null, string pgUser = null, string pgPass = null, bool throwOnEx = false)
+        public static string DbQ(this IZennoPosterProjectModel project, string query, bool log = false, string sqLitePath = null, string pgHost = null, string pgPort = null, string pgDbName = null, string pgUser = null, string pgPass = null, bool throwOnEx = false)
         {
             string dbMode = project.Var("DBmode");
 

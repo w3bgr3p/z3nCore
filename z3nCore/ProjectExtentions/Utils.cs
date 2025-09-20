@@ -197,7 +197,7 @@ namespace z3nCore
             var startInfo = new StringBuilder();
             startInfo.AppendLine($"► instance with {instance.BrowserType.ToString()} started in {project.Age<string>()}");
             startInfo.AppendLine($"running {project.Var("projectScript")}");
-            startInfo.AppendLine($"acc: [{project.Var("acc0")}] toDo: [{project.Var("cfgToDo")}] socials: [{project.Var("requiredSocials")}]");
+            startInfo.AppendLine($"acc: [{project.Var("acc0")}] toDo: [{project.Var("cfgToDo")}] socials: [{project.Var("requiredSocial")}]");
             project.SendInfoToLog(startInfo.ToString(),showInZp);
             if (resetSessionId) project.Var("varSessionId",(DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString());
         }
