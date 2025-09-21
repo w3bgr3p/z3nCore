@@ -719,57 +719,58 @@ namespace z3nCore
                 _logger.Send($"unsupported SQLFilter: [{_project.Variables["wkMode"].Value}]",thr0w:true);
             
         }
-        public void PrepareProject()
+        public void PrepareProject(bool log = false) 
         {
-            
             bool forced = !string.IsNullOrEmpty(_project.Var("acc0Forced"));
-
-            if (forced){
-                _project.Var("acc0",_project.Var("acc0Forced"));
-                _project.GSetAcc(force:true);
-                goto run;
+            if (log) _project.SendInfoToLog($"PrepareProject started. Forced mode: {forced}");
+    
+            if (forced) { 
+                if (log) _project.SendInfoToLog($"Using forced account: {_project.Var("acc0Forced")}");
+                _project.Var("acc0", _project.Var("acc0Forced")); 
+                _project.GSetAcc(force:true); 
+                goto run; 
             }
-		
-            getAcc:
-            try
-            {
-                GetAccByMode();
-                if (!_project.GSetAcc("check")) goto getAcc;
+    
+            getAcc: 
+            try { 
+                if (log) _project.SendInfoToLog("Attempting to get account by mode");
+                GetAccByMode(); 
+                if (!_project.GSetAcc("check")) {
+                    if (log) _project.SendWarningToLog("Account check failed, retrying getAcc");
+                    goto getAcc; 
+                }
+                if (log) _project.SendInfoToLog("Account successfully set and verified");
+            } catch (Exception ex) { 
+                _project.SendWarningToLog(ex.Message); 
+                throw; 
             }
-            catch (Exception ex)
-            {
-                _project.SendWarningToLog(ex.Message);
-                throw;
+    
+            try { 
+                if (log) _project.SendInfoToLog("Starting blockchain and social filters");
+                BlockchainFilter(); 
+                SocialFilter(); 
+                if (log) _project.SendInfoToLog("Filters completed successfully");
+            } catch (Exception ex) { 
+                _project.SendWarningToLog(ex.Message); 
+                _project.GSetAcc("", true); 
+                if (log) _project.SendWarningToLog("Filter failed, resetting account and retrying");
+                goto getAcc; 
             }
-
-
-            
-            try
-            {
-                BlockchainFilter();
-                SocialFilter();
+    
+            run: 
+            try { 
+                if (log) _project.SendInfoToLog("Preparing instance");
+                PrepareInstance(); 
+                if (log) _project.SendInfoToLog("Instance prepared successfully");
+            } catch (Exception ex) { 
+                _project.GSetAcc("", true); 
+                _project.SendWarningToLog(ex.Message); 
+                if (log) _project.SendWarningToLog("Instance preparation failed, resetting account and retrying");
+                goto getAcc; 
             }
-            catch (Exception ex)
-            {
-                _project.SendWarningToLog(ex.Message);
-                _project.GSetAcc("", true);
-                goto getAcc;
-            }
-
-            run:
-            try
-            {
-                PrepareInstance();
-            }
-            catch (Exception ex)
-            {
-                _project.GSetAcc("", true);
-                _project.SendWarningToLog(ex.Message);
-                goto getAcc;
-            }
-
+    
             _project.GSetAcc(force:true);
-
+            if (log) _project.SendInfoToLog("PrepareProject completed successfully");
         }
         
         public void PrepareInstance()

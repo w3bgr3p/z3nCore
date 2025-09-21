@@ -72,8 +72,14 @@ namespace z3nCore
             project.SqlUpd(toUpd, tableName, log, throwOnEx, last, key, acc, where);
 
         }
-        
-   
+
+        public static void DbStatus(this IZennoPosterProjectModel project, string status, string tableName = null)
+        {
+             project.DbUpd($"status = '{status}'", tableName);
+             return;
+        }
+
+
         public static string Ref(this IZennoPosterProjectModel project, string refCode = null, bool log = false, string limit = null)
         {
             project.ObsoleteCode("project.RndInvite");

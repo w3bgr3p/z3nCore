@@ -216,7 +216,6 @@ namespace z3nCore
         private void Import(string source = null, string refCode = null, bool log = false)
         {
             string key = KeyLoad(source);
-            _logger.Send(key);
             key = key.Trim().StartsWith("0x") ? key.Substring(2) : key;
             string keyType = key.KeyType();
             _instance.Go(_urlOnboardingTab);
@@ -226,8 +225,7 @@ namespace z3nCore
             _logger.Send(keyType);
             var inputRef = false;
             if (!string.IsNullOrEmpty(refCode)) inputRef = true;
-
-            _logger.Send(keyType);
+            
             if (keyType == "keyEvm")
             {
                 _instance.HeClick(("a", "href", "chrome-extension://klghhnkeealcohjjanjjdaeeggmfmlpl/popup.8e8f209b.html\\?windowType=tab&appMode=onboarding#/onboarding/import/private-key", "regexp", 0));
