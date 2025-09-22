@@ -5,12 +5,12 @@ using ZennoLab.InterfacesLibrary.Enums.Browser;
 
 namespace z3nCore
 {
-    public class Main
+    public class Main_
     {
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
 
-        public Main(IZennoPosterProjectModel project, Instance instance, bool log = false)
+        public Main_(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
             _project = project;
             _instance = instance;

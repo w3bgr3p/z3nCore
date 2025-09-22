@@ -74,7 +74,7 @@ namespace z3nCore
                 !FunctionStorage.Functions.ContainsKey("SAFU_Decode") ||
                 !FunctionStorage.Functions.ContainsKey("SAFU_HWPass"))
             {
-                project.SendInfoToLog("using SAFU simple...");
+                project.SendWarningToLog("⚠️ SAFU fallback: script kiddie security level!",true);
                 FunctionStorage.Functions.TryAdd("SAFU_Encode", (Func<IZennoPosterProjectModel, string, bool, string>)_defaultSAFU.Encode);
                 FunctionStorage.Functions.TryAdd("SAFU_Decode", (Func<IZennoPosterProjectModel, string, bool, string>)_defaultSAFU.Decode);
                 FunctionStorage.Functions.TryAdd("SAFU_HWPass", (Func<IZennoPosterProjectModel, bool, string>)_defaultSAFU.HWPass);
@@ -91,7 +91,14 @@ namespace z3nCore
         public static string EncodeV2(IZennoPosterProjectModel project, string toEncrypt, bool log = false)
         {
             if (string.IsNullOrEmpty(project.Variables["cfgPin"].Value)) return toEncrypt;
-            var encodeFunc = (Func<IZennoPosterProjectModel, string, bool, string>)FunctionStorage.Functions["SAFU_EncodeV2"];
+
+            string fName = "SAFU_EncodeV2";
+            if (!FunctionStorage.Functions.ContainsKey(fName))
+            {
+                project.SendWarningToLog("EncodeV2 not available, using fallback");
+                fName = "SAFU_Encode";
+            }
+            var encodeFunc = (Func<IZennoPosterProjectModel, string, bool, string>)FunctionStorage.Functions[fName];
             string result = encodeFunc(project, toEncrypt, log);
             return result;
         }
@@ -104,9 +111,9 @@ namespace z3nCore
             return result;
         }
 
-        public static string HWPass(IZennoPosterProjectModel project, bool v2 = false)
+        public static string HWPass(IZennoPosterProjectModel project, bool v2 = true)
         {
-            try {v2 = (project.GVar("_safu2")=="True")?true:false;}catch{}
+            try {v2 = (project.GVar("_safu2") == "False")?false:true;}catch{}
             var hwPassFunc = (Func<IZennoPosterProjectModel, bool, string>)FunctionStorage.Functions["SAFU_HWPass"];
             string result = hwPassFunc(project, v2);
             return result;

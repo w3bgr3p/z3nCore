@@ -13,7 +13,7 @@ using System.Diagnostics;
 using ZennoLab.InterfacesLibrary.Enums.Log;
 namespace z3nCore
 {
-    public class Init
+    public class Init_
     {
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
@@ -21,7 +21,7 @@ namespace z3nCore
         private readonly bool _showLog;
         private static readonly object _disableLogsLock = new object();
 
-        public Init(IZennoPosterProjectModel project, Instance instance, bool log = false)
+        public Init_(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
             _project = project;
             _showLog = log;
