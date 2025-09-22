@@ -96,6 +96,7 @@
     <Compile Include="MethodExtensions\StringExtentions.cs" />
     <Compile Include="ProjectExtentions\Exceptions.cs" />
     <Compile Include="ProjectExtentions\FS.cs" />
+    <Compile Include="ProjectExtentions\Main.cs" />
     <Compile Include="ProjectExtentions\Utils.cs" />
     <Compile Include="_projects\HackQuest.cs" />
     <None Include="cmnc0de.cs" />

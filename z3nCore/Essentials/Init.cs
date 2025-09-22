@@ -28,14 +28,8 @@ namespace z3nCore
             _logger = new Logger(project, log: _showLog, classEmoji: "►");
             _instance = instance;
         }
-        public Init(IZennoPosterProjectModel project, bool log = false)
-        {
-            _project = project;
 
-            _logger = new Logger(project, log: log, classEmoji: "►");
-
-        }
-        private void DisableLogs()
+         private void DisableLogs()
         {
             
             string currentProcessPath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
@@ -43,8 +37,6 @@ namespace z3nCore
 
             string pathLogs = Path.Combine(processDir,"Logs");
             
-            //var lockobj = new object();
-
             try
             {
                 lock (_disableLogsLock)
@@ -99,12 +91,6 @@ namespace z3nCore
         private void Logo(string author, string dllTitle , string projectName)
         {
             
-            //string currentProcessPath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
-            //string processDir = Path.GetDirectoryName(currentProcessPath);
-            //string path_ExternalAssemblies = Path.Combine(processDir,"ExternalAssemblies");
-            //string path_dll = Path.Combine(path_ExternalAssemblies,$"{dllTitle}.dll");
-            //string DllVer = FileVersionInfo.GetVersionInfo(path_dll).FileVersion;
-            //string ZpVer = processDir.Split('\\')[5];
             var v = Versions();
             string DllVer = v[0];
             string ZpVer = v[1];
@@ -452,8 +438,6 @@ namespace z3nCore
         private bool ChooseSingleAcc(bool oldest = false)
         {
             var listAccounts = _project.Lists["accs"];
-            //string pathProfiles = _project.Var("profiles_folder");
-            _logger.Send($"Choose single account: [{string.Join("|", listAccounts)}]");
             
             if (listAccounts.Count == 0)
             {
@@ -467,7 +451,7 @@ namespace z3nCore
             string acc0 = listAccounts[randomAccount];
             _project.Var("acc0", acc0);
             listAccounts.RemoveAt(randomAccount);
-            _logger.Send($"`working with: [acc{acc0}] accs left: [{listAccounts.Count}]");
+            _logger.Send($"chosen: [acc{acc0}] left: [{listAccounts.Count}]");
             return true;
         }
         
@@ -566,8 +550,44 @@ namespace z3nCore
 
         private string GetAccByMode()
         {
-            _logger.Send("accsQueue: " + string.Join(", ",_project.Lists["accs"]));
-            if (_project.Var("wkMode") == "Cooldown") //Cooldown
+            string mode = _project.Var("wkMode");
+            
+            _logger.Send($"Mode: {mode}. Choosing new acc from: " + string.Join(", ",_project.Lists["accs"]));
+            
+            switch (mode)
+            {
+                case "Cooldown":
+                    if (!ChooseSingleAcc())
+                    {
+                        _project.Var("acc0", null);
+                        _project.Var("TimeToChill", "True");
+
+                        throw new Exception($"TimeToChill");
+                    }
+                    break;
+                case "Oldest":
+                    if (!ChooseSingleAcc(true))
+                    {
+                        _project.Var("acc0", null);
+                        _project.Var("TimeToChill", "True");
+                        throw new Exception($"TimeToChill");
+                    }
+                    break;
+                case "NewRandom":
+                    string toSet = _project.DbGetRandom("proxy, webgl","_instance",log:false, acc:true);
+                    string acc0 = toSet.Split('|')[0];
+                    _project.Var("accRnd", Rnd.RndHexString(64));
+                    _project.Var("acc0", acc0);
+                    _project.Var("pathProfileFolder",Path.Combine(_project.Var("profiles_folder") , "accounts", "profilesFolder" , _project.Var("accRnd")));
+                    break;
+                default:
+                    throw new Exception($"Unknown mode: {mode}");
+
+            }
+
+
+            /*
+            if (mode == "Cooldown") //Cooldown
             {
                 //chose:
                 //bool chosen = ChooseSingleAcc();
@@ -581,7 +601,7 @@ namespace z3nCore
                 }
             }
 
-            if (_project.Var("wkMode") == "Oldest") //Cooldown
+            else if (mode == "Oldest") //Cooldown
             {
 
                 //bool chosen = ChooseSingleAcc(true);
@@ -595,7 +615,7 @@ namespace z3nCore
             }
 
 
-            if (_project.Var("wkMode") == "NewRandom") //DeadSouls
+            else if (mode == "NewRandom") //DeadSouls
             {
                 string toSet = _project.DbGetRandom("proxy, webgl","_instance",log:false, acc:true);
                 string acc0 = toSet.Split('|')[0];
@@ -604,13 +624,13 @@ namespace z3nCore
                 _project.Var("pathProfileFolder",Path.Combine(_project.Var("profiles_folder") , "accounts", "profilesFolder" , _project.Var("accRnd")));
             }
             
-            if (_project.Var("wkMode") == "UpdateToken") //UpdateToken
+            else if (mode == "UpdateToken") //UpdateToken
             {
                 string toSet = _project.DbGetRandom("token",log:true, acc:true, invert:true);
                 string acc0 = toSet.Split('|')[0];
                 _project.Var("acc0", acc0);
             }
-            
+            */
             if (string.IsNullOrEmpty(_project.Var("acc0"))) //Default
             {
                 _logger.Send($"acc0 is empty. Check {_project.Var("wkMode")} conditions maiby it's TimeToChill",thrw:true);
@@ -618,8 +638,7 @@ namespace z3nCore
             return _project.Var("acc0");
 
         }
-
-
+        
         public string LoadSocials(string requiredSocial)
         {
             if (_instance.BrowserType != BrowserType.Chromium) return "noBrowser";
@@ -739,20 +758,22 @@ namespace z3nCore
             }
     
             getAcc:
-
+            
+            _logger.Send("BusyList: " + string.Join(" | ", _project.GGetBusyList()));
+            
             acc = "";
             try 
             { 
                 acc = GetAccByMode();
                 var currentState = _project.GVar($"acc{acc}");
+                _logger.Send($"trying to set [{currentState} => check]");
                 if (currentState == "")
                 {
                     _project.GVar($"acc{acc}","check");
-                    if (log) _logger.Send("Global set. Checking...");
                 }
                 else
                 {
-                    if (log) _logger.Send($"acc{acc} busy with {currentState}");
+                    //if (log) _logger.Send($"acc{acc} busy with {currentState}");
                     goto getAcc; 
                 }
             } 
@@ -814,8 +835,12 @@ namespace z3nCore
             {
                 _instance.CloseAllTabs();
                 _project.L0g($"!W launchInstance Err {ex.Message}");
-                exCnt++;				
-                if (exCnt > 3 ) throw;
+                exCnt++;
+                if (exCnt > 3)
+                {
+                    _project.GVar($"acc{_project.Variables["acc0"].Value}","");
+                    throw;
+                }
                 goto SetInstance;
             }
             _instance.CloseExtraTabs(true);

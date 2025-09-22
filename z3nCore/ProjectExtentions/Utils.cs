@@ -13,6 +13,7 @@ using ZennoLab.InterfacesLibrary.Enums.Log;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 using Newtonsoft.Json.Linq;
 
+
 namespace z3nCore
 {
     public static class Utils
@@ -73,6 +74,8 @@ namespace z3nCore
         }
         public static void Finish(this IZennoPosterProjectModel project, Instance instance)
         {
+            new Main(project,instance).FinishSession();
+            /*
             try
             {
                 if (!string.IsNullOrEmpty(project.Var("acc0")))
@@ -87,9 +90,10 @@ namespace z3nCore
             try { browser = instance.BrowserType.ToString(); } catch { }
             if (browser == "Chromium" && !string.IsNullOrEmpty(project.Var("acc0")) && string.IsNullOrEmpty(project.Var("accRnd")))
                 new Cookies(project, instance).Save("all", project.Var("pathCookies"));
-            
+            project.GVar($"acc{project.Variables["acc0"].Value}","");
             project.GSetAcc("");
             project.Var("acc0", "");
+            */
         }
         
         public static void WaitTx(this IZennoPosterProjectModel project, string rpc = null, string hash = null, int deadline = 60, string proxy = "", bool log = false, bool extended = false)

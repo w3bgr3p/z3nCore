@@ -210,6 +210,11 @@ namespace z3nCore
 
         public int UpdatePrompts()
         {
+            _logger.Send("renewing prompts");
+            
+            if (_instance.ActiveTab.FindElementByAttribute("span", "class", "ml-2\\ text-\\[\\#797B7A]\\ hover:text-primary-500", "regexp", 0).IsVoid)
+                _instance.HeClick(("button", "innertext", "Chats", "regexp", 1));
+            _instance.HeGet(("span", "class", "ml-2\\ text-\\[\\#797B7A]\\ hover:text-primary-500", "regexp", 0));
             var prompts = _instance.ActiveTab.FindElementsByAttribute("span", "class", "ml-2\\ text-\\[\\#797B7A]\\ hover:text-primary-500", "regexp").ToList();
             var localPrompts = new List<string>();
             lock (LockObject)
@@ -235,7 +240,8 @@ namespace z3nCore
 
         public void InputPrompt()
         {
-            var prompt = _project.Lists["prompts"][new Random().Next(0,_project.Lists["prompts"].Count)];
+            var prompts = _project.Lists["prompts"];
+            var prompt = prompts[new Random().Next(0,prompts.Count - 1)];
             _instance.HeSet(("textarea", "fulltagname", "textarea", "regexp", 0),prompt);
             
         }
@@ -268,7 +274,7 @@ namespace z3nCore
 
         }
 
-        public void ChooseAgentFromDb()
+        public string ChooseAgentFromDb()
         {
             
             _instance.HeClick(("button", "innertext", "Discover", "regexp", 0));
@@ -288,7 +294,8 @@ namespace z3nCore
 
             _instance.HeClick(("li", "class", "flex\\ items-center\\ w-full\\ relative\\ hover:bg-gray-50\\ transition-colors\\ duration-200\\ cursor-pointer", "regexp", 0));
             _instance.HeClick(("button", "innertext", "\\+\\ Try\\ Agent", "regexp", 0));
-
+            _logger.Send($"working with  {agent}");
+            return agent;
         }
 
         public string PohState()
