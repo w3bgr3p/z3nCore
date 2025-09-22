@@ -134,11 +134,12 @@ namespace z3nCore
         {
             string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
             string localModule = project.Var("captchaModule");
+            string globalVar = $"{project.ProjectName()}_" + "captcha";
 
             if (!string.IsNullOrEmpty(localModule))
-                project.GVar("captcha",localModule);
+                project.GVar(globalVar,localModule);
 
-            else localModule = project.GVar("captcha");
+            else localModule = project.GVar(globalVar);
 
             if (string.IsNullOrEmpty(localModule))
                 throw new Exception ("captchaModule not set");
@@ -174,39 +175,37 @@ namespace z3nCore
         public static string GVar(this IZennoPosterProjectModel project, string var)
         {
             string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
-            string globalVar = $"{project.ProjectName()}_" + var;
+            //string globalVar = $"{project.ProjectName()}_" + var;
             
             string value = string.Empty;
             lock (LockObject)
             {
                 try
                 {
-                    value = project.GlobalVariables[nameSpase, globalVar].Value;
+                    value = project.GlobalVariables[nameSpase, var].Value;
                 }
                 catch (Exception e)
                 {
                     project.SendInfoToLog(e.Message);
                 }
             }
-
             return value;
         }
         public static string GVar(this IZennoPosterProjectModel project, string var, object value)
         {
-
             string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
-            string globalVar = $"{project.ProjectName()}_" + var;
+            //string globalVar = $"{project.ProjectName()}_" + var;
             lock (LockObject)
             {
                 try
                 {
-                    project.GlobalVariables[nameSpase, globalVar].Value = value.ToString();
+                    project.GlobalVariables[nameSpase, var].Value = value.ToString();
                 }
                 catch
                 {
                     try
                     {
-                        project.GlobalVariables.SetVariable(nameSpase, globalVar, value.ToString());
+                        project.GlobalVariables.SetVariable(nameSpase, var, value.ToString());
                     }
                     catch (Exception e)
                     {
@@ -285,8 +284,9 @@ namespace z3nCore
                     {
                         project.GlobalVariables.SetVariable(nameSpase, currentThreadKey, valueToSet);
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        if (log) project.SendWarningToLog(ex.Message, true);
                         project.GlobalVariables[nameSpase, currentThreadKey].Value = valueToSet;
                     }
                     

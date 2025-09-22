@@ -13,7 +13,7 @@ using System.Diagnostics;
 using ZennoLab.InterfacesLibrary.Enums.Log;
 namespace z3nCore
 {
-     public class Init
+    public class Init
     {
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
@@ -451,11 +451,12 @@ namespace z3nCore
         private bool ChooseSingleAcc(bool oldest = false)
         {
             var listAccounts = _project.Lists["accs"];
-            string pathProfiles = _project.Var("profiles_folder");
-
+            //string pathProfiles = _project.Var("profiles_folder");
+            _logger.Send($"Choose single account: [{string.Join("|", listAccounts)}]");
             
             if (listAccounts.Count == 0)
             {
+                
                 _project.Variables["noAccsToDo"].Value = "True";
                 _project.SendToLog($"♻ noAccoutsAvaliable", LogType.Info, true, LogColor.Turquoise);
                 return false;
@@ -562,7 +563,7 @@ namespace z3nCore
 
         }
 
-        private void GetAccByMode()
+        private string GetAccByMode()
         {
             _logger.Send("accsQueue: " + string.Join(", ",_project.Lists["accs"]));
             if (_project.Var("wkMode") == "Cooldown") //Cooldown
@@ -613,7 +614,8 @@ namespace z3nCore
             {
                 _logger.Send($"acc0 is empty. Check {_project.Var("wkMode")} conditions maiby it's TimeToChill",thr0w:true);
             }
-            
+            return _project.Var("acc0");
+
         }
 
 
@@ -719,58 +721,75 @@ namespace z3nCore
                 _logger.Send($"unsupported SQLFilter: [{_project.Variables["wkMode"].Value}]",thr0w:true);
             
         }
+        
         public void PrepareProject(bool log = false) 
         {
             bool forced = !string.IsNullOrEmpty(_project.Var("acc0Forced"));
-            if (log) _project.SendInfoToLog($"PrepareProject started. Forced mode: {forced}");
-    
+            if (log) _logger.Send($"PrepareProject started. Forced mode: {forced}");
+            
+            var acc = "";
+            
             if (forced) { 
-                if (log) _project.SendInfoToLog($"Using forced account: {_project.Var("acc0Forced")}");
+                if (log) _logger.Send($"Using forced account: {_project.Var("acc0Forced")}");
                 _project.Var("acc0", _project.Var("acc0Forced")); 
+                acc = _project.Var("acc0Forced");
                 _project.GSetAcc(force:true); 
                 goto run; 
             }
     
-            getAcc: 
-            try { 
-                if (log) _project.SendInfoToLog("Attempting to get account by mode");
-                GetAccByMode(); 
-                if (!_project.GSetAcc("check")) {
-                    if (log) _project.SendWarningToLog("Account check failed, retrying getAcc");
+            getAcc:
+
+            acc = "";
+            try 
+            { 
+                acc = GetAccByMode();
+                var currentState = _project.GVar($"acc{acc}");
+                if (currentState == "")
+                {
+                    _project.GVar($"acc{acc}","check");
+                    if (log) _logger.Send("Global set. Checking...");
+                }
+                else
+                {
+                    if (log) _logger.Send($"acc{acc} busy with {currentState}");
                     goto getAcc; 
                 }
-                if (log) _project.SendInfoToLog("Account successfully set and verified");
-            } catch (Exception ex) { 
-                _project.SendWarningToLog(ex.Message); 
+            } 
+            catch (Exception ex) 
+            { 
+                _project.SendWarningToLog(ex.Message, true); 
                 throw; 
             }
     
-            try { 
-                if (log) _project.SendInfoToLog("Starting blockchain and social filters");
+            try 
+            { 
                 BlockchainFilter(); 
                 SocialFilter(); 
-                if (log) _project.SendInfoToLog("Filters completed successfully");
-            } catch (Exception ex) { 
-                _project.SendWarningToLog(ex.Message); 
-                _project.GSetAcc("", true); 
-                if (log) _project.SendWarningToLog("Filter failed, resetting account and retrying");
+            } 
+            catch (Exception ex)
+            { 
+                _project.SendWarningToLog(ex.Message);
+                _project.GVar($"acc{acc}","");
+                if (log) _project.SendWarningToLog($"acc{acc} Filter failed, resetting account and retrying");
                 goto getAcc; 
             }
     
             run: 
             try { 
-                if (log) _project.SendInfoToLog("Preparing instance");
+                if (log) _logger.Send("Preparing instance");
                 PrepareInstance(); 
-                if (log) _project.SendInfoToLog("Instance prepared successfully");
-            } catch (Exception ex) { 
-                _project.GSetAcc("", true); 
+                if (log) _logger.Send("Instance prepared successfully");
+            } catch (Exception ex) 
+            { 
+                _project.GVar($"acc{acc}");
                 _project.SendWarningToLog(ex.Message); 
                 if (log) _project.SendWarningToLog("Instance preparation failed, resetting account and retrying");
                 goto getAcc; 
             }
-    
-            _project.GSetAcc(force:true);
-            if (log) _project.SendInfoToLog("PrepareProject completed successfully");
+
+            var pn = _project.ProjectName();
+            _project.GVar($"acc{acc}", pn);
+            if (log) _logger.Send($"running acc{acc} with {pn}");
         }
         
         public void PrepareInstance()
@@ -862,8 +881,6 @@ namespace z3nCore
                     mapVars.Add(new Tuple<string, string>(v, v)); 
             return _project.ExecuteProject(pathZp, mapVars, true, true, true); 
         }
-        
-        
         
     }
 }
