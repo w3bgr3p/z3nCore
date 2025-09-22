@@ -62,15 +62,16 @@ namespace z3nCore
 
 
         }
-        public string ReqGet(string path, bool parse = true, bool log = false)
+        public string ReqGet(string path, bool parse = true, bool log = false, bool agent = false)
         {
-
+            string apiUrl = agent ? "agent" : "chat";
+            apiUrl = apiUrl + ".chainopera.ai";
             string token = _project.Variables["token"].Value;
             string cookie = _project.Variables["cookie"].Value;
 
             var headers = new Dictionary<string, string>
             {
-                { "authority", "chat.chainopera.ai" },
+                { "authority", apiUrl },
                 { "authorization", $"{token}" },
                 { "method", "GET" },
                 { "path", path },
@@ -78,7 +79,7 @@ namespace z3nCore
                 { "accept-encoding", "gzip, deflate, br" },
                 { "accept-language", "en-US,en;q=0.9" },
                 { "content-type", "application/json" },
-                { "origin", "https://chat.chainopera.ai" },
+                { "origin", $"https://{apiUrl}" },
                 { "priority", "u=1, i" },
 
                 { "sec-ch-ua", "\"Chromium\";v=\"134\", \"Not:A-Brand\";v=\"24\", \"Google Chrome\";v=\"134\"" },
@@ -94,7 +95,7 @@ namespace z3nCore
 
 
             string[] headerArray = headers.Select(header => $"{header.Key}:{header.Value}").ToArray();
-            string url = $"https://chat.chainopera.ai{path}";
+            string url = $"https://{apiUrl}{path}";
             string response;
 
             try
@@ -318,5 +319,29 @@ namespace z3nCore
 
         }
 
+        public string DPoints(bool usage = false)
+        {
+            ReqGet("/adp/api/v1/agent/statistics/core-performance", true , agent:true);
+            var total =  _project.Json.data.totalRevenue; //
+            var totalUsers =  _project.Json.data.totalUsers; 
+            var totalUsage =  _project.Json.data.totalUsage;
+            if (usage) return $"{totalUsers},{totalUsage}";
+            else return total;
+        }
+
+        public List<string> AgentList()
+        {
+            ReqGet("/adp/api/v1/agent/list?pageNum=1&pageSize=12", true, agent:true);
+            var total =  _project.Json.data.data.Count;
+            var agents = new List<string>();
+            for (int i = 0; i <= total - 1; i++)
+            {
+                var Name0 =  _project.Json.data.data[i].name; 
+                var Id0 =  _project.Json.data.data[i].id; 
+                agents.Add($"{Id0}:{Name0}");
+            }
+            //project.SendInfoToLog(string.Join(" | ",agents));
+            return agents;
+        }
     }
 }
