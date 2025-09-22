@@ -20,7 +20,7 @@ namespace z3nCore
         
         public static void L0g(this IZennoPosterProjectModel project, string toLog, [CallerMemberName] string callerName = "", bool show = true, bool thr0w = false, bool toZp = true)
         {
-            new Logger(project).Send(toLog, show: show, thr0w: thr0w, toZp: toZp);
+            new Logger(project).Send(toLog, show: show, thrw: thr0w, toZp: toZp);
         }
         
         public static int Range(this IZennoPosterProjectModel project, string accRange = null, string output = null, bool log = false)

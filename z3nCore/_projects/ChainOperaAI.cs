@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,7 +15,8 @@ namespace z3nCore
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
         private readonly Logger _logger;
-
+        private readonly object LockObject = new object();
+        
         public ChainOperaAI(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
             _project = project;
@@ -24,76 +26,43 @@ namespace z3nCore
         }
         public void GetAuthData()
         {
-            var url = "https://chat.chainopera.ai/userCenter/api/v1/";
-
-            _project.Deadline();
-            _instance.UseTrafficMonitoring = true;
-
-            _instance.HeClick(("button", "class", "inline-flex\\ items-center\\ justify-center\\ whitespace-nowrap\\ text-sm\\ font-medium\\ transition-colors\\ focus-visible:outline-hidden\\ focus-visible:ring-1\\ focus-visible:ring-primary\\ disabled:pointer-events-none\\ disabled:opacity-50\\ border\\ bg-background\\ hover:border-primary/50\\ shadow-xs\\ hover:bg-primary\\ hover:text-primary-foreground\\ hover:ring-primary/60\\ hover:ring-2\\ active:bg-background\\ active:text-primary\\ active:ring-0\\ px-4\\ py-2\\ h-10\\ truncate\\ rounded-full\\ pr-1\\ w-auto\\ gap-4", "regexp", 0));
-
-
-        get:
-            _project.Deadline(10);
-            Thread.Sleep(1000);
-            var traffic = _instance.ActiveTab.GetTraffic();
-            var data = new Dictionary<string, string>();
-            //string param;
-            foreach (var t in traffic)
+            try
             {
-                if (t.Url.Contains(url))
+
+                _instance.HeClick(("button", "innertext", "0x", "regexp", 0), deadline: 5);
+                var headers =
+                    new Traffic(_project, _instance).Get("https://chat.chainopera.ai/userCenter/api/", "RequestHeaders");
+
+                foreach (string header in headers.Split('\n'))
                 {
+                    if (header.ToLower().Contains("authorization"))
+                    {
+                        _project.Var("token", header.Split(':')[1]);
+                    }
 
-                    var Method = t.Method;
-                    var ResultCode = t.ResultCode.ToString();
-                    var Url = t.Url;
-                    var ResponseContentType = t.ResponseContentType;
-                    var RequestHeaders = t.RequestHeaders;
-                    var RequestCookies = t.RequestCookies;
-                    var RequestBody = t.RequestBody;
-                    var ResponseHeaders = t.ResponseHeaders;
-                    var ResponseCookies = t.ResponseCookies;
-                    var ResponseBody = t.ResponseBody == null ? "" : Encoding.UTF8.GetString(t.ResponseBody, 0, t.ResponseBody.Length);
+                    if (header.ToLower().Contains("cookie"))
+                    {
+                        _project.Var("cookie", header.Split(':')[1]);
+                    }
 
-                    if (Method == "OPTIONS") continue;
-                    data.Add("Method", Method);
-                    data.Add("ResultCode", ResultCode);
-                    data.Add("Url", Url);
-                    data.Add("ResponseContentType", ResponseContentType);
-                    data.Add("RequestHeaders", RequestHeaders);
-                    data.Add("RequestCookies", RequestCookies);
-                    data.Add("RequestBody", RequestBody);
-                    data.Add("ResponseHeaders", ResponseHeaders);
-                    data.Add("ResponseCookies", ResponseCookies);
-                    data.Add("ResponseBody", ResponseBody);
-                    break;
                 }
 
+                if (_project.Var("token") == "") throw new Exception("catched empty token");
+                
+                _instance.HeClick(
+                    ("button", "class",
+                        "inline-flex\\ items-center\\ justify-center\\ whitespace-nowrap\\ text-sm\\ font-medium\\ transition-colors\\ focus-visible:outline-hidden\\ focus-visible:ring-1\\ focus-visible:ring-primary\\ disabled:pointer-events-none\\ disabled:opacity-50\\ border-none\\ hover:bg-accent\\ hover:text-accent-foreground\\ active:bg-transparent\\ h-9\\ w-9\\ p-0\\ absolute\\ left-4\\ top-3\\ z-2\\ rounded-full\\ shadow-md",
+                        "regexp", 0), deadline: 5, thr0w: false);
             }
-            if (data.Count == 0) goto get;
-
-
-            string headersString = data["RequestHeaders"].Trim();//RequestCookies
-            _logger.Send(headersString);
-            //_project.L0g(headersString);
-
-            var headers = headersString.Split('\n');
-
-            foreach (string header in headers)
+            catch (Exception ex)
             {
-                if (header.ToLower().Contains("authorization"))
-                {
-                    _project.Var("token", header.Split(':')[1]);
-                }
-                if (header.ToLower().Contains("cookie"))
-                {
-                    _project.Var("cookie", header.Split(':')[1]);
-                }
-
+                _project.SendWarningToLog(ex.Message);
+                throw;
             }
-            _instance.HeClick(("button", "class", "inline-flex\\ items-center\\ justify-center\\ whitespace-nowrap\\ text-sm\\ font-medium\\ transition-colors\\ focus-visible:outline-hidden\\ focus-visible:ring-1\\ focus-visible:ring-primary\\ disabled:pointer-events-none\\ disabled:opacity-50\\ border\\ bg-background\\ hover:border-primary/50\\ shadow-xs\\ hover:bg-primary\\ hover:text-primary-foreground\\ hover:ring-primary/60\\ hover:ring-2\\ active:bg-background\\ active:text-primary\\ active:ring-0\\ px-4\\ py-2\\ h-10\\ truncate\\ rounded-full\\ pr-1\\ w-auto\\ gap-4", "regexp", 0), emu: 1);
+
 
         }
-        public string ReqGet(string path, bool parse = false, bool log = false)
+        public string ReqGet(string path, bool parse = true, bool log = false)
         {
 
             string token = _project.Variables["token"].Value;
@@ -194,6 +163,153 @@ namespace z3nCore
 
         }
 
+        public bool IsCheckedIn()
+        {
+            ReqGet("/userCenter/api/v1/ai/terminal/getRateLimit", true);
+            bool checkedIn =  _project.Json.data; 
+            return checkedIn;
+        }
+        public decimal ChekInPrice()
+        {
+            ReqGet("/userCenter/api/v1/ai/terminal/checkInNetworkList", true);
+            var checkInAmount =  _project.Json.data[0].checkInAmount; 
+            return decimal.Parse(checkInAmount);
+        }
+
+        public double PromptRatio()
+        {
+            ReqGet("/userCenter/api/v1/ai/terminal/getPromptPoints", true);
+            var today =  _project.Json.data.todayPoints; 
+            var ratio =  _project.Json.data.pointsRatio; 
+            return ratio;
+        }
+        public double AgentRatio()
+        {
+            ReqGet("/userCenter/api/v1/client/points/interaction/getPoints", true);
+            var ratio =  _project.Json.data.pointsRatio; 
+            return ratio;
+        }
+
+        public void Login()
+        {
+            try
+            {
+                _instance.Go("https://chat.chainopera.ai/");
+                _instance.HeClick(("button", "innertext", "Login", "regexp", 1));
+                _instance.HeClick(("span", "innertext", "Zerion", "regexp", 0));
+                new ZerionWallet(_project,_instance, true).Connect();
+            }
+
+            catch (Exception ex)
+            {
+                _project.SendWarningToLog(ex.Message);
+                throw;
+            }
+            
+        }
+
+        public int UpdatePrompts()
+        {
+            var prompts = _instance.ActiveTab.FindElementsByAttribute("span", "class", "ml-2\\ text-\\[\\#797B7A]\\ hover:text-primary-500", "regexp").ToList();
+            var localPrompts = new List<string>();
+            lock (LockObject)
+            {
+                string localPath = Path.Combine(_project.Path,".data","web3prompts.txt");//$"{project.Path}.data\\web3prompts.txt"; 
+                localPrompts = File.ReadAllLines(localPath).ToList();
+
+                foreach (HtmlElement prompt in prompts)
+                {
+	
+                    if (!localPrompts.Contains(prompt.InnerText.Trim())) 
+                        localPrompts.Add ( prompt.InnerText.Trim() );
+                }
+                File.WriteAllLines(localPath, localPrompts);
+            }
+            
+            var promptsList = _project.Lists["prompts"];
+            promptsList.Clear();
+
+            foreach (var prompt in localPrompts) promptsList.Add(prompt);
+            return localPrompts.Count;
+        }
+
+        public void InputPrompt()
+        {
+            var prompt = _project.Lists["prompts"][new Random().Next(0,_project.Lists["prompts"].Count)];
+            _instance.HeSet(("textarea", "fulltagname", "textarea", "regexp", 0),prompt);
+            
+        }
+
+        public void SendPromptAndWait()
+        {
+            _project.Deadline();
+            var classTofind = "p-1.5\\ size-7";
+            var d = "M3 3H13V13H3V3Z";
+            
+            waitPrevious:
+            _project.Deadline(10);
+            Thread.Sleep(1000);
+            if (!_instance.HeGet(("button", "class", classTofind, "regexp", 0), atr:"InnerHtml").Contains(d))
+            {
+                _instance.HeClick(("button", "class", classTofind, "regexp", 0));
+            }
+            else 
+                goto waitPrevious;
+
+            _project.SendInfoToLog("requestSent");
+            
+            waitCurrent:
+            _project.Deadline(120);
+            Thread.Sleep(1000);
+            if (_instance.HeGet(("button", "class", classTofind, "regexp", 0), atr:"InnerHtml").Contains(d))
+            {
+                goto waitCurrent;
+            }
+
+        }
+
+        public void ChooseAgentFromDb()
+        {
+            
+            _instance.HeClick(("button", "innertext", "Discover", "regexp", 0));
+
+            var agent = _project.DbGet("agent",where:"agent != '' ORDER BY RANDOM() LIMIT 1;");
+
+
+            _instance.HeSet(("input:text", "placeholder", "Search\\ Agents", "regexp", 0),agent);
+            Thread.Sleep(3000);
+
+            var d = "M16 28.0586C22.6274 28.0586 28 22.686 28 16.0586L28 12.0586C28 5.43118 22.6274 0.0585937 16 0.0585936L12 0.0585936C5.37258 0.0585935 2.69829e-07 5.43118 1.90798e-07 12.0586L1.43099e-07 16.0586C6.40674e-08 22.686 5.37258 28.0586 12 28.0586L16 28.0586Z";
+
+            if (!_instance.HeGet(("button", "class", "transform\\ transition-all\\ duration-300\\ ease-in-out\\ scale-100", "regexp", 0), atr:"InnerHtml").Contains(d))
+            {
+                _instance.HeClick(("button", "class", "transform\\ transition-all\\ duration-300\\ ease-in-out\\ scale-100", "regexp", 0));
+            }
+
+            _instance.HeClick(("li", "class", "flex\\ items-center\\ w-full\\ relative\\ hover:bg-gray-50\\ transition-colors\\ duration-200\\ cursor-pointer", "regexp", 0));
+            _instance.HeClick(("button", "innertext", "\\+\\ Try\\ Agent", "regexp", 0));
+
+        }
+
+        public string PohState()
+        {
+            var poh = "";
+            var tasks = ReqGet("/userCenter/api/v1/client/points/getTaskList");
+            _project.Json.FromString(tasks);
+            string undone = string.Empty;
+            foreach (var task in _project.Json.data)
+            {
+                string taskTitle = task.taskTitle;
+                bool completeStatus = task.completeStatus;
+                if (!completeStatus){
+                    undone = taskTitle;
+                    poh += taskTitle + "; ";
+                }
+            }
+            if (poh == "") poh = "ok";
+            return poh;
+
+        }
 
     }
 }

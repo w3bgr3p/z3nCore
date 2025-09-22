@@ -19,6 +19,7 @@ namespace z3nCore
         private readonly Instance _instance;
         private readonly Logger _logger;
         private readonly bool _showLog;
+        private static readonly object _disableLogsLock = new object();
 
         public Init(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
@@ -42,11 +43,11 @@ namespace z3nCore
 
             string pathLogs = Path.Combine(processDir,"Logs");
             
-            var lockobj = new object();
+            //var lockobj = new object();
 
             try
             {
-                lock (lockobj)
+                lock (_disableLogsLock)
                 {
                     if (Directory.Exists(pathLogs))
                     {
@@ -313,7 +314,7 @@ namespace z3nCore
             }
             catch (Exception ex)
             {
-                _logger.Send(ex.Message, thr0w: true);
+                _logger.Send(ex.Message, thrw: true);
             }
 
         }
@@ -523,10 +524,10 @@ namespace z3nCore
                     }
                     var required = _project.Var("nativeBy") == "native" ? minNativeInUsd : _project.UsdToToken(minNativeInUsd, tiker,"OKX");
                     if (native >= required) { 			
-                        _project.SendToLog($"{address} have sufficient [{native}] native in {chain}",LogType.Info ,true ,LogColor.LightBlue);
+                        _logger.Send($"{address} have sufficient [{native}] native in {chain}", color: LogColor.Gray);
                         return ;
                     }
-                    _project.SendWarningToLog($"!W no balnce required: [{required}${tiker}] in  {chain}. native is [{native}] for {address}");
+                    _logger.Warn($"no balnce required: [{required}${tiker}] in  {chain}. native is [{native}] for {address}");
                 }
                 _project.DbUpd($"status = '! noBalance', daily = '{Time.Cd(60)}'");
                 throw new Exception($"!W no balnce required: [{minNativeInUsd}] in chains {_project.Var("gateOnchainChain")}");
@@ -554,7 +555,7 @@ namespace z3nCore
                 {
                     if (status.Contains(word)){
                         string exMsg = $"{social} of {_project.Var("acc0")}: [{status}]";
-                        _project.SendWarningToLog(exMsg);
+                        _logger.Warn(exMsg);
                         throw new Exception(exMsg);
                     }
                 }
@@ -612,7 +613,7 @@ namespace z3nCore
             
             if (string.IsNullOrEmpty(_project.Var("acc0"))) //Default
             {
-                _logger.Send($"acc0 is empty. Check {_project.Var("wkMode")} conditions maiby it's TimeToChill",thr0w:true);
+                _logger.Send($"acc0 is empty. Check {_project.Var("wkMode")} conditions maiby it's TimeToChill",thrw:true);
             }
             return _project.Var("acc0");
 
@@ -718,7 +719,7 @@ namespace z3nCore
             if (allQueries.Count > 0) 
                 MakeAccList(allQueries);
             else 
-                _logger.Send($"unsupported SQLFilter: [{_project.Variables["wkMode"].Value}]",thr0w:true);
+                _logger.Send($"unsupported SQLFilter: [{_project.Variables["wkMode"].Value}]",thrw:true);
             
         }
         

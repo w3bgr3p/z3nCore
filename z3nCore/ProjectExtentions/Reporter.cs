@@ -99,7 +99,7 @@ namespace z3nCore
             return failReport;
         }
         
-        public void MkScreenshot(string url, string watermark = null)
+        public void MkScreenshot_old(string url, string watermark = null)
         {
             if (string.IsNullOrEmpty(url)) return;
             
@@ -130,7 +130,55 @@ namespace z3nCore
                 _project.SendInfoToLog(e.Message ?? "Error during screenshot processing");
             }
         }
+        public void MkScreenshot(string url, string watermark = null)
+        {
+            if (string.IsNullOrEmpty(url)) return;
+    
+            try
+            {
+                var sb = new StringBuilder();
+                sb.Append($"[{_project.Name}]")
+                    .Append($"[{Time.Now()}]")
+                    .Append(_project.LastExecutedActionId)
+                    .Append(".jpg");
+    
+                string screenshotPath = Path.Combine(_project.Path, ".failed", _project.Variables["projectName"].Value, sb.ToString());
+                _project?.SendInfoToLog($"Screenshot path: {screenshotPath}");
+        
+                string directory = Path.GetDirectoryName(screenshotPath);
+                if (!Directory.Exists(directory))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+        
+                lock (LockObject)
+                {
+                    ZennoPoster.ImageProcessingCropFromScreenshot(_instance.Port, screenshotPath, 0, 0, 1280, 720, "pixels");
+            
+                    System.Threading.Thread.Sleep(500);
+            
+                    if (File.Exists(screenshotPath))
+                    {
+                        ZennoPoster.ImageProcessingResizeFromFile(screenshotPath, screenshotPath, 50, 50, "percent", true, false);
 
+                        System.Threading.Thread.Sleep(300);
+                    }
+                }
+        
+                
+                if (!string.IsNullOrEmpty(watermark) && File.Exists(screenshotPath))
+                {
+                    AddWatermark(watermark, screenshotPath);
+                }
+        
+                _project?.SendInfoToLog($"Screenshot created successfully: {screenshotPath}");
+            }
+            catch (Exception e)
+            {
+                _project.SendWarningToLog($"Error during screenshot processing: {e.Message}");
+                _project.SendWarningToLog($"Stack trace: {e.StackTrace}");
+            }
+        }
         public void AddWatermark(string watermarkText, string pathIn, string pathOut = null)
         {
             if (string.IsNullOrWhiteSpace(pathOut)) pathOut = pathIn;
@@ -210,7 +258,8 @@ namespace z3nCore
             
             string errorReport = sb.ToString().Replace("\\", "");
             //string beautified = errorReport.Replace("\\", "");
-            _project.SendInfoToLog(errorReport);
+            
+            _project.SendToLog(errorReport,LogType.Warning,true,LogColor.Orange );
             
             // Отправляем в телеграм если нужно
             if (toTg)
@@ -282,8 +331,9 @@ namespace z3nCore
             var reportText = sb.ToString();
             if (ToTg) ToTelegram(reportText);
             reportText = reportText.Replace(@"\", "");
-            if (log) _project.SendInfoToLog(reportText);
-            
+            if (log) //_project.SendInfoToLog(reportText);
+            _project.SendToLog(reportText,LogType.Info,true,LogColor.LightBlue );
+        
             return reportText;
         }
         
