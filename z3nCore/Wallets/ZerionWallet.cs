@@ -1,16 +1,12 @@
-﻿using NBitcoin;
+﻿
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
-
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
-using System.Threading.Tasks;
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
