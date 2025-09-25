@@ -258,12 +258,12 @@ namespace z3nCore
                 case "mainnet":
                 case "testnet":
                 case "ethereum":
-                    _project.L0g(modeNow);
+                    _project.log(modeNow);
                     break;
 
                 default:
                     Thread.Sleep(1000);
-                    _project.L0g("unknown");
+                    _project.log("unknown");
                     goto ifNow;
             }
             return modeNow;
@@ -322,7 +322,7 @@ namespace z3nCore
                
             }
 
-            _project.L0g(action);
+            _project.log(action);
 
             switch (action)
             {

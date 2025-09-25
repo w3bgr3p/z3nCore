@@ -31,7 +31,7 @@ namespace z3nCore
             {
                 //project.SendToLog($"{ex.Message}", LogType.Warning);
 
-                project.L0g($"!W Err:[{ex.Message}]. debug:\n{query}");
+                project.log($"!W Err:[{ex.Message}]. debug:\n{query}");
                 if (!ignoreErrors) throw ;
                 return string.Empty;
             }

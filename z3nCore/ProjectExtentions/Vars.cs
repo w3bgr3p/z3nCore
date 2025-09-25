@@ -56,7 +56,7 @@ namespace z3nCore
             {
                 project.SendInfoToLog(e.Message);
             }
-            if (value == string.Empty) project.L0g($"no Value from [{Var}] `w");
+            if (value == string.Empty) project.log($"no Value from [{Var}] `w");
 
             if (value.Contains("-"))
             {
@@ -244,14 +244,14 @@ namespace z3nCore
                     
                     if (log)
                     {
-                        project.L0g($"buzy Accounts: [{string.Join(" | ", busyAccounts)}]");
+                        project.log($"buzy Accounts: [{string.Join(" | ", busyAccounts)}]");
                     }
                     
                     return busyAccounts;
                 }
                 catch (Exception ex)
                 {
-                    if (log) project.L0g($"⚙ GGet: {ex.Message}");
+                    if (log) project.log($"⚙ GGet: {ex.Message}");
                     throw;
                 }
             }
@@ -275,7 +275,7 @@ namespace z3nCore
                         var busyAccounts = project.GGetBusyList(false);
                         if (busyAccounts.Any(x => x.StartsWith($"{currentThread}:")))
                         {
-                            if (log) project.L0g($"{currentThreadKey} is already busy!");
+                            if (log) project.log($"{currentThreadKey} is already busy!");
                             return false;
                         }
                     }
@@ -293,14 +293,14 @@ namespace z3nCore
                     if (log) 
                     {
                         string forceText = force ? " (forced)" : "";
-                        project.L0g($"{currentThreadKey} bound to {valueToSet}{forceText}");
+                        project.log($"{currentThreadKey} bound to {valueToSet}{forceText}");
                     }
                     
                     return true;
                 }
                 catch (Exception ex)
                 {
-                    if (log) project.L0g($"⚙ GSet: {ex.Message}");
+                    if (log) project.log($"⚙ GSet: {ex.Message}");
                     throw;
                 }
             }
@@ -332,14 +332,14 @@ namespace z3nCore
                     
                     if (log)
                     {
-                        project.L0g($"Cleaned accounts: {string.Join(",", cleaned)}");
+                        project.log($"Cleaned accounts: {string.Join(",", cleaned)}");
                     }
                     
                     return cleaned;
                 }
                 catch (Exception ex)
                 {
-                    if (log) project.L0g($"⚙ GClean: {ex.Message}");
+                    if (log) project.log($"⚙ GClean: {ex.Message}");
                     throw;
                 }
             }

@@ -13,23 +13,42 @@ using System.Diagnostics;
 using ZennoLab.InterfacesLibrary.Enums.Log;
 namespace z3nCore
 {
-    public class Init_
+    public class Init
     {
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
         private readonly Logger _logger;
-        private readonly bool _showLog;
+        private readonly bool _log;
         private static readonly object _disableLogsLock = new object();
 
-        public Init_(IZennoPosterProjectModel project, Instance instance, bool log = false)
+        public Init(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
             _project = project;
-            _showLog = log;
-            _logger = new Logger(project, log: _showLog, classEmoji: "►");
+            _log = log;
+            _logger = new Logger(project, log: _log, classEmoji: "►");
             _instance = instance;
         }
 
-         private void DisableLogs()
+        private string AsemmblyVersion()
+        {
+            var executingAssembly = Assembly.GetExecutingAssembly();
+            var staticAssembly = typeof(z3nCore.Init).Assembly;
+            var executingVersion = executingAssembly.GetName().Version.ToString();
+            var staticVersion = staticAssembly.GetName().Version.ToString();
+
+            if (executingVersion != staticVersion)
+            {
+                string errorMessage = $"Version mismatch detected! " +
+                                      $"Executing assembly ({executingAssembly.Location}) version: {executingVersion}, " +
+                                      $"staticAssembly assembly ({staticAssembly.Location}) version: {staticVersion}. " +
+                                      $"Ensure both assemblies are the same version.";
+                _logger.Warn(errorMessage);
+                //throw new InvalidOperationException(errorMessage);
+            }
+            return executingVersion;
+        }
+
+        private void DisableLogs()
         {
             
             string currentProcessPath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
@@ -161,7 +180,7 @@ namespace z3nCore
                 }
                 catch (Exception ex)
                 {
-                    _project.L0g(ex.Message);
+                    _project.log(ex.Message);
                     throw;
                 }
             }
@@ -306,12 +325,27 @@ namespace z3nCore
         }
         private string[] Versions()
         {
+            var executingAssembly = Assembly.GetExecutingAssembly();
+            var referencedAssembly = typeof(z3nCore.Init).Assembly;
+            var executingVersion = executingAssembly.GetName().Version.ToString();
+            var referencedVersion = referencedAssembly.GetName().Version.ToString();
+
+            if (executingVersion != referencedVersion)
+            {
+                string errorMessage = $"Version mismatch detected! " +
+                                      $"Executing assembly ({executingAssembly.Location}) version: {executingVersion}, " +
+                                      $"Referenced assembly ({referencedAssembly.Location}) version: {referencedVersion}. " +
+                                      $"Ensure both assemblies are the same version.";
+                _project.SendWarningToLog(errorMessage); // Для видимости в ZennoPoster
+            }
+            //return referencedVersion;
+            
             string currentProcessPath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
             string processDir = Path.GetDirectoryName(currentProcessPath);
 
             string path_ExternalAssemblies = Path.Combine(processDir,"ExternalAssemblies");
-            string path_dll = Path.Combine(path_ExternalAssemblies,"z3nCore.dll");
-            string DllVer = FileVersionInfo.GetVersionInfo(path_dll).FileVersion;
+            //string path_dll = Path.Combine(path_ExternalAssemblies,"z3nCore.dll");
+            string DllVer = referencedVersion;//FileVersionInfo.GetVersionInfo(path_dll).FileVersion;
             string ZpVer = processDir.Split('\\')[5];
             
             return new[] { DllVer, ZpVer };
@@ -387,7 +421,7 @@ namespace z3nCore
             {
                 try
                 {
-                    var accsByQuery = _project.DbQ(query,log:_showLog).Trim();
+                    var accsByQuery = _project.DbQ(query,log:_log).Trim();
                     if (!string.IsNullOrWhiteSpace(accsByQuery))
                     {
                         var accounts = accsByQuery.Split('\n').Select(x => x.Trim().TrimStart(','));
@@ -421,7 +455,7 @@ namespace z3nCore
                 foreach (string social in demanded)
                 {
                     string tableName = $"projects_{social.Trim().ToLower()}";
-                    var notOK = _project.SqlGet($"id", tableName, log: _showLog, where: "status LIKE '%suspended%' OR status LIKE '%restricted%' OR status LIKE '%ban%' OR status LIKE '%CAPTCHA%' OR status LIKE '%applyed%' OR status LIKE '%Verify%'")
+                    var notOK = _project.SqlGet($"id", tableName, log: _log, where: "status LIKE '%suspended%' OR status LIKE '%restricted%' OR status LIKE '%ban%' OR status LIKE '%CAPTCHA%' OR status LIKE '%applyed%' OR status LIKE '%Verify%'")
                         .Split('\n')
                         .Select(x => x.Trim())
                         .Where(x => !string.IsNullOrEmpty(x));
@@ -711,7 +745,7 @@ namespace z3nCore
                 catch (Exception ex)
                 {
                     _instance.CloseAllTabs();
-                    _project.L0g($"!W {ex.Message}");
+                    _project.log($"!W {ex.Message}");
                     exCnt++;
                     if (exCnt > 3) throw;
                 }
@@ -721,14 +755,14 @@ namespace z3nCore
             return walletsToUse;
         }
         
-        public void InitProject( string author = "w3bgr3p", string[] customQueries = null, bool log = false )
+        public void InitProject( string author = "w3bgr3p", string[] customQueries = null )
         {
             
             _SAFU();
             InitVariables(author);
             BuildNewDatabase();
 
-            _project.TblPrepareDefault(log:log);
+            _project.TblPrepareDefault(log:_log);
             var allQueries = ToDoQueries();
             
             if (customQueries != null)
@@ -745,7 +779,7 @@ namespace z3nCore
         public void PrepareProject(bool log = false) 
         {
             bool forced = !string.IsNullOrEmpty(_project.Var("acc0Forced"));
-            if (log) _logger.Send($"PrepareProject started. Forced mode: {forced}");
+            //_logger.Send($"PrepareProject started. Forced mode: {forced}");
             
             var acc = "";
             
@@ -811,7 +845,7 @@ namespace z3nCore
 
             var pn = _project.ProjectName();
             _project.GVar($"acc{acc}", pn);
-            if (log) _logger.Send($"running acc{acc} with {pn}");
+            _logger.Send($"running {pn} with acc{acc}  {_project.Lists["accs"].Count} accounts left in que", show:true);
         }
         
         public void PrepareInstance()
@@ -834,7 +868,7 @@ namespace z3nCore
             catch (Exception ex)
             {
                 _instance.CloseAllTabs();
-                _project.L0g($"!W launchInstance Err {ex.Message}");
+                _project.log($"!W launchInstance Err {ex.Message}");
                 exCnt++;
                 if (exCnt > 3)
                 {

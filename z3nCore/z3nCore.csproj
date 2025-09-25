@@ -48,9 +48,8 @@
     <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="CapMonsterCloud, Version=0.0.26.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>C:\Program Files\ZennoLab\RU\ZennoPoster Pro V7\7.8.8.0\Progs\CapMonsterCloud.dll</HintPath>
+    <Reference Include="CapMonsterCloud">
+      <HintPath>..\ZennolabDll\CapMonsterCloud.dll</HintPath>
     </Reference>
     <Reference Include="Global, Version=9.8.3.1331, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -87,30 +86,30 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Api\BinanceApi.cs" />
+    <Compile Include="Api\Bitget.cs" />
     <Compile Include="Api\DiscordApi.cs" />
     <Compile Include="Api\GitHubApi.cs" />
+    <Compile Include="Api\Mexc.cs" />
     <Compile Include="Api\OKXApi.cs" />
     <Compile Include="Browser\Cookies.cs" />
     <Compile Include="Browser\Captcha.cs" />
     <Compile Include="Browser\HtmlExtensions.cs" />
-    <Compile Include="Core\Fallback.cs" />
+    <Compile Include="Core\Init.cs" />
+    <Compile Include="Core\Main.cs" />
+    <Compile Include="Core\Reporter.cs" />
     <Compile Include="MethodExtensions\StringExtentions.cs" />
-    <Compile Include="Core\Interfaces.cs" />
-    <Compile Include="Core\Orchestrator.cs" />
-    <Compile Include="Core\Services.cs" />
     <Compile Include="ProjectExtentions\Exceptions.cs" />
     <Compile Include="ProjectExtentions\FS.cs" />
-    <None Include="ProjectExtentions\Main.cs" />
     <Compile Include="ProjectExtentions\Utils.cs" />
+    <Compile Include="Wallets\Keplr.cs" />
+    <None Include="Wallets\Zerion.cs" />
     <Compile Include="_projects\HackQuest.cs" />
     <None Include="cmnc0de.cs" />
     <Compile Include="Browser\InstanceExtensions.cs" />
     <Compile Include="Essentials\Cryptography.cs" />
-    <None Include="Essentials\Init.cs" />
     <Compile Include="Essentials\ISAFU.cs" />
     <Compile Include="Essentials\Logger.cs" />
     <Compile Include="Essentials\Time.cs" />
-    <Compile Include="ProjectExtentions\Reporter.cs" />
     <Compile Include="ProjectExtentions\Rnd.cs" />
     <Compile Include="ProjectExtentions\Vars.cs" />
     <Compile Include="Properties\VersionInfo.cs" />

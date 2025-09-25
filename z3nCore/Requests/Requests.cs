@@ -188,12 +188,12 @@ namespace z3nCore
             {
                 instance.SetProxy(proxy, true, true, true, true); Thread.Sleep(2000);
                 string ipProxy = project.GET($"http://api.ipify.org/", proxy);
-                project.L0g($"local:[{ipLocal}]?proxyfied:[{ipProxy}]");
+                project.log($"local:[{ipLocal}]?proxyfied:[{ipProxy}]");
                 project.Variables["ip"].Value = ipProxy;
                 project.Variables["proxy"].Value = proxy;
                 if (ipLocal != ipProxy) return;
             }
-            project.L0g("!W badProxy");
+            project.log("!W badProxy");
             throw new Exception("!W badProxy");
         }
     }

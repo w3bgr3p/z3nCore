@@ -18,12 +18,7 @@ namespace z3nCore
 {
     public static class Utils
     {
-        
-        public static void L0g(this IZennoPosterProjectModel project, string toLog, [CallerMemberName] string callerName = "", bool show = true, bool thr0w = false, bool toZp = true)
-        {
-            new Logger(project).Send(toLog, show: show, thrw: thr0w, toZp: toZp);
-        }
-        
+
         public static int Range(this IZennoPosterProjectModel project, string accRange = null, string output = null, bool log = false)
         {
             if (string.IsNullOrEmpty(accRange)) accRange = project.Variables["cfgAccRange"].Value;
@@ -128,46 +123,7 @@ namespace z3nCore
             return version;
         }
 
-        public static void ObsoleteCode(this IZennoPosterProjectModel project, string newName = "unknown")
-        {
-            try
-            {
-                if (project == null) return;
-
-                var sb = new System.Text.StringBuilder();
-
-                try
-                {
-                    var trace = new System.Diagnostics.StackTrace(1, true); // пропускаем сам метод
-                    var oldName ="";
-                    for (int i = 0; i < trace.FrameCount; i++)
-                    {
-                        var f = trace.GetFrame(i);
-                        var m = f?.GetMethod();
-                        if (m == null || m.DeclaringType == null) continue;
-
-                        var typeName = m.DeclaringType.FullName;
-                        if (string.IsNullOrEmpty(typeName)) continue;
-
-                        
-                        if (typeName.StartsWith("System.") || typeName.StartsWith("ZennoLab.")) continue;
-                        oldName = $"{typeName}.{m.Name}";
-                        //sb.AppendLine($"{typeName}.{m.Name}");
-                    }
-                    sb.AppendLine($"![OBSOLETE CODE]. Obsolete call: [{oldName}] New call: [{newName}]");
-                    project.SendToLog(sb.ToString(), LogType.Warning, true, LogColor.Default);
-                }
-                catch (Exception ex)
-                {
-                    try
-                    {
-                        project.SendToLog($"!E WarnObsolete logging failed: {ex.Message}", LogType.Error, true, LogColor.Red);
-                    }
-                    catch { }
-                }
-            }
-            catch { }
-        }
+        
         public static bool RunZp(this IZennoPosterProjectModel project, List<string> vars = null)
         {
             string tempFilePath = project.Var("projectScript");

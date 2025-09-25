@@ -65,7 +65,7 @@ namespace z3nCore
             while (string.IsNullOrEmpty(status))
             {
                 Thread.Sleep(5000);
-                _project.L0g($"{DateTime.Now - start}s check... URLNow:[{_instance.ActiveTab.URL}]");
+                _project.log($"{DateTime.Now - start}s check... URLNow:[{_instance.ActiveTab.URL}]");
                 if (DateTime.Now > deadline) throw new Exception("timeout");
 
                 else if (!_instance.ActiveTab.FindElementByAttribute("*", "innertext", @"Caution:\s+This\s+account\s+is\s+temporarily\s+restricted", "regexp", 0).IsVoid)
@@ -85,7 +85,7 @@ namespace z3nCore
                     else
                     {
                         status = "mixed";
-                        _project.L0g($"!W {status}. Detected  [{check}] instead [UserAvatar-Container-{login}] {DateTime.Now - start}");
+                        _project.log($"!W {status}. Detected  [{check}] instead [UserAvatar-Container-{login}] {DateTime.Now - start}");
                     }
                 }
                 else if (!_instance.ActiveTab.FindElementByAttribute("span", "innertext", "Something\\ went\\ wrong.\\ Try\\ reloading.", "regexp", 0).IsVoid)
@@ -95,7 +95,7 @@ namespace z3nCore
                     continue;
                 }
             }
-            _project.L0g($"{status} {DateTime.Now - start}");
+            _project.log($"{status} {DateTime.Now - start}");
             return status;
         }
         private string Xload(bool log = false) //DEPRECATED
@@ -117,7 +117,7 @@ namespace z3nCore
             else if (status == "login" && tokenUsed)
             {
                 var login = Login();
-                _project.L0g($"{login}");
+                _project.log($"{login}");
                 Thread.Sleep(3000);
             }
             else if (status == "mixed")
@@ -145,7 +145,7 @@ namespace z3nCore
                 return status;
             }
             else
-                _project.L0g($"unknown {status}");
+                _project.log($"unknown {status}");
             goto check;
         }
 
@@ -228,7 +228,7 @@ namespace z3nCore
             else if (status == "login" && tokenUsed)
             {
                 var login = Login();
-                _project.L0g($"{login}");
+                _project.log($"{login}");
                 Thread.Sleep(3000);
             }
             else if (status == "mixed")
@@ -270,7 +270,7 @@ namespace z3nCore
             _project.Deadline(60);
             string state = State();
 
-            _project.L0g(state);
+            _project.log(state);
 
             switch (state)
             {
@@ -322,7 +322,7 @@ namespace z3nCore
             }
 
             if (!_instance.ActiveTab.URL.Contains("x.com") && !_instance.ActiveTab.URL.Contains("twitter.com"))
-                _project.L0g("auth done");
+                _project.log("auth done");
             else goto check;
         }
         public string State()
@@ -374,7 +374,7 @@ namespace z3nCore
         {
             if (data.ContainsKey("CODE2FA"))
             {
-                _project.L0g($"CODE2FA raw value: {data["CODE2FA"]}"); // Логируем исходное значение
+                _project.log($"CODE2FA raw value: {data["CODE2FA"]}"); // Логируем исходное значение
             }
 
             var fields = new Dictionary<string, string>
@@ -401,7 +401,7 @@ namespace z3nCore
             }
             catch (Exception ex)
             {
-                _project.L0g($"!W{ex.Message}");
+                _project.log($"!W{ex.Message}");
             }
             LoadCreds();
         }

@@ -135,7 +135,7 @@ namespace z3nCore
             {
                 project.SendInfoToLog(e.Message);
             }
-            if (value == string.Empty) project.L0g($"no Value from [{Var}] `w");
+            if (value == string.Empty) project.log($"no Value from [{Var}] `w");
 
             if (value.Contains("-"))
             {
@@ -157,7 +157,7 @@ namespace z3nCore
             {
                 project.SendInfoToLog(e.Message);
             }
-            if (value == string.Empty) project.L0g($"no Value from [{Var}] `w");
+            if (value == string.Empty) project.log($"no Value from [{Var}] `w");
 
             if (value.Contains("-"))
             {

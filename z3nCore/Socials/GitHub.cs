@@ -129,7 +129,7 @@ namespace z3nCore
             }
             catch
             {
-                _project.L0g($"!W captcha notSolved. iteration {i}");
+                _project.log($"!W captcha notSolved. iteration {i}");
                 goto cap;
             }
 

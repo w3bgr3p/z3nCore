@@ -181,23 +181,23 @@ namespace z3nCore
             switch (action)
             {
                 case "Add":
-                    _project.L0g($"adding {_instance.HeGet(("input:url", "fulltagname", "input:url", "text", 0), atr: "value")}");
+                    _project.log($"adding {_instance.HeGet(("input:url", "fulltagname", "input:url", "text", 0), atr: "value")}");
                     _instance.HeClick(("button", "class", "_primary", "regexp", 0), "last");
                     goto getState;
                 case "Close":
-                    _project.L0g($"added {_instance.HeGet(("div", "class", "_uitext_", "regexp", 0))}");
+                    _project.log($"added {_instance.HeGet(("div", "class", "_uitext_", "regexp", 0))}");
                     _instance.HeClick(("button", "class", "_primary", "regexp", 0), "last");
                     goto getState;
                 case "Connect":
-                    _project.L0g($"connecting {_instance.HeGet(("div", "class", "_uitext_", "regexp", 0))}");
+                    _project.log($"connecting {_instance.HeGet(("div", "class", "_uitext_", "regexp", 0))}");
                     _instance.HeClick(("button", "class", "_primary", "regexp", 0), "last");
                     goto getState;
                 case "Sign":
-                    _project.L0g($"sign {_instance.HeGet(("div", "class", "_uitext_", "regexp", 0))}");
+                    _project.log($"sign {_instance.HeGet(("div", "class", "_uitext_", "regexp", 0))}");
                     _instance.HeClick(("button", "class", "_primary", "regexp", 0), "last");
                     goto getState;
                 case "Sign In":
-                    _project.L0g($"sign {_instance.HeGet(("div", "class", "_uitext_", "regexp", 0))}");
+                    _project.log($"sign {_instance.HeGet(("div", "class", "_uitext_", "regexp", 0))}");
                     _instance.HeClick(("button", "class", "_primary", "regexp", 0), "last");
                     goto getState;
 
@@ -439,7 +439,7 @@ namespace z3nCore
                         if (claimable != "0")
                         {
                             res.Add(id);
-                            _project.L0g(toLog);
+                            _project.log(toLog);
                         }
                         i++;
                     }
@@ -451,7 +451,7 @@ namespace z3nCore
             }
             catch
             {
-                _project.L0g($"!W failed to parse : [{response}] ");
+                _project.log($"!W failed to parse : [{response}] ");
             }
             return res;
 

@@ -63,7 +63,7 @@ namespace z3nCore
                     var required = value + 0.00015m;
                     if (native > required)
                     {
-                        _project.L0g($"CHOSEN: rpc:[{rpc}] native:[{native}]");
+                        _logger.Send($"CHOSEN: rpc:[{rpc}] native:[{native}]");
                         found = true; break;
                     }
                     if (log) _logger.Send($"rpc:[{rpc}] native:[{native}] lower than [{required}]");

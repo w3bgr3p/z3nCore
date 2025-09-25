@@ -7,6 +7,7 @@ using ZennoLab.InterfacesLibrary.Enums.Log;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 using System.Text;
 using System.IO;
+using z3nCore;
 
 namespace z3nCore
 {
@@ -209,5 +210,82 @@ namespace z3nCore
         }
 
         
+    }
+}
+
+
+public static partial class ProjectExtensions
+{
+            
+    public static void log(this IZennoPosterProjectModel project, string toLog, [CallerMemberName] string callerName = "", bool show = true, bool thrw = false, bool toZp = true)
+    {
+        new Logger(project).Send(toLog, callerName, show: show, thrw: thrw, toZp: toZp);
+    }
+    public static void warn(this IZennoPosterProjectModel project, string toLog, [CallerMemberName] string callerName = "", bool show = true, bool thrw = false, bool toZp = true)
+    {
+        new Logger(project).Warn(toLog, callerName, show: show, thrw: thrw, toZp: toZp);
+    }
+    public static void L0g(this IZennoPosterProjectModel project, string toLog, [CallerMemberName] string callerName = "", bool show = true, bool thr0w = false, bool toZp = true)
+    {
+       project.ObsoleteCode("project.log");
+       project.log(toLog, callerName, show: show, thrw: thr0w, toZp: toZp);
+    }
+    internal static void ObsoleteCode(this IZennoPosterProjectModel project, string newName = "unknown")
+    {
+        try
+        {
+            if (project == null) return;
+
+            var sb = new System.Text.StringBuilder();
+
+            try
+            {
+                var trace = new System.Diagnostics.StackTrace(1, true);
+                string oldName = "";
+                string callerName = "";
+                
+                for (int i = 0; i < trace.FrameCount; i++)
+                {
+                    var frame = trace.GetFrame(i);
+                    var method = frame?.GetMethod();
+                    if (method == null || method.DeclaringType == null) continue;
+
+                    var typeName = method.DeclaringType.FullName;
+                    if (string.IsNullOrEmpty(typeName)) continue;
+
+                    if (typeName.StartsWith("System.") || typeName.StartsWith("ZennoLab.")) continue;
+
+                    var methodName = $"{typeName}.{method.Name}";
+                    
+                    if (i == 0) 
+                    {
+                        oldName = methodName;
+                    }
+                    else
+                    {
+                        callerName = methodName;
+                        break;
+                    }
+                }
+                
+                if (string.IsNullOrEmpty(callerName) || callerName == "z3nCore.Init.RunProject" ) 
+                    callerName = Path.Combine(project.Path,project.Name);
+                
+
+                sb.Append($"![OBSOLETE CODE]. Obsolete method: [{oldName}] called from: [{callerName}]");
+                if (string.IsNullOrEmpty(newName))  sb.Append($". Use: [{newName}] instead");
+                
+                project.SendWarningToLog(sb.ToString().Trim(), true);
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    project.SendToLog($"!E WarnObsolete logging failed: {ex.Message}", LogType.Error, true, LogColor.Red);
+                }
+                catch { }
+            }
+        }
+        catch { }
     }
 }

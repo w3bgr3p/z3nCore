@@ -30,7 +30,7 @@ namespace z3nCore
             var stackFrame = new System.Diagnostics.StackFrame(1);
             var callingMethod = stackFrame.GetMethod();
             if (callingMethod == null || callingMethod.DeclaringType == null || callingMethod.DeclaringType.FullName.Contains("Zenno")) callerName = "null";
-            _project.L0g($"[ 👾  {callerName}] [{tolog}] ");
+            _project.log($"[ 👾  {callerName}] [{tolog}] ");
         }
         
         public string CredsFromDb()

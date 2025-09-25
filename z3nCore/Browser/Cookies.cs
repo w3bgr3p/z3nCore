@@ -140,7 +140,7 @@ namespace z3nCore
 		";
 
             string jsonResult = _instance.ActiveTab.MainDocument.EvaluateScript(jsCode).ToString();
-            if (log) _project.L0g(jsonResult);
+            if (log) _project.log(jsonResult);
             var escapedJson = jsonResult.Replace("\r\n", "").Replace("\n", "").Replace("\r", "").Replace(" ", "").Replace("'", "''").Trim();
             _project.Json.FromString(jsonResult);
             return escapedJson;

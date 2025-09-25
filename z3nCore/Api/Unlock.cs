@@ -80,7 +80,7 @@ namespace z3nCore
             }
             catch (Exception ex)
             {
-                _project.L0g(ex.InnerException?.Message ?? ex.Message);
+                _project.log(ex.InnerException?.Message ?? ex.Message);
                 throw;
             }
         }
@@ -97,7 +97,7 @@ namespace z3nCore
             }
             catch (Exception ex)
             {
-                _project.L0g(ex.InnerException?.Message ?? ex.Message);
+                _project.log(ex.InnerException?.Message ?? ex.Message);
                 throw;
             }
         }
@@ -106,7 +106,7 @@ namespace z3nCore
         {
             if (string.IsNullOrEmpty(toDecode))
             {
-                _project.L0g("Result is empty, nothing to decode");
+                _project.log("Result is empty, nothing to decode");
                 return string.Empty;
             }
 
