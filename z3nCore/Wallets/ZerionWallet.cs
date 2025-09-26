@@ -249,6 +249,7 @@ namespace z3nCore
                 _instance.HeSet((("referralCode", "name")), refCode);
                 _instance.HeClick(("button", "class", "_regular", "regexp", 0));
             }
+            Thread.Sleep(1000);
             _instance.CloseExtraTabs(true);
             _instance.Go(_urlPopup);
         }

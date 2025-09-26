@@ -216,9 +216,23 @@ namespace z3nCore
             }
             return string.Empty;
         }
-
-
-        
+        public static string DemandGVarFromUi(this IZennoPosterProjectModel project, string var, string message = null)
+        {
+            var value = project.GVar(var);
+            if (!string.IsNullOrEmpty(value)) 
+                return value;
+            
+            if (string.IsNullOrEmpty(message)) 
+                message = $"input string to set global variable [{var}]";
+            while (true)
+            {
+                if (string.IsNullOrEmpty(value)) 
+                    value = F0rms.InputBox(message,700,100);
+                else break;
+            }
+            project.GVar(var,value);
+            return value;
+        }
         public static List<string> GGetBusyList(this IZennoPosterProjectModel project, bool log = false)
         {
             string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");

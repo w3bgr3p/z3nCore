@@ -343,5 +343,90 @@ namespace z3nCore
             //project.SendInfoToLog(string.Join(" | ",agents));
             return agents;
         }
+        
+        //DROP
+        public string Get(string path, bool parse = true, bool log = false, string apiUrl = "chainopera.foundation")
+        {
+            //string apiUrl = agent ? "agent" : "chat";
+            //apiUrl = apiUrl + ".chainopera.ai";
+            string token = _project.Variables["token"].Value;
+            string cookie = _project.Variables["cookie"].Value;
+
+            var headers = new Dictionary<string, string>
+            {
+                { "authority", apiUrl },
+                { "authorization", $"{token}" },
+                { "method", "GET" },
+                { "path", path },
+                { "accept", "application/json, text/plain, */*" },
+                { "accept-encoding", "gzip, deflate, br" },
+                { "accept-language", "en-US,en;q=0.9" },
+                { "content-type", "application/json" },
+                { "origin", $"https://{apiUrl}" },
+                { "priority", "u=1, i" },
+
+                { "sec-ch-ua", "\"Chromium\";v=\"134\", \"Not:A-Brand\";v=\"24\", \"Google Chrome\";v=\"134\"" },
+                { "sec-ch-ua-mobile", "?0" },
+                { "sec-ch-ua-platform", "\"Windows\"" },
+                { "sec-fetch-dest", "empty" },
+                { "sec-fetch-mode", "cors" },
+                { "sec-fetch-site", "same-site" },
+
+                { "cookie", $"{cookie}" },
+            };
+
+
+
+            string[] headerArray = headers.Select(header => $"{header.Key}:{header.Value}").ToArray();
+            string url = $"https://{apiUrl}{path}";
+            string response;
+
+            try
+            {
+                response = _project.GET(url, "+", headerArray, log: false, parse);
+                _logger.Send(response);
+            }
+            catch (Exception ex)
+            {
+                _project.SendErrorToLog($"Err HTTPreq: {ex.Message}");
+                throw;
+            }
+
+            return response;
+
+
+        }
+        public void GetAuth(string url)
+        {
+            try
+            {
+                var headers =
+                    new Traffic(_project, _instance).Get(url, "RequestHeaders");
+
+                foreach (string header in headers.Split('\n'))
+                {
+                    if (header.ToLower().Contains("authorization"))
+                    {
+                        _project.Var("token", header.Split(':')[1]);
+                    }
+
+                    if (header.ToLower().Contains("cookie"))
+                    {
+                        _project.Var("cookie", header.Split(':')[1]);
+                    }
+                }
+                if (_project.Var("token") == "") throw new Exception("catched empty token");
+               
+            }
+            catch (Exception ex)
+            {
+                _project.SendWarningToLog(ex.Message);
+                throw;
+            }
+
+
+        }
+        
+        
     }
 }

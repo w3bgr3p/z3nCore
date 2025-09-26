@@ -93,9 +93,9 @@ namespace z3nCore
             if (toSend.Contains("!E")) type = LogType.Error;
             Execute(toSend, type, color, toZp, thrw);
         }
-        public void Warn(string toLog, [CallerMemberName] string callerName = "", bool show = false, bool thrw = false, bool toZp = true, int cut = 0, bool wrap = true)
+        public void Warn(string toLog, [CallerMemberName] string callerName = "", bool show = false, bool thrw = false, bool toZp = true, int cut = 0, bool wrap = true, LogColor color = LogColor.Default)
         {
-            Send (toLog, callerName, show, thrw, toZp, cut, wrap, type:LogType.Warning);
+            Send (toLog, callerName, show, thrw, toZp, cut, wrap, type:LogType.Warning, color: color);
         }
 
         private string LogHeader(System.Diagnostics.StackFrame stackFrame, string callerName, bool acc, bool port, bool time, bool memory, bool caller)

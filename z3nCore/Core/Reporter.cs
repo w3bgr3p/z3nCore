@@ -131,11 +131,11 @@ namespace z3nCore
                             "horizontally",                              // imposition
                             "lefttop",                                   // location
                             watermark,                                   // text
-                            10,                                          // transparency (0-100)
-                            "Cascadia Code, 15pt, Bold, [255;255;0;0]", // style
+                            0,                                          // transparency (0-100)
+                            "Cascadia Code, 20pt,  [255;255;0;0]", // style
                             5,                                           // offsetLeft
                             5,                                           // offsetTop
-                            85,                                          // quality
+                            100,                                          // quality
                             ""                                           // exif
                         );
                     }

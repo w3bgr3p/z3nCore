@@ -175,8 +175,7 @@ namespace z3nCore
             if (string.IsNullOrEmpty(fileName)) fileName = _fileName;
             var em = _instance.UseFullMouseEmulation;
             _instance.UseFullMouseEmulation = false;
-
-        lnch:
+            
             new ChromeExt(_project, _instance, log: log).Switch(_extId);
             _logger.Send("Launching" + fileName);
 
@@ -194,8 +193,7 @@ namespace z3nCore
             }
             catch (Exception ex)
             {
-                _project.SendWarningToLog(ex.Message);
-                goto lnch;
+                _logger.Warn(ex.Message, thrw:true);
             }
             SetSource(source, log);
             _instance.CloseExtraTabs();

@@ -102,7 +102,7 @@
     <Compile Include="ProjectExtentions\FS.cs" />
     <Compile Include="ProjectExtentions\Utils.cs" />
     <Compile Include="Wallets\Keplr.cs" />
-    <None Include="Wallets\Zerion.cs" />
+    <Compile Include="Wallets\Zerion.cs" />
     <Compile Include="_projects\HackQuest.cs" />
     <None Include="cmnc0de.cs" />
     <Compile Include="Browser\InstanceExtensions.cs" />

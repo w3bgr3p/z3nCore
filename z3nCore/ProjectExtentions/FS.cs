@@ -2,7 +2,7 @@
 using System.IO;
 using System.Linq;
 using ZennoLab.InterfacesLibrary.ProjectModel;
-
+using System.Collections.Generic;
 
 namespace z3nCore
 {
@@ -129,6 +129,93 @@ namespace z3nCore
             }
 
         }
+    }
+    public static class FilePathHelper
+    {
+        /// <summary>
+        /// Возвращает список всех путей файлов в указанной папке
+        /// </summary>
+        /// <param name="directoryPath">Путь к папке</param>
+        /// <param name="includeSubdirectories">Включить подпапки (по умолчанию true)</param>
+        /// <param name="searchPattern">Шаблон поиска файлов (по умолчанию "*" - все файлы)</param>
+        /// <returns>Список путей к файлам</returns>
+        public static List<string> GetAllFilePaths(string directoryPath, bool includeSubdirectories = true, string searchPattern = "*")
+        {
+            if (string.IsNullOrWhiteSpace(directoryPath))
+                throw new ArgumentException("Путь к папке не может быть пустым", "directoryPath");
 
+            if (!Directory.Exists(directoryPath))
+                throw new DirectoryNotFoundException("Папка не найдена: " + directoryPath);
+
+            try
+            {
+                var searchOption = includeSubdirectories ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
+                return Directory.GetFiles(directoryPath, searchPattern, searchOption).ToList();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                throw new UnauthorizedAccessException("Нет доступа к папке: " + directoryPath, ex);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Ошибка при чтении папки " + directoryPath + ": " + ex.Message, ex);
+            }
+        }
+
+        /// <summary>
+        /// Возвращает список относительных путей файлов в указанной папке
+        /// </summary>
+        /// <param name="directoryPath">Путь к папке</param>
+        /// <param name="includeSubdirectories">Включить подпапки (по умолчанию true)</param>
+        /// <param name="searchPattern">Шаблон поиска файлов (по умолчанию "*" - все файлы)</param>
+        /// <returns>Список относительных путей к файлам</returns>
+        public static List<string> GetAllRelativeFilePaths(string directoryPath, bool includeSubdirectories = true, string searchPattern = "*")
+        {
+            var fullPaths = GetAllFilePaths(directoryPath, includeSubdirectories, searchPattern);
+            var directoryInfo = new DirectoryInfo(directoryPath);
+            
+            return fullPaths.Select(path => 
+                GetRelativePath(directoryInfo.FullName, path)).ToList();
+        }
+
+        /// <summary>
+        /// Вычисляет относительный путь (замена Path.GetRelativePath для .NET 4.6.2)
+        /// </summary>
+        /// <param name="fromPath">Базовый путь</param>
+        /// <param name="toPath">Целевой путь</param>
+        /// <returns>Относительный путь</returns>
+        private static string GetRelativePath(string fromPath, string toPath)
+        {
+            if (string.IsNullOrEmpty(fromPath)) throw new ArgumentNullException("fromPath");
+            if (string.IsNullOrEmpty(toPath)) throw new ArgumentNullException("toPath");
+
+            Uri fromUri = new Uri(fromPath);
+            Uri toUri = new Uri(toPath);
+
+            if (fromUri.Scheme != toUri.Scheme) 
+                return toPath; // path can't be made relative.
+
+            Uri relativeUri = fromUri.MakeRelativeUri(toUri);
+            return Uri.UnescapeDataString(relativeUri.ToString()).Replace('/', Path.DirectorySeparatorChar);
+        }
+
+        /// <summary>
+        /// Возвращает список путей файлов с определенными расширениями
+        /// </summary>
+        /// <param name="directoryPath">Путь к папке</param>
+        /// <param name="extensions">Массив расширений файлов (например, new string[] {".cs", ".txt"})</param>
+        /// <param name="includeSubdirectories">Включить подпапки (по умолчанию true)</param>
+        /// <returns>Список путей к файлам с указанными расширениями</returns>
+        public static List<string> GetFilePathsByExtensions(string directoryPath, string[] extensions, bool includeSubdirectories = true)
+        {
+            if (extensions == null || extensions.Length == 0)
+                return GetAllFilePaths(directoryPath, includeSubdirectories);
+
+            var allFiles = GetAllFilePaths(directoryPath, includeSubdirectories);
+            
+            return allFiles.Where(file => 
+                extensions.Any(ext => 
+                    file.EndsWith(ext, StringComparison.OrdinalIgnoreCase))).ToList();
+        }
     }
 }

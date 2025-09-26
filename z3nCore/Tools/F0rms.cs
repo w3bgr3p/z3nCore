@@ -7,10 +7,12 @@ namespace z3nCore
     public class F0rms
     {
         private readonly IZennoPosterProjectModel _project;
+        private static readonly System.Drawing.Font _font = new System.Drawing.Font("Cascadia Mono SemiBold", 10);
 
         public F0rms(IZennoPosterProjectModel project)
         {
             _project = project;
+            
         }
 
         
@@ -24,6 +26,7 @@ namespace z3nCore
                 form.Text = message;
                 form.Width = width;
                 form.Height = height;
+                form.Font = _font;
                 //System.Windows.Forms.TextBox smsBox = new System.Windows.Forms.TextBox();
                 smsBox.Multiline = true;
                 smsBox.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;

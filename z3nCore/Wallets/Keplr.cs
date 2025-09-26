@@ -79,8 +79,8 @@ namespace z3nCore.Wallets
         public void Unlock(string source = "seed")
         {
             _project.Deadline();
-            _instance.Go($"chrome-extension://{_extId}/popup.html#/");
             check:
+            if (!_instance.ActiveTab.URL.Contains(_extId)) _instance.Go($"chrome-extension://{_extId}/popup.html#/");
             _project.Deadline(60);
 
             var state = "unknown";
