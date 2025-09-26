@@ -76,6 +76,11 @@ namespace z3nCore
             try 
             { 
                 acc = GetAccByMode();
+                if (string.IsNullOrEmpty(acc))
+                {
+                    _logger.Warn("accounts list is empty");
+                    return;
+                }
                 var currentState = _project.GVar($"acc{acc}");
                 _logger.Send($"trying to set [{currentState} => check]");
                 if (currentState == "")
@@ -665,7 +670,7 @@ namespace z3nCore
             {
                 _project.Variables["noAccsToDo"].Value = "True";
                 var busy = _project.GGetBusyList();
-                _logger.Warn($"♻ noAccountsAvailable for work\nBusyList: {string.Join(" | ", busy)}", color: LogColor.Turquoise);
+                _logger.Warn($"♻ noAccountsAvailable for work\nBusyList: {string.Join(" | ", busy)}",show:true, color: LogColor.Turquoise);
                 return false;
             }
 
@@ -688,17 +693,17 @@ namespace z3nCore
                 case "Cooldown":
                     if (!ChooseSingleAcc())
                     {
-                        _project.Var("acc0", null);
+                        _project.Var("acc0", string.Empty);
                         _project.Var("TimeToChill", "True");
-                        throw new Exception($"TimeToChill");
+                        //throw new Exception($"TimeToChill");
                     }
                     break;
                 case "Oldest":
                     if (!ChooseSingleAcc(true))
                     {
-                        _project.Var("acc0", null);
+                        _project.Var("acc0", string.Empty);
                         _project.Var("TimeToChill", "True");
-                        throw new Exception($"TimeToChill");
+                        //throw new Exception($"TimeToChill");
                     }
                     break;
                 case "NewRandom":
@@ -846,6 +851,7 @@ namespace z3nCore
             return $"\"{name.Replace("\"", "\"\"")}\"";
         }
         
+        
         private void DisableLogs(bool aggressive = false)
         {
             string currentProcessPath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
@@ -854,10 +860,19 @@ namespace z3nCore
             
             lock (_disableLogsLock)
             {
+                // Проверяем, не выполнена ли операция уже
+                if (IsLogsAlreadyDisabled(pathLogs))
+                {
+                    return; // Операция уже выполнена
+                }
+                
                 if (aggressive)
                 {
                     for (int attempt = 0; attempt < 3; attempt++)
                     {
+                        if (IsLogsAlreadyDisabled(pathLogs))
+                            return; // Проверяем после каждой попытки
+                            
                         TryDisableWithStrategy(pathLogs, true);
                         System.Threading.Thread.Sleep(50 * (attempt + 1));
                     }
@@ -869,18 +884,74 @@ namespace z3nCore
             }
         }
 
+        private bool IsLogsAlreadyDisabled(string pathLogs)
+        {
+            try
+            {
+                // Проверка 1: Путь не существует (может быть уже удален)
+                if (!Directory.Exists(pathLogs) && !File.Exists(pathLogs))
+                {
+                    return false; // Ничего нет, можно продолжать
+                }
+                
+                // Проверка 2: Это файл-блокировщик (fallback уже сработал)
+                if (File.Exists(pathLogs) && !Directory.Exists(pathLogs))
+                {
+                    return true; // Это файл, значит блокировка уже установлена
+                }
+                
+                // Проверка 3: Это символическая ссылка
+                if (Directory.Exists(pathLogs))
+                {
+                    var dirInfo = new DirectoryInfo(pathLogs);
+                    if (dirInfo.Attributes.HasFlag(FileAttributes.ReparsePoint))
+                    {
+                        return true; // Это симлинк, операция уже выполнена
+                    }
+                }
+                
+                // Проверка 4: Существуют lock-файлы
+                if (File.Exists(pathLogs + ".lock"))
+                {
+                    return true; // Lock-файл существует
+                }
+                
+                return false; // Это обычная папка, нужно выполнять операцию
+            }
+            catch
+            {
+                return false; // При ошибке считаем, что нужно выполнять операцию
+            }
+        }
+
         private void TryDisableWithStrategy(string pathLogs, bool useAggressiveCommands)
         {
             try
             {
+                // Повторная проверка перед выполнением
+                if (IsLogsAlreadyDisabled(pathLogs))
+                {
+                    return;
+                }
+                
                 if (useAggressiveCommands)
                 {
-                    ExecuteCommand(string.Format("rd /s /q \"{0}\" 2>nul", pathLogs));
-                    ExecuteCommand(string.Format("mklink /d \"{0}\" \"NUL\" 2>nul", pathLogs));
+                    // Только если это обычная папка
+                    if (Directory.Exists(pathLogs) && !IsSymbolicLink(pathLogs))
+                    {
+                        ExecuteCommand(string.Format("rd /s /q \"{0}\" 2>nul", pathLogs));
+                    }
+                    
+                    // Создаем симлинк только если его еще нет
+                    if (!Directory.Exists(pathLogs))
+                    {
+                        ExecuteCommand(string.Format("mklink /d \"{0}\" \"NUL\" 2>nul", pathLogs));
+                    }
                 }
                 else
                 {
-                    if (Directory.Exists(pathLogs))
+                    // Удаляем только если это обычная папка
+                    if (Directory.Exists(pathLogs) && !IsSymbolicLink(pathLogs))
                     {
                         foreach (string file in Directory.GetFiles(pathLogs, "*", SearchOption.AllDirectories))
                         {
@@ -893,7 +964,11 @@ namespace z3nCore
                         Directory.Delete(pathLogs, true);
                     }
                     
-                    ExecuteCommand(string.Format("mklink /d \"{0}\" \"NUL\"", pathLogs));
+                    // Создаем симлинк только если путь свободен
+                    if (!Directory.Exists(pathLogs) && !File.Exists(pathLogs))
+                    {
+                        ExecuteCommand(string.Format("mklink /d \"{0}\" \"NUL\"", pathLogs));
+                    }
                 }
             }
             catch (Exception ex)
@@ -904,11 +979,42 @@ namespace z3nCore
                 }
                 catch { }
                 
-                try { File.WriteAllText(pathLogs, "BLOCKED"); } catch { }
-                try { File.SetAttributes(pathLogs, FileAttributes.Hidden | FileAttributes.ReadOnly | FileAttributes.System); } catch { }
-                
-                try { File.WriteAllText(pathLogs + ".lock", ""); } catch { }
-                try { Directory.CreateDirectory(pathLogs + "_backup"); File.SetAttributes(pathLogs + "_backup", FileAttributes.Hidden); } catch { }
+                // Fallback только если еще ничего не заблокировано
+                if (!IsLogsAlreadyDisabled(pathLogs))
+                {
+                    try 
+                    { 
+                        // Удаляем папку если она есть
+                        if (Directory.Exists(pathLogs) && !IsSymbolicLink(pathLogs))
+                        {
+                            Directory.Delete(pathLogs, true);
+                        }
+                        
+                        // Создаем файл-блокировщик
+                        File.WriteAllText(pathLogs, "BLOCKED"); 
+                    } 
+                    catch { }
+                    
+                    try { File.SetAttributes(pathLogs, FileAttributes.Hidden | FileAttributes.ReadOnly | FileAttributes.System); } catch { }
+                    try { File.WriteAllText(pathLogs + ".lock", ""); } catch { }
+                }
+            }
+        }
+
+        private bool IsSymbolicLink(string path)
+        {
+            try
+            {
+                if (Directory.Exists(path))
+                {
+                    var dirInfo = new DirectoryInfo(path);
+                    return dirInfo.Attributes.HasFlag(FileAttributes.ReparsePoint);
+                }
+                return false;
+            }
+            catch
+            {
+                return false;
             }
         }
 
