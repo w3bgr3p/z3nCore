@@ -137,7 +137,7 @@ namespace z3nCore
                 try
                 {
                     var callingMethod = stackFrame.GetMethod();
-                    if (callingMethod == null || callingMethod.DeclaringType == null || callingMethod.DeclaringType.FullName.Contains("Zenno") || callingMethod.Name == "L0g")   
+                    if (callingMethod == null || callingMethod.DeclaringType == null || callingMethod.DeclaringType.FullName.Contains("Zenno") || callingMethod.Name == "L0g" || System.Text.RegularExpressions.Regex.IsMatch(callingMethod.DeclaringType.Name, @"^M[a-f0-9]{32}$"))   
                         sb.Append($"  🔳 [{_project.Name.Replace(".zp", "")}]");
                     else
                         sb.Append($"  🔲 [{callingMethod.DeclaringType.Name}.{callerName}]");
@@ -219,6 +219,7 @@ public static partial class ProjectExtensions
             
     public static void log(this IZennoPosterProjectModel project, string toLog, [CallerMemberName] string callerName = "", bool show = true, bool thrw = false, bool toZp = true)
     {
+        if (System.Text.RegularExpressions.Regex.IsMatch(callerName, @"^M[a-f0-9]{32}$")) callerName = project.Name;
         new Logger(project).Send(toLog, callerName, show: show, thrw: thrw, toZp: toZp);
     }
     public static void warn(this IZennoPosterProjectModel project, string toLog, [CallerMemberName] string callerName = "", bool show = true, bool thrw = false, bool toZp = true)
