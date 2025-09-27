@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
@@ -15,12 +14,12 @@ namespace z3nCore
     {
         private static readonly object LockObject = new object();
         
-        public static string Var(this IZennoPosterProjectModel project, string Var)
+        public static string Var(this IZennoPosterProjectModel project, string var)
         {
             string value = string.Empty;
             try
             {
-                value = project.Variables[Var].Value;
+                value = project.Variables[var].Value;
             }
             catch (Exception e)
             {
@@ -45,18 +44,18 @@ namespace z3nCore
             return string.Empty;
         }
 
-        public static string VarRnd(this IZennoPosterProjectModel project, string Var)
+        public static string VarRnd(this IZennoPosterProjectModel project, string var)
         {
             string value = string.Empty;
             try
             {
-                value = project.Variables[Var].Value;
+                value = project.Variables[var].Value;
             }
             catch (Exception e)
             {
                 project.SendInfoToLog(e.Message);
             }
-            if (value == string.Empty) project.log($"no Value from [{Var}] `w");
+            if (value == string.Empty) project.log($"no Value from [{var}] `w");
 
             if (value.Contains("-"))
             {
@@ -71,7 +70,7 @@ namespace z3nCore
             project.Variables[$"{varName}"].Value = (int.Parse(project.Variables[$"{varName}"].Value) + input).ToString();
             return int.Parse(project.Variables[varName].Value);
         }
-        public static decimal VarsMath(this IZennoPosterProjectModel project, string varA, string operation, string varB, string varRslt = null)
+        public static decimal VarsMath(this IZennoPosterProjectModel project, string varA, string operation, string varB, string resultVar = null)
         {
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             decimal a = decimal.Parse(project.Var(varA));
@@ -92,22 +91,22 @@ namespace z3nCore
                     result = a / b;
                     break;
                 default:
-                    throw new Exception($"unsuppoted operation {operation}");
+                    throw new Exception($"unsupported operation {operation}");
             }
-            if (string.IsNullOrEmpty(varRslt)) 
-                try { project.Var(varRslt, $"{result}"); } catch { }
+            if (string.IsNullOrEmpty(resultVar)) 
+                try { project.Var(resultVar, $"{result}"); } catch { }
             return result;
         }
         
     }
 
-    public static class Constantas
+    public static class Constantes
     {
         private static readonly object LockObject = new object();
         public static string ProjectName(this IZennoPosterProjectModel project)
         {
             var path = project.Var("projectScript");
-            if (string.IsNullOrEmpty(path)) throw new Exception("projectScript no definded");
+            if (string.IsNullOrEmpty(path)) throw new Exception("projectScript no defined");
             string name = ProjectName(project.Variables["projectScript"].Value);
              
             project.Var("projectName", name);
@@ -132,7 +131,7 @@ namespace z3nCore
         }
         public static string CaptchaModule(this IZennoPosterProjectModel project)
         {
-            string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
+           
             string localModule = project.Var("captchaModule");
             string globalVar = $"{project.ProjectName()}_" + "captcha";
 
@@ -201,9 +200,9 @@ namespace z3nCore
                 {
                     value = project.GlobalVariables[nameSpase, var].Value;
                 }
-                catch (Exception e)
+                catch //(Exception e)
                 {
-                    project.SendInfoToLog(e.Message);
+                    //project.SendInfoToLog(e.Message);
                 }
             }
             return value;
@@ -224,9 +223,9 @@ namespace z3nCore
                     {
                         project.GlobalVariables.SetVariable(nameSpase, var, value.ToString());
                     }
-                    catch (Exception e)
+                    catch //(Exception e)
                     {
-                        project.SendWarningToLog(e.Message);
+                        //project.SendWarningToLog(e.Message);
                     }
 
                 }
@@ -275,7 +274,7 @@ namespace z3nCore
                     
                     if (log)
                     {
-                        project.log($"buzy Accounts: [{string.Join(" | ", busyAccounts)}]");
+                        project.log($"busy Accounts: [{string.Join(" | ", busyAccounts)}]");
                     }
                     
                     return busyAccounts;
