@@ -95,7 +95,7 @@ namespace z3nCore
             catch (Exception ex) { _project.SendWarningToLog($"{ex.Message}", true); throw; }
 
             if (log) _logger.Send(txHash);
-            _project.WaitTx(rpc, txHash);
+            W3bTools.WaitTx(rpc, txHash);
             return txHash;
         }
     }

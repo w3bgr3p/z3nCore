@@ -7,6 +7,7 @@ using System.Linq;
 using System.Drawing;
 using System.Threading;
 using ZennoLab.InterfacesLibrary.Enums.Log;
+using ZennoLab.InterfacesLibrary.Enums.Browser;
 
 namespace z3nCore
 {
@@ -132,7 +133,7 @@ namespace z3nCore
                             "lefttop",                                   // location
                             watermark,                                   // text
                             0,                                          // transparency (0-100)
-                            "Cascadia Code, 20pt,  [255;255;0;0]", // style
+                            "Cascadia Code, 15pt,  [255;0;0;0]", // style
                             5,                                           // offsetLeft
                             5,                                           // offsetTop
                             100,                                          // quality
@@ -163,33 +164,7 @@ namespace z3nCore
                 _project.SendWarningToLog($"Stack trace: {e.StackTrace}");
             }
         }
-        public void AddWatermark(string watermarkText, string pathIn, string pathOut = null)
-        {
-            if (string.IsNullOrWhiteSpace(pathOut)) pathOut = pathIn;
-            
-            using (Image image = Image.FromFile(pathIn))
-            using (Graphics imageGraphics = Graphics.FromImage(image))
-            {
-                Font font = new Font("Cascadia Code", 10);
-                SizeF textSize = imageGraphics.MeasureString(watermarkText, font);
-    
-                int x = 5;
-                int y = 5;
-    
-                Color watermarkColor = Color.FromArgb(255, Color.Red); 
-                SolidBrush brush = new SolidBrush(watermarkColor);
-    
-                imageGraphics.DrawString(watermarkText, font, brush, x, y);
-                    
-                lock (LockObject)
-                {
-                    image.Save(pathOut);
-                }
-                font.Dispose();
-                brush.Dispose();
-                _project.log($"{watermarkText} added to {pathOut}");
-            }
-        }
+        
 
         public string ErrorReport(bool toTg = false, bool toDb = false, bool screensot = false)
         {
@@ -403,7 +378,56 @@ namespace z3nCore
             LogColor logColor = toLog.Contains("fail") ? LogColor.Orange : LogColor.Green;
             _project.SendToLog(toLog.Trim(), LogType.Info, true, logColor);
         }
+
         
-        
+        #region Finish
+        public void FinishSession()
+        {
+            string acc0 = _project.Var("acc0");
+            string accRnd = _project.Var("accRnd");
+            
+            try
+            {
+                if (!string.IsNullOrEmpty(acc0))
+                {
+                    new Reporter(_project, _instance).SuccessReport(true, true);
+                }
+            }
+            catch (Exception ex)
+            {
+                _project.log(ex.Message);
+            }
+            
+            if (ShouldSaveCookies(_instance, acc0, accRnd))
+            {
+                new Cookies(_project, _instance).Save("all", _project.Var("pathCookies"));
+            }
+            
+            ClearAccountState(_project, acc0);
+        }
+
+        private static bool ShouldSaveCookies(Instance instance, string acc0, string accRnd)
+        {
+            try
+            {
+                return instance.BrowserType == BrowserType.Chromium && 
+                       !string.IsNullOrEmpty(acc0) && 
+                       string.IsNullOrEmpty(accRnd);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static void ClearAccountState(IZennoPosterProjectModel project, string acc0)
+        {
+            if (!string.IsNullOrEmpty(acc0))
+            {
+                project.GVar($"acc{acc0}", "");
+            }
+            project.Var("acc0", "");
+        }
+        #endregion
     }
 }

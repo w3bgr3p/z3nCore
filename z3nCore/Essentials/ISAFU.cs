@@ -113,7 +113,6 @@ namespace z3nCore
 
         public static string HWPass(IZennoPosterProjectModel project, bool v2 = true)
         {
-            try {v2 = (project.GVar("_safu2") == "False")?false:true;}catch{}
             var hwPassFunc = (Func<IZennoPosterProjectModel, bool, string>)FunctionStorage.Functions["SAFU_HWPass"];
             string result = hwPassFunc(project, v2);
             return result;

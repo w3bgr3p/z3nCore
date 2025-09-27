@@ -39,7 +39,8 @@ namespace z3nCore
                 else
                 {
                     //ValidateName(part, "column name");
-                    result.Add(part);
+                    //result.Add(part);
+                    result.Add($"\"{part}\"");
                 }
             }
             return string.Join(", ", result);

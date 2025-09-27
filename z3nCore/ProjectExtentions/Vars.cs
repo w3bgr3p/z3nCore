@@ -146,23 +146,40 @@ namespace z3nCore
             project.Var("captchaModule",localModule);
             return localModule;
         }
-        public static string Safu2(this IZennoPosterProjectModel project)
+        
+        public static int Range(this IZennoPosterProjectModel project, string accRange = null, string output = null, bool log = false)
         {
-            string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
-            string localModule = project.Var("safu2");
+            if (string.IsNullOrEmpty(accRange)) accRange = project.Variables["cfgAccRange"].Value;
+            if (string.IsNullOrEmpty(accRange)) throw new Exception("range is not provided by input or project setting [cfgAccRange]");
+            int rangeS, rangeE;
+            string range;
 
-            if (!string.IsNullOrEmpty(localModule))
-                project.GVar("safu2",localModule);
-
-            else localModule = project.GVar("safu2");
-
-            if (string.IsNullOrEmpty(localModule))
-                localModule = "False";
-            project.GVar("safu2",localModule);
-            project.Var("safu2",localModule);
-            return localModule;
+            if (accRange.Contains(","))
+            {
+                range = accRange;
+                var rangeParts = accRange.Split(',').Select(int.Parse).ToArray();
+                rangeS = rangeParts.Min();
+                rangeE = rangeParts.Max();
+            }
+            else if (accRange.Contains("-"))
+            {
+                var rangeParts = accRange.Split('-').Select(int.Parse).ToArray();
+                rangeS = rangeParts[0];
+                rangeE = rangeParts[1];
+                range = string.Join(",", Enumerable.Range(rangeS, rangeE - rangeS + 1));
+            }
+            else
+            {
+                rangeE = int.Parse(accRange);
+                rangeS = int.Parse(accRange);
+                range = accRange;
+            }
+            project.Variables["rangeStart"].Value = $"{rangeS}";
+            project.Variables["rangeEnd"].Value = $"{rangeE}";
+            project.Variables["range"].Value = range;
+            return rangeE;
+            //project.L0g($"{rangeS}-{rangeE}\n{range}");
         }
-
     }
 
 
