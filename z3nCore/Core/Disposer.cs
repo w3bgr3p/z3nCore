@@ -24,7 +24,7 @@
 
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
-using System.Text;
+using System.Text; 
 using System;
 using System.IO;
 using System.Linq;
@@ -37,12 +37,12 @@ namespace z3nCore
     public class Disposer
     {
         #region Fields and Constructor
-        protected readonly IZennoPosterProjectModel _project;
-        protected readonly Instance _instance;
+        private readonly IZennoPosterProjectModel _project;
+        private readonly Instance _instance;
         private readonly string _projectScript;
-        private readonly object LockObject = new object();
+        private readonly object _lockObject = new object();
         
-        public Disposer(IZennoPosterProjectModel project, Instance instance, bool log = false, string classEmoji = null)
+        public Disposer(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
             _project = project;
             _instance = instance;
@@ -114,12 +114,19 @@ namespace z3nCore
         {
             string acc0 = _project.Var("acc0");
             string accRnd = _project.Var("accRnd");
-            
+            bool isSuccess = (!GetSafeVar("lastQuery").Contains("dropped"));
             try
             {
                 if (!string.IsNullOrEmpty(acc0))
                 {
-                    SuccessReport(log: true, toTg: true);
+                    if (isSuccess)
+                    {
+                        SuccessReport(log: true, toTg: true);
+                    }
+                    else
+                    {
+                        //ErrorReport(toTg: true, toDb: true, screenshot: true);
+                    }
                 }
             }
             catch (Exception ex)
@@ -131,9 +138,8 @@ namespace z3nCore
             {
                 new Cookies(_project, _instance).Save("all", _project.Var("pathCookies"));
             }
-            
-            ClearAccountState(acc0);
             LogSessionComplete();
+            ClearAccountState(acc0);
         }
         #endregion
 
@@ -295,7 +301,7 @@ namespace z3nCore
                 string screenshotPath = GenerateScreenshotPath();
                 EnsureDirectoryExists(screenshotPath);
 
-                lock (LockObject)
+                lock (_lockObject)
                 {
                     if (!string.IsNullOrEmpty(watermark))
                     {
@@ -388,12 +394,9 @@ namespace z3nCore
         private void LogSessionComplete()
         {
             string lastQuery = GetSafeVar("lastQuery");
-            string toLog = string.Format(
-                "{0}✔️ All jobs done. Elapsed: {1}s \n███ ██ ██  ██ █  █  █  ▓▓▓ ▓▓ ▓▓  ▓  ▓  ▓  ▒▒▒ ▒▒ ▒▒ ▒  ▒  ░░░ ░░  ░░ ░ ░ ░ ░ ░ ░  ░  ░  ░   ░   ░   ░    ░    ░    ░     ░        ░",
-                lastQuery, _project.TimeElapsed()
-            );
-            
-            LogColor logColor = toLog.Contains("fail") ? LogColor.Orange : LogColor.Green;
+            bool isSuccess = (!lastQuery.Contains("dropped"));
+            string toLog = $"All jobs done. Elapsed: {_project.TimeElapsed()}s \n███ ██ ██  ██ █  █  █  ▓▓▓ ▓▓ ▓▓  ▓  ▓  ▓  ▒▒▒ ▒▒ ▒▒ ▒  ▒  ░░░ ░░  ░░ ░ ░ ░ ░ ░ ░  ░  ░  ░   ░   ░   ░    ░    ░    ░     ░        ░";
+            LogColor logColor = !isSuccess ? LogColor.Orange : LogColor.Green;
             _project.SendToLog(toLog.Trim(), LogType.Info, true, logColor);
         }
         #endregion
