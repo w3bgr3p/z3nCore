@@ -32,18 +32,21 @@ namespace z3nCore
                 {
                     string columnName = part.Substring(0, equalsIndex).Trim();
                     string valuePart = part.Substring(equalsIndex).Trim();
-                    //ValidateName(columnName, "column name");
 
                     result.Add($"\"{columnName}\" {valuePart}");
                 }
                 else
                 {
-                    //ValidateName(part, "column name");
-                    //result.Add(part);
-                    result.Add($"\"{part}\"");
+                    result.Add(part);
                 }
             }
             return string.Join(", ", result);
+        }
+        private static string QuoteSelectColumns(this string columnString)
+        {
+            return string.Join(", ", 
+                columnString.Split(',')
+                    .Select(col => $"\"{col.Trim()}\""));
         }
         private static readonly Regex ValidNamePattern = new Regex(@"^[a-zA-Z_][a-zA-Z0-9_]*$", RegexOptions.Compiled);
         private static string ValidateName(string name, string paramName)
@@ -178,7 +181,7 @@ namespace z3nCore
             if (string.IsNullOrWhiteSpace(toGet))
                 throw new ArgumentException("Column names cannot be null or empty", nameof(toGet));
 
-            toGet = QuoteColumns(toGet.Trim().TrimEnd(','));
+            toGet = QuoteSelectColumns(toGet.Trim().TrimEnd(','));
             if (string.IsNullOrEmpty(tableName)) 
                 tableName = project.Variables["projectTable"].Value;
             
