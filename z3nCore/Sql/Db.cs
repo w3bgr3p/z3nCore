@@ -132,7 +132,11 @@ namespace z3nCore
 
         public static string DbGetRandom(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool acc = false, bool throwOnEx = false, int range = 0, bool single = true, bool invert = false)
         {
-            if (range == 0) range = project.Range();
+            if (range == 0)
+            {
+                var rng = project.Range();
+                range = int.Parse(rng[rng.Count-1]);
+            }
             if (string.IsNullOrEmpty(tableName)) tableName = project.ProjectTable();;
 
             string acc0 = string.Empty;

@@ -252,7 +252,11 @@ namespace z3nCore
 
         public string GetRandom(string toGet, string tableName = null, bool log = false, bool acc = false, bool throwOnEx = false, int range = 0, bool single = true, bool invert = false)
         {
-            if (range == 0) range = _project.Range();
+            if (range == 0)
+            {
+                var rng = _project.Range();
+                range = int.Parse(rng[rng.Count-1]);
+            }
             if (string.IsNullOrEmpty(tableName)) tableName = _project.Variables["projectTable"].Value;
 
             string acc0 = string.Empty;

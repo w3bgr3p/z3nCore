@@ -103,53 +103,61 @@ namespace z3nCore
     public static class Constantes
     {
         private static readonly object LockObject = new object();
+
         public static string ProjectName(this IZennoPosterProjectModel project)
         {
             var path = project.Var("projectScript");
             if (string.IsNullOrEmpty(path)) throw new Exception("projectScript no defined");
             string name = ProjectName(project.Variables["projectScript"].Value);
-             
+
             project.Var("projectName", name);
             return name;
         }
+
         private static string ProjectName(string projectPath)
         {
             if (string.IsNullOrEmpty(projectPath)) throw new ArgumentNullException(nameof(projectPath));
             return System.IO.Path.GetFileName(projectPath).Split('.')[0];
         }
+
         public static string ProjectTable(this IZennoPosterProjectModel project)
         {
-            string table  = "__" + ProjectName(project);
+            string table = "__" + ProjectName(project);
             project.Var("projectTable", table);
             return table;
         }
+
         public static string SetSessionId(this IZennoPosterProjectModel project)
         {
-            string sessionId =  Time.Now("utcToId");
+            string sessionId = Time.Now("utcToId");
             project.Var("varSessionId", sessionId);
             return sessionId;
         }
+
         public static string CaptchaModule(this IZennoPosterProjectModel project)
         {
-           
+
             string localModule = project.Var("captchaModule");
             string globalVar = $"{project.ProjectName()}_" + "captcha";
 
             if (!string.IsNullOrEmpty(localModule))
-                project.GVar(globalVar,localModule);
+                project.GVar(globalVar, localModule);
 
             else localModule = project.GVar(globalVar);
 
             if (string.IsNullOrEmpty(localModule))
-                throw new Exception ("captchaModule not set");
-            project.Var("captchaModule",localModule);
+                throw new Exception("captchaModule not set");
+            project.Var("captchaModule", localModule);
             return localModule;
         }
-        
-        public static int Range(this IZennoPosterProjectModel project, string accRange = null, string output = null, bool log = false)
+
+        public static List<string> Range(this IZennoPosterProjectModel project, string accRange = null,
+            string output = null, bool log = false)
         {
             if (string.IsNullOrEmpty(accRange)) accRange = project.Variables["cfgAccRange"].Value;
-            if (string.IsNullOrEmpty(accRange)) throw new Exception("range is not provided by input or project setting [cfgAccRange]");
+            if (string.IsNullOrEmpty(accRange))
+                throw new Exception("range is not provided by input or project setting [cfgAccRange]");
+
             int rangeS, rangeE;
             string range;
 
@@ -173,10 +181,12 @@ namespace z3nCore
                 rangeS = int.Parse(accRange);
                 range = accRange;
             }
+
             project.Variables["rangeStart"].Value = $"{rangeS}";
             project.Variables["rangeEnd"].Value = $"{rangeE}";
             project.Variables["range"].Value = range;
-            return rangeE;
+
+            return range.Split(',').ToList();
             //project.L0g($"{rangeS}-{rangeE}\n{range}");
         }
     }

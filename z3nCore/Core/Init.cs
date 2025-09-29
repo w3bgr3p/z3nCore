@@ -169,7 +169,7 @@ namespace z3nCore
         {
             string pathZp = _project.Var("projectScript");
             var vars = new List<string> {
-                "acc0", "accRnd", "cfgChains", "cfgRefCode", "cfgDelay", "cfgLog", "cfgPin", "cfgToDo",
+                "acc0", "accRnd", "cfgChains", "cfgRefCode", "cfgDelay", "cfgLog", "cfgPin", "cfgToDo", "cfgAccRange",
                 "DBmode", "DBpstgrPass", "DBpstgrUser", "DBsqltPath", "failReport", "humanNear",          
                 "instancePort", "ip", "lastQuery", "pathCookies", "projectName", "projectTable", 
                 "projectScript", "proxy", "requiredSocial", "requiredWallets", "toDo", "varSessionId", "wkMode",

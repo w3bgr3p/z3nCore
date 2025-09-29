@@ -29,6 +29,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Collections.Generic;
 using ZennoLab.InterfacesLibrary.Enums.Log;
 using ZennoLab.InterfacesLibrary.Enums.Browser;
 
@@ -346,9 +347,10 @@ namespace z3nCore
 
         private void CreateScreenshotWithWatermark(string path, string watermark)
         {
+            watermark = WrapWM(watermark, 200);
             ZennoPoster.ImageProcessingWaterMarkTextFromScreenshot(
                 _instance.Port, path, "horizontally", "lefttop", watermark,
-                0, "Cascadia Code, 15pt,  [255;0;0;0]", 5, 5, 100, ""
+                0, "Iosevka, 15pt, condensed, [255;255;0;0]", 5, 5, 100, ""
             );
         }
 
@@ -365,6 +367,62 @@ namespace z3nCore
                 Thread.Sleep(300);
             }
         }
+
+        private string WrapWM(string input, int limit)
+        {
+            if (string.IsNullOrEmpty(input) || limit <= 0) return input;
+
+            // Split the input into lines
+            var lines = input.Split(new[] { '\n' }, StringSplitOptions.None);
+            var processedLines = new List<string>();
+
+            foreach (var line in lines)
+            {
+                //if (line.Trim().StartsWith("http", StringComparison.OrdinalIgnoreCase))
+               // {
+                    var sb = new StringBuilder();
+                    char[] delims = new[] { '/', '?', '&', '=' };
+                    int len = line.Length;
+                    int pos = 0;
+
+                    while (pos < len)
+                    {
+                        int nextPos = Math.Min(pos + limit, len);
+                        int searchLen = nextPos - pos;
+                        int breakPos = -1;
+
+                        if (searchLen > 0)
+                            breakPos = line.LastIndexOfAny(delims, nextPos - 1, searchLen);
+
+                        if (breakPos <= pos)
+                        {
+                            int takeLen = nextPos - pos;
+                            sb.AppendLine(line.Substring(pos, takeLen));
+                            pos = nextPos;
+                        }
+                        else
+                        {
+                            int takeLen = breakPos - pos + 1;
+
+                            if (takeLen == 1)
+                            {
+                                takeLen = Math.Min(limit, len - pos);
+                            }
+
+                            sb.AppendLine(line.Substring(pos, takeLen));
+                            pos += takeLen;
+                        }
+                    }
+                    processedLines.Add(sb.ToString().TrimEnd('\n'));
+              //  }
+              //  else
+              //  {
+              //      processedLines.Add(line);
+              //  }
+            }
+            return string.Join("\n", processedLines);
+        }
+
         #endregion
 
         #region Session Management

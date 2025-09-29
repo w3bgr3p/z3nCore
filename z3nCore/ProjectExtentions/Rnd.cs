@@ -35,40 +35,150 @@ namespace z3nCore
             return new string(Enumerable.Repeat(chars, length)
                 .Select(s => s[random.Next(s.Length)]).ToArray());
         }
-        public static string RndNickname()
+        public static string RndNickname(int min = 8, int max = 16)
         {
             string[] adjectives = {
+                // Original
                 "Sunny", "Mystic", "Wild", "Cosmic", "Shadow", "Lunar", "Blaze", "Dream", "Star", "Vivid",
                 "Frost", "Neon", "Gloomy", "Swift", "Silent", "Fierce", "Radiant", "Dusk", "Nova", "Spark",
                 "Crimson", "Azure", "Golden", "Midnight", "Velvet", "Stormy", "Echo", "Vortex", "Phantom", "Bright",
                 "Chill", "Rogue", "Daring", "Lush", "Savage", "Twilight", "Crystal", "Zesty", "Bold", "Hazy",
-                "Vibrant", "Gleam", "Frosty", "Wicked", "Serene", "Bliss", "Rusty", "Hollow", "Sleek", "Pale"
+                "Vibrant", "Gleam", "Frosty", "Wicked", "Serene", "Bliss", "Rusty", "Hollow", "Sleek", "Pale",
+                
+                // Web3/Crypto themed
+                "Crypto", "Cyber", "Digital", "Virtual", "Meta", "Quantum", "Binary", "Pixel", "Holo", "Nano",
+                "Defi", "Web3", "Chain", "Block", "Hash", "Node", "Mint", "Token", "Smart", "Decen",
+                "Atomic", "Layer", "Zero", "Prime", "Alpha", "Beta", "Gamma", "Delta", "Sigma", "Omega",
+                
+                // Additional variety
+                "Electric", "Magnetic", "Plasma", "Sonic", "Turbo", "Ultra", "Mega", "Hyper", "Super", "Epic",
+                "Ancient", "Modern", "Future", "Retro", "Classic", "Neo", "Zen", "Chaos", "Order", "Pure",
+                "Dark", "Light", "Gray", "Silver", "Bronze", "Platinum", "Diamond", "Ruby", "Emerald", "Sapphire",
+                "Arctic", "Desert", "Ocean", "Mountain", "Forest", "Urban", "Space", "Astral", "Ethereal", "Mystic",
+                "Royal", "Noble", "Elite", "Prime", "Grand", "Supreme", "Ultimate", "Infinite", "Eternal", "Divine",
+                "Stealth", "Rapid", "Quick", "Agile", "Sharp", "Smooth", "Raw", "Fresh", "Cool", "Hot"
             };
 
             string[] nouns = {
+                // Original
                 "Wolf", "Viper", "Falcon", "Spark", "Catcher", "Rider", "Echo", "Flame", "Voyage", "Knight",
                 "Raven", "Hawk", "Storm", "Tide", "Drift", "Shade", "Quest", "Blaze", "Wraith", "Comet",
                 "Lion", "Phantom", "Star", "Cobra", "Dawn", "Arrow", "Ghost", "Sky", "Vortex", "Wave",
                 "Tiger", "Ninja", "Dreamer", "Seeker", "Glider", "Rebel", "Spirit", "Hunter", "Flash", "Beacon",
-                "Jaguar", "Drake", "Scout", "Path", "Glow", "Riser", "Shadow", "Bolt", "Zephyr", "Forge"
+                "Jaguar", "Drake", "Scout", "Path", "Glow", "Riser", "Shadow", "Bolt", "Zephyr", "Forge",
+                
+                // Web3/Crypto themed
+                "Wallet", "Ledger", "Miner", "Trader", "Hodler", "Whale", "Bull", "Bear", "Ape", "Degen",
+                "Punk", "Kitty", "Bayc", "Azuki", "Doodle", "Cool", "Clone", "Mutant", "Alien", "Robot",
+                "Validator", "Staker", "Farmer", "Yield", "Pool", "Vault", "Bridge", "Oracle", "Contract", "Gas",
+                "Token", "Coin", "NFT", "DAO", "DeFi", "GameFi", "Metaverse", "Avatar", "Pixel", "Voxel",
+                
+                // Gaming/Tech themed
+                "Gamer", "Player", "Master", "Legend", "Hero", "Warrior", "Mage", "Ranger", "Rogue", "Paladin",
+                "Dragon", "Phoenix", "Unicorn", "Kraken", "Leviathan", "Behemoth", "Titan", "Giant", "Demon", "Angel",
+                "Hacker", "Coder", "Dev", "Builder", "Creator", "Artist", "Designer", "Architect", "Engineer", "Pilot",
+                
+                // Additional variety
+                "Eagle", "Shark", "Panther", "Bear", "Fox", "Owl", "Crow", "Bat", "Spider", "Scorpion",
+                "Samurai", "Viking", "Spartan", "Gladiator", "Assassin", "Sniper", "Tank", "Support", "Carry", "Jungler",
+                "Storm", "Thunder", "Lightning", "Tornado", "Hurricane", "Blizzard", "Avalanche", "Earthquake", "Tsunami", "Volcano",
+                "Sword", "Shield", "Spear", "Axe", "Bow", "Staff", "Wand", "Dagger", "Hammer", "Scythe",
+                "King", "Queen", "Prince", "Duke", "Baron", "Lord", "Lady", "Champion", "Guardian", "Sentinel"
             };
 
-            string[] suffixes = { "", "", "", "", "", "X", "Z", "Vibe", "Glow", "Rush", "Peak", "Core", "Wave", "Zap" };
+            string[] suffixes = { 
+                // Original
+                "", "", "", "", "", "X", "Z", "Vibe", "Glow", "Rush", "Peak", "Core", "Wave", "Zap",
+                
+                // Web3/Crypto themed
+                "DAO", "NFT", "ETH", "BTC", "SOL", "AVAX", "MATIC", "DOT", "LINK", "UNI",
+                "420", "69", "88", "777", "666", "999", "000", "001", "007", "2024",
+                "GM", "GN", "WAGMI", "NGMI", "LFG", "DYOR", "HODL", "FOMO", "FUD", "REKT",
+                
+                // Gaming themed
+                "GG", "EZ", "Pro", "Op", "Ace", "MVP", "FTW", "PWN", "LOL", "XD",
+                "TV", "YT", "TTV", "Live", "Stream", "Play", "Game", "Win", "Top", "Best",
+                
+                // Additional variety
+                "Max", "Min", "Plus", "Ultra", "Mega", "Giga", "Tera", "Nano", "Micro", "Macro",
+                "Alpha", "Beta", "Gamma", "Delta", "Omega", "Prime", "Elite", "Pro", "VIP", "Gold",
+                "2K", "3K", "4K", "8K", "HD", "UHD", "4D", "5D", "VR", "AR",
+                "Jr", "Sr", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"
+            };
 
-            Random random = new Random(Guid.NewGuid().GetHashCode());
+            // Additional number patterns for Web3 style
+            string[] numberPatterns = {
+                "", "", "", "", "", "", "", "", "", "", // 50% chance of no numbers
+                "0x", "1337", "2077", "3000", "9000", "404", "808", "911", "247", "365",
+                "11", "22", "33", "44", "55", "66", "77", "88", "99", "00",
+                "123", "234", "345", "456", "567", "678", "789", "890", "321", "987"
+            };
 
-            string adjective = adjectives[random.Next(adjectives.Length)];
-            string noun = nouns[random.Next(nouns.Length)];
-            string suffix = suffixes[random.Next(suffixes.Length)];
-
-            string nickname = $"{adjective}{noun}{suffix}";
-
-            if (nickname.Length > 15)
+            Random random = new Random();
+            const int maxAttempts = 100;
+            
+            for (int attempt = 0; attempt < maxAttempts; attempt++)
             {
-                nickname = nickname.Substring(0, 15);
+                // Randomly choose pattern
+                int pattern = random.Next(0, 5);
+                string nickname = "";
+                
+                switch (pattern)
+                {
+                    case 0: // Adjective + Noun + Suffix
+                        nickname = adjectives[random.Next(adjectives.Length)] +
+                                  nouns[random.Next(nouns.Length)] +
+                                  suffixes[random.Next(suffixes.Length)];
+                        break;
+                        
+                    case 1: // Noun + Number
+                        nickname = nouns[random.Next(nouns.Length)] +
+                                  numberPatterns[random.Next(numberPatterns.Length)];
+                        break;
+                        
+                    case 2: // Adjective + Number
+                        nickname = adjectives[random.Next(adjectives.Length)] +
+                                  numberPatterns[random.Next(numberPatterns.Length)];
+                        break;
+                        
+                    case 3: // Single word + Suffix
+                        nickname = (random.Next(2) == 0 ? 
+                                  adjectives[random.Next(adjectives.Length)] : 
+                                  nouns[random.Next(nouns.Length)]) +
+                                  suffixes[random.Next(suffixes.Length)];
+                        break;
+                        
+                    case 4: // Web3 style with underscore or dot
+                        string separator = random.Next(3) == 0 ? "_" : (random.Next(2) == 0 ? "." : "");
+                        nickname = adjectives[random.Next(adjectives.Length)] +
+                                  separator +
+                                  nouns[random.Next(nouns.Length)];
+                        break;
+                }
+                
+                // Sometimes add random capitalization for variety (Web3 style)
+                if (random.Next(10) == 0 && nickname.Length > 3)
+                {
+                    nickname = nickname.ToLower();
+                }
+                else if (random.Next(10) == 0 && nickname.Length > 3)
+                {
+                    nickname = nickname.ToUpper();
+                }
+                
+                if (nickname.Length >= min && nickname.Length <= max)
+                {
+                    return nickname;
+                }
             }
 
-            return nickname;
+            // Fallback: force a valid length nickname
+            string fallback = adjectives[random.Next(adjectives.Length)].Substring(0, Math.Min(adjectives[random.Next(adjectives.Length)].Length, max));
+            while (fallback.Length < min)
+            {
+                fallback += random.Next(10).ToString();
+            }
+            return fallback.Substring(0, Math.Min(fallback.Length, max));
         }
         public static string RndInvite(this IZennoPosterProjectModel project,  object limit = null, bool log = false)
         {
