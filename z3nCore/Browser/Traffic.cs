@@ -8,10 +8,14 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
 {
-
-
-    public class Traffic
+    /// <summary>
+    /// Класс для работы с трафиком браузера ZennoPoster
+    /// Потокобезопасен через изоляцию project/instance
+    /// </summary>
+     public class Traffic
     {
+        #region Fields & Constructor
+
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
         private readonly Logger _logger;
@@ -26,178 +30,343 @@ namespace z3nCore
             _instance.UseTrafficMonitoring = true;
         }
 
+        #endregion
 
+        #region Public API - Новый упрощенный интерфейс
+
+        /// <summary>
+        /// Получить данные трафика по URL с удобным доступом к полям
+        /// </summary>
+        /// <example>
+        /// var traffic = new Traffic(project, instance).Get("api/endpoint");
+        /// var body = traffic.ResponseBody;
+        /// var headers = traffic.RequestHeaders;
+        /// </example>
+        public TrafficData Get(string url, bool reload = false, bool strict = true, int timeoutSeconds = 15, int delaySeconds = 1)
+        {
+            _project.Deadline();
+            _instance.UseTrafficMonitoring = true;
+
+            if (reload)
+            {
+                _instance.ActiveTab.MainDocument.EvaluateScript("location.reload(true)");
+                if (_instance.ActiveTab.IsBusy) _instance.ActiveTab.WaitDownloading();
+                Thread.Sleep(1000 * delaySeconds);
+            }
+
+            var startTime = DateTime.Now;
+            var timeout = TimeSpan.FromSeconds(timeoutSeconds);
+            int attempt = 0;
+
+            while (DateTime.Now - startTime < timeout)
+            {
+                _project.Deadline(timeoutSeconds);
+                attempt++;
+                
+                if (_showLog) _logger.Send($"Попытка #{attempt} поиска URL: {url}");
+
+                var trafficData = TryFindTraffic(url, strict);
+                if (trafficData != null)
+                {
+                    if (_showLog) _logger.Send($"✓ Найден трафик для {url}");
+                    return trafficData;
+                }
+
+                Thread.Sleep(1000 * delaySeconds);
+            }
+
+            throw new TimeoutException($"Трафик для URL '{url}' не найден за {timeoutSeconds} секунд");
+        }
+
+        /// <summary>
+        /// Быстрый доступ к конкретному полю трафика (для обратной совместимости)
+        /// </summary>
+        [Obsolete("Используйте Get(url).ResponseBody вместо GetField(url, \"ResponseBody\")")]
+        public string GetField(string url, string fieldName, bool reload = false, int timeoutSeconds = 15)
+        {
+            var data = Get(url, reload, strict: false, timeoutSeconds: timeoutSeconds);
+            return GetFieldValue(data, fieldName);
+        }
+
+        /// <summary>
+        /// Получить конкретный заголовок из RequestHeaders
+        /// </summary>
+        public string GetHeader(string url, string headerName = "Authorization", bool reload = false, int timeoutSeconds = 15)
+        {
+            var trafficData = Get(url, reload, strict: false, timeoutSeconds: timeoutSeconds);
+            var headers = ParseHeaders(trafficData.RequestHeaders);
+            
+            var headerKey = headerName.ToLower();
+            if (headers.ContainsKey(headerKey))
+                return headers[headerKey];
+
+            throw new KeyNotFoundException($"Заголовок '{headerName}' не найден в трафике для {url}");
+        }
+
+        #endregion
+
+        #region Private Implementation
+
+        /// <summary>
+        /// Попытка найти трафик по URL
+        /// </summary>
+        private TrafficData TryFindTraffic(string url, bool strict)
+        {
+            // GetTraffic() возвращает IEnumerable с элементами, у которых есть свойства:
+            // Method, ResultCode, Url, ResponseContentType, RequestHeaders, RequestBody и т.д.
+            var traffic = _instance.ActiveTab.GetTraffic();
+
+            foreach (var item in traffic)
+            {
+                // Проверка совпадения URL
+                bool urlMatches = strict ? item.Url == url : item.Url.Contains(url);
+                if (!urlMatches) continue;
+
+                // Пропускаем OPTIONS запросы
+                if (item.Method == "OPTIONS") continue;
+
+                // Нашли подходящий трафик - парсим
+                return ParseTrafficItem(item);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Парсинг одного элемента трафика в TrafficData
+        /// Работает с dynamic типом из GetTraffic()
+        /// </summary>
+        private TrafficData ParseTrafficItem(dynamic item)
+        {
+            var responseBody = item.ResponseBody == null 
+                ? string.Empty 
+                : Encoding.UTF8.GetString(item.ResponseBody, 0, item.ResponseBody.Length);
+
+            return new TrafficData(_project)  
+            {
+                Method = item.Method ?? string.Empty,
+                ResultCode = item.ResultCode.ToString(),
+                Url = item.Url ?? string.Empty,
+                ResponseContentType = item.ResponseContentType ?? string.Empty,
+                RequestHeaders = item.RequestHeaders ?? string.Empty,
+                RequestCookies = item.RequestCookies ?? string.Empty,
+                RequestBody = item.RequestBody ?? string.Empty,
+                ResponseHeaders = item.ResponseHeaders ?? string.Empty,
+                ResponseCookies = item.ResponseCookies ?? string.Empty,
+                ResponseBody = responseBody
+            };
+        }
+
+        /// <summary>
+        /// Парсинг строки заголовков в словарь
+        /// </summary>
+        private Dictionary<string, string> ParseHeaders(string headersString)
+        {
+            var headers = new Dictionary<string, string>();
+            
+            if (string.IsNullOrWhiteSpace(headersString))
+                return headers;
+
+            foreach (var line in headersString.Split('\n'))
+            {
+                var trimmed = line.Trim();
+                if (string.IsNullOrEmpty(trimmed)) continue;
+
+                var colonIndex = trimmed.IndexOf(':');
+                if (colonIndex <= 0) continue;
+
+                var key = trimmed.Substring(0, colonIndex).Trim().ToLower();
+                var value = trimmed.Substring(colonIndex + 1).Trim();
+                
+                headers[key] = value;
+            }
+
+            return headers;
+        }
+
+        /// <summary>
+        /// Получение значения поля по имени (для обратной совместимости)
+        /// </summary>
+        private string GetFieldValue(TrafficData data, string fieldName)
+        {
+            switch (fieldName)
+            {
+                case "Method": return data.Method;
+                case "ResultCode": return data.ResultCode;
+                case "Url": return data.Url;
+                case "ResponseContentType": return data.ResponseContentType;
+                case "RequestHeaders": return data.RequestHeaders;
+                case "RequestCookies": return data.RequestCookies;
+                case "RequestBody": return data.RequestBody;
+                case "ResponseHeaders": return data.ResponseHeaders;
+                case "ResponseCookies": return data.ResponseCookies;
+                case "ResponseBody": return data.ResponseBody;
+                default:
+                    throw new ArgumentException($"Неизвестное поле: '{fieldName}'");
+            }
+        }
+
+        #endregion
+
+        #region Nested Class - TrafficData
+
+        /// <summary>
+        /// Данные трафика с типизированным доступом к полям
+        /// Потокобезопасен - каждый поток получает свою копию
+        /// </summary>
+        public class TrafficData
+        {
+            public string Method { get; internal set; }
+            public string ResultCode { get; internal set; }
+            public string Url { get; internal set; }
+            public string ResponseContentType { get; internal set; }
+            
+            // Headers & Cookies
+            public string RequestHeaders { get; internal set; }
+            public string RequestCookies { get; internal set; }
+            public string ResponseHeaders { get; internal set; }
+            public string ResponseCookies { get; internal set; }
+            
+            // Bodies
+            public string RequestBody { get; internal set; }
+            public string ResponseBody { get; internal set; }
+
+            /// <summary>
+            /// Получить конкретный заголовок из RequestHeaders
+            /// </summary>
+            public string GetRequestHeader(string headerName)
+            {
+                var headers = ParseHeadersInternal(RequestHeaders);
+                var key = headerName.ToLower();
+                return headers.ContainsKey(key) ? headers[key] : null;
+            }
+
+            /// <summary>
+            /// Получить конкретный заголовок из ResponseHeaders
+            /// </summary>
+            public string GetResponseHeader(string headerName)
+            {
+                var headers = ParseHeadersInternal(ResponseHeaders);
+                var key = headerName.ToLower();
+                return headers.ContainsKey(key) ? headers[key] : null;
+            }
+
+            private Dictionary<string, string> ParseHeadersInternal(string headersString)
+            {
+                var headers = new Dictionary<string, string>();
+                if (string.IsNullOrWhiteSpace(headersString)) return headers;
+
+                foreach (var line in headersString.Split('\n'))
+                {
+                    var trimmed = line.Trim();
+                    if (string.IsNullOrEmpty(trimmed)) continue;
+
+                    var colonIndex = trimmed.IndexOf(':');
+                    if (colonIndex <= 0) continue;
+
+                    var key = trimmed.Substring(0, colonIndex).Trim().ToLower();
+                    var value = trimmed.Substring(colonIndex + 1).Trim();
+                    headers[key] = value;
+                }
+
+                return headers;
+            }
+            
+            //new
+            private readonly IZennoPosterProjectModel _project;
+
+            // Добавляем конструктор с project
+            internal TrafficData(IZennoPosterProjectModel project)
+            {
+                _project = project;
+            }
+
+            /// <summary>
+            /// Распарсить ResponseBody как JSON
+            /// </summary>
+            public TrafficData ParseResponseJson()
+            {
+                if (!string.IsNullOrEmpty(ResponseBody))
+                {
+                    _project.Json.FromString(ResponseBody);
+                }
+                return this;
+            }
+
+            /// <summary>
+            /// Распарсить RequestBody как JSON
+            /// </summary>
+            public TrafficData ParseRequestJson()
+            {
+                if (!string.IsNullOrEmpty(RequestBody))
+                {
+                    _project.Json.FromString(RequestBody);
+                }
+                return this;
+            }
+            //
+            
+        }
+
+        #endregion
+
+        #region Legacy Methods - Сохранены для обратной совместимости
+
+        /// <summary>
+        /// УСТАРЕЛО: Используйте Get(url).ResponseBody или Get(url, parse: true)
+        /// </summary>
+        [Obsolete("Get(url)")]
         public string Get(string url, string parametr, bool reload = false, bool parse = false, int deadline = 15, int delay = 3)
         {
             var validParameters = new[] { "Method", "ResultCode", "Url", "ResponseContentType", "RequestHeaders", "RequestCookies", "RequestBody", "ResponseHeaders", "ResponseCookies", "ResponseBody" };
             if (!validParameters.Contains(parametr))
                 throw new ArgumentException($"Invalid parameter: '{parametr}'. Valid parameters are: {string.Join(", ", validParameters)}");
 
+            var data = Get(url, reload, strict: false, timeoutSeconds: deadline, delaySeconds: delay);
+            var result = GetFieldValue(data, parametr);
 
-            _project.Deadline();
-            if (reload)
+            if (parse && !string.IsNullOrEmpty(result))
             {
-                _instance.ActiveTab.MainDocument.EvaluateScript("location.reload(true)");
-                if (_instance.ActiveTab.IsBusy) _instance.ActiveTab.WaitDownloading();
-                
-                Thread.Sleep(1000 * delay);
-
+                _project.Json.FromString(result);
             }
-            int i = 0;
 
-            while (true)
-            {
-                _project.Deadline(deadline);
-                Thread.Sleep(1000 * delay);
-                var traffic = _instance.ActiveTab.GetTraffic();
-                var data = new Dictionary<string, string>();
-                i++;
-                _logger.Send(i.ToString());
-
-                foreach (var t in traffic)
-                {
-                    if (!t.Url.Contains(url) || t.Method == "OPTIONS")
-                        continue;
-                    _logger.Send(t.Url);
-                    data.Add("Method", t.Method);
-                    _logger.Send(t.Method);
-                    data.Add("ResultCode", t.ResultCode.ToString());
-                    data.Add("Url", t.Url);
-                    data.Add("ResponseContentType", t.ResponseContentType);
-                    data.Add("RequestHeaders", t.RequestHeaders);
-                    _logger.Send(t.RequestHeaders);
-                    data.Add("RequestCookies", t.RequestCookies);
-                    data.Add("RequestBody", t.RequestBody);
-                    data.Add("ResponseHeaders", t.ResponseHeaders);
-                    data.Add("ResponseCookies", t.ResponseCookies);
-                    data.Add("ResponseBody", t.ResponseBody == null ? "" : Encoding.UTF8.GetString(t.ResponseBody, 0, t.ResponseBody.Length));
-
-                    if (data.TryGetValue(parametr, out var param))
-                    {
-                        _logger.Send($"[{parametr}] is [{param}]");
-                        if (!string.IsNullOrEmpty(param))
-                        {
-                            if (parse) _project.Json.FromString(param);
-                            return param;
-                        }
-
-                        break;
-                    }
-
-                }
-                _logger.Send($"[{url}] not found in traffic");
-            }
+            return result;
         }
-        
-        public Dictionary<string, string> Get(string url, bool reload = false,int deadline = 10)
+
+        /// <summary>
+        /// УСТАРЕЛО: Используйте Get(url) и работайте с TrafficData
+        /// </summary>
+        [Obsolete("Get(url) returns TrafficData")]
+        public Dictionary<string, string> GetDictionary(string url, bool reload = false, bool strict = true, int deadline = 10)
         {
-            _project.Deadline();
-            _instance.UseTrafficMonitoring = true;
-            if (reload) _instance.ActiveTab.MainDocument.EvaluateScript("location.reload(true)");
-
-            get:
-            _project.Deadline(deadline);
-            Thread.Sleep(1000);
-            var traffic = _instance.ActiveTab.GetTraffic();
-            var data = new Dictionary<string, string>();
-            foreach (var t in traffic)
+            var data = Get(url, reload, strict, timeoutSeconds: deadline);
+            
+            return new Dictionary<string, string>
             {
-                if (t.Url.Contains(url))
-                {
-                    var Method = t.Method;
-
-                    if (Method == "OPTIONS") continue;
-
-                    var ResultCode = t.ResultCode.ToString();
-                    var Url = t.Url;
-                    var ResponseContentType = t.ResponseContentType;
-                    var RequestHeaders = t.RequestHeaders;
-                    var RequestCookies = t.RequestCookies;
-                    var RequestBody = t.RequestBody;
-                    var ResponseHeaders = t.ResponseHeaders;
-                    var ResponseCookies = t.ResponseCookies;
-                    var ResponseBody = t.ResponseBody == null ? "" : Encoding.UTF8.GetString(t.ResponseBody, 0, t.ResponseBody.Length);
-
-
-                    data.Add("Method", Method);
-                    data.Add("ResultCode", ResultCode);
-                    data.Add("Url", Url);
-                    data.Add("ResponseContentType", ResponseContentType);
-                    data.Add("RequestHeaders", RequestHeaders);
-                    data.Add("RequestCookies", RequestCookies);
-                    data.Add("RequestBody", RequestBody);
-                    data.Add("ResponseHeaders", ResponseHeaders);
-                    data.Add("ResponseCookies", ResponseCookies);
-                    data.Add("ResponseBody", ResponseBody);
-                    break;
-                }
-            }
-            if (data.Count == 0) goto get;
-            return data;
+                {"Method", data.Method},
+                {"ResultCode", data.ResultCode},
+                {"Url", data.Url},
+                {"ResponseContentType", data.ResponseContentType},
+                {"RequestHeaders", data.RequestHeaders},
+                {"RequestCookies", data.RequestCookies},
+                {"RequestBody", data.RequestBody},
+                {"ResponseHeaders", data.ResponseHeaders},
+                {"ResponseCookies", data.ResponseCookies},
+                {"ResponseBody", data.ResponseBody}
+            };
         }
-        public string GetHeader(string url, string headerToGet = "Authorization", bool reload = false)
-        {
-            var Headers = new Traffic(_project, _instance, _showLog).Get(url, "RequestHeaders");
-            var headers = new Dictionary<string, string>();
-            foreach (string header in Headers.Split('\n'))
-            {
-                var key = header.Trim().Split(':')[0].ToLower();
-                var value = header.Trim().Split(':')[1];
-                headers.Add(key, value);
-            }
-            return headers[headerToGet.ToLower()];
-        }
+
+        /// <summary>
+        /// УСТАРЕЛО: Используйте Get(url).GetRequestHeader(headerName)
+        /// </summary>
+        [Obsolete("Get(url).GetRequestHeader(headerName) || GetHeader(url, headerName)")]
         public string GetParam(string url, string parametr, bool reload = false, int deadline = 10)
         {
-            _project.Deadline();
-            _instance.UseTrafficMonitoring = true;
-            if (reload) _instance.ActiveTab.MainDocument.EvaluateScript("location.reload(true)");
-
-            get:
-            _project.Deadline(deadline);
-            Thread.Sleep(1000);
-            var traffic = _instance.ActiveTab.GetTraffic();
-            var data = new Dictionary<string, string>();
-            string param;
-            foreach (var t in traffic)
-            {
-                if (t.Url.Contains(url))
-                {
-                    var Method = t.Method;
-
-                    if (Method == "OPTIONS") continue;
-
-                    var ResultCode = t.ResultCode.ToString();
-                    var Url = t.Url;
-                    var ResponseContentType = t.ResponseContentType;
-                    var RequestHeaders = t.RequestHeaders;
-                    var RequestCookies = t.RequestCookies;
-                    var RequestBody = t.RequestBody;
-                    var ResponseHeaders = t.ResponseHeaders;
-                    var ResponseCookies = t.ResponseCookies;
-                    var ResponseBody = t.ResponseBody == null ? "" : Encoding.UTF8.GetString(t.ResponseBody, 0, t.ResponseBody.Length);
-
-
-                    data.Add("Method", Method);
-                    data.Add("ResultCode", ResultCode);
-                    data.Add("Url", Url);
-                    data.Add("ResponseContentType", ResponseContentType);
-                    data.Add("RequestHeaders", RequestHeaders);
-                    data.Add("RequestCookies", RequestCookies);
-                    data.Add("RequestBody", RequestBody);
-                    data.Add("ResponseHeaders", ResponseHeaders);
-                    data.Add("ResponseCookies", ResponseCookies);
-                    data.Add("ResponseBody", ResponseBody);
-                    break;
-                }
-                if (data.Count == 0) continue;
-                else data.TryGetValue(parametr, out param);
-                if (string.IsNullOrEmpty(param)) continue;
-                else return param;
-            }
-            goto get;
+            var data = Get(url, reload, strict: false, timeoutSeconds: deadline);
+            return GetFieldValue(data, parametr);
         }
+
+        #endregion
         
     }
-
 }

@@ -95,6 +95,7 @@
     <Compile Include="Browser\Cookies.cs" />
     <Compile Include="Browser\Captcha.cs" />
     <Compile Include="Browser\HtmlExtensions.cs" />
+    <Compile Include="Browser\Traffic.cs" />
     <Compile Include="Core\Disposer.cs" />
     <Compile Include="Core\Init.cs" />
     <Compile Include="Core\Reporter.cs" />
@@ -107,7 +108,6 @@
     <Compile Include="W3b\CosmosTools.cs" />
     <Compile Include="Wallets\Keplr.cs" />
     <Compile Include="Wallets\Zerion.cs" />
-    <Compile Include="_projects\HackQuest.cs" />
     <None Include="cmnc0de.cs" />
     <Compile Include="Browser\InstanceExtensions.cs" />
     <Compile Include="Essentials\Cryptography.cs" />
@@ -131,7 +131,7 @@
     <Compile Include="Requests\NetHttp.cs" />
     <Compile Include="Browser\BrowserScan.cs" />
     <Compile Include="Browser\ChromeExt.cs" />
-    <Compile Include="Browser\Traffic.cs" />
+    <Compile Include="Browser\Traffic_.cs" />
     <Compile Include="W3b\Tx.cs" />
     <Compile Include="Api\GazZip.cs" />
     <Compile Include="Tools\F0rms.cs" />
@@ -216,5 +216,8 @@
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Connected Services\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="_projects\" />
   </ItemGroup>
 </Project>

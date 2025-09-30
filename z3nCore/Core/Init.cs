@@ -380,12 +380,13 @@ namespace z3nCore
         private void _SAFU()
         {
             string tempFilePath = _project.Path + "_SAFU.zp";
+            
             var mapVars = new List<Tuple<string, string>>();
             mapVars.Add(new Tuple<string, string>("acc0", "acc0"));
             mapVars.Add(new Tuple<string, string>("cfgPin", "cfgPin"));
             mapVars.Add(new Tuple<string, string>("DBpstgrPass", "DBpstgrPass"));
             try { _project.ExecuteProject(tempFilePath, mapVars, true, true, true); }
-            catch (Exception ex) { _project.SendWarningToLog(ex.Message); }
+            catch (Exception ex) { _project.SendWarningToLog(ex.Message, true); }
         }
 
         private void BuildNewDatabase()

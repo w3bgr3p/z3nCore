@@ -97,7 +97,8 @@ namespace z3nCore
                 try { project.Var(resultVar, $"{result}"); } catch { }
             return result;
         }
-        
+
+
     }
 
     public static class Constantes

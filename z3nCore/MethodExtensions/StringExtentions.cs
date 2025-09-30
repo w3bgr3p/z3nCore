@@ -1,5 +1,5 @@
 ﻿
-
+using ZennoLab.InterfacesLibrary.ProjectModel;
 using NBitcoin;
 using Newtonsoft.Json;
 using System;
@@ -11,7 +11,6 @@ using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Web.NBitcoin;
 using Newtonsoft.Json.Linq;
 using System.Collections.Specialized;
 
@@ -478,5 +477,20 @@ namespace z3nCore
             return password.ToString();
         }
   
+    }
+    public static partial class ProjectExtensions
+    {
+        public static void ToJson(this IZennoPosterProjectModel project, string json, bool thrw = false)
+        {
+            try
+            {
+                project.Json.FromString(json);
+            }
+            catch (Exception e)
+            {
+                project.warn(e.Message,thrw:thrw);
+                
+            }
+        }
     }
 }
