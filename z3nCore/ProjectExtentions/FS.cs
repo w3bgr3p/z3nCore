@@ -218,4 +218,26 @@ namespace z3nCore
                     file.EndsWith(ext, StringComparison.OrdinalIgnoreCase))).ToList();
         }
     }
+    
+        public static partial class ProjectExtensions
+    {
+        public static List<string> ListFromFile(this IZennoPosterProjectModel project, string listName, string fileName)
+        {
+            string web3prompts = $"{project.Path}.data\\web3prompts.txt";
+            var prjList = project.Lists[listName];
+            prjList.Clear();
+            
+            var lines = File.ReadAllLines(fileName).ToList();
+            try
+            {
+                project.ListSync(listName, lines);
+            }
+            catch
+            {
+            }
+
+            return lines;
+
+        }
+    }
 }

@@ -12,7 +12,7 @@ namespace z3nCore
     /// Класс для работы с трафиком браузера ZennoPoster
     /// Потокобезопасен через изоляцию project/instance
     /// </summary>
-     public class Traffic
+    public class Traffic
     {
         #region Fields & Constructor
 
@@ -20,6 +20,10 @@ namespace z3nCore
         private readonly Instance _instance;
         private readonly Logger _logger;
         private readonly bool _showLog;
+
+        // Кэш распарсенного трафика
+        private List<TrafficData> _cachedTraffic;
+        private DateTime _cacheTime;
 
         public Traffic(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
@@ -32,17 +36,13 @@ namespace z3nCore
 
         #endregion
 
-        #region Public API - Новый упрощенный интерфейс
+        #region Public API - Основной интерфейс
 
         /// <summary>
         /// Получить данные трафика по URL с удобным доступом к полям
         /// </summary>
-        /// <example>
-        /// var traffic = new Traffic(project, instance).Get("api/endpoint");
-        /// var body = traffic.ResponseBody;
-        /// var headers = traffic.RequestHeaders;
-        /// </example>
-        public TrafficData Get(string url, bool reload = false, bool strict = true, int timeoutSeconds = 15, int delaySeconds = 1)
+        public TrafficData Get(string url, bool reload = false, bool strict = true, int timeoutSeconds = 15,
+            int delaySeconds = 1)
         {
             _project.Deadline();
             _instance.UseTrafficMonitoring = true;
@@ -52,6 +52,7 @@ namespace z3nCore
                 _instance.ActiveTab.MainDocument.EvaluateScript("location.reload(true)");
                 if (_instance.ActiveTab.IsBusy) _instance.ActiveTab.WaitDownloading();
                 Thread.Sleep(1000 * delaySeconds);
+                ClearCache(); // Сбрасываем кэш при reload
             }
 
             var startTime = DateTime.Now;
@@ -62,7 +63,7 @@ namespace z3nCore
             {
                 _project.Deadline(timeoutSeconds);
                 attempt++;
-                
+
                 if (_showLog) _logger.Send($"Попытка #{attempt} поиска URL: {url}");
 
                 var trafficData = TryFindTraffic(url, strict);
@@ -79,23 +80,79 @@ namespace z3nCore
         }
 
         /// <summary>
-        /// Быстрый доступ к конкретному полю трафика (для обратной совместимости)
+        /// Сделать снапшот трафика для работы с несколькими URL
         /// </summary>
-        [Obsolete("Используйте Get(url).ResponseBody вместо GetField(url, \"ResponseBody\")")]
-        public string GetField(string url, string fieldName, bool reload = false, int timeoutSeconds = 15)
+        /// <example>
+        /// var traffic = new Traffic(project, instance).Snapshot();
+        /// var data1 = traffic.Get("api/endpoint1");
+        /// var data2 = traffic.Get("api/endpoint2");
+        /// var data3 = traffic.Get("api/endpoint3");
+        /// </example>
+        public Traffic Snapshot(bool reload = false, int delaySeconds = 1)
         {
-            var data = Get(url, reload, strict: false, timeoutSeconds: timeoutSeconds);
-            return GetFieldValue(data, fieldName);
+            _project.Deadline();
+            _instance.UseTrafficMonitoring = true;
+
+            if (reload)
+            {
+                _instance.ActiveTab.MainDocument.EvaluateScript("location.reload(true)");
+                if (_instance.ActiveTab.IsBusy) _instance.ActiveTab.WaitDownloading();
+                Thread.Sleep(1000 * delaySeconds);
+            }
+
+            // Получаем и кэшируем весь трафик
+            RefreshCache();
+
+            if (_showLog) _logger.Send($"✓ Снапшот трафика создан: {_cachedTraffic.Count} записей");
+
+            return this;
+        }
+
+        /// <summary>
+        /// Получить все записи трафика, соответствующие URL
+        /// </summary>
+        public List<TrafficData> GetAll(string url, bool strict = false)
+        {
+            EnsureCacheExists();
+
+            var results = new List<TrafficData>();
+
+            foreach (var item in _cachedTraffic)
+            {
+                bool matches = strict ? item.Url == url : item.Url.Contains(url);
+                if (matches)
+                {
+                    results.Add(item);
+                }
+            }
+
+            if (_showLog) _logger.Send($"Найдено {results.Count} записей для URL: {url}");
+
+            return results;
+        }
+
+        /// <summary>
+        /// Очистить кэш трафика
+        /// </summary>
+        public Traffic ClearCache()
+        {
+            _cachedTraffic = null;
+            _cacheTime = DateTime.MinValue;
+
+            if (_showLog) _logger.Send("Кэш трафика очищен");
+
+            return this;
         }
 
         /// <summary>
         /// Получить конкретный заголовок из RequestHeaders
         /// </summary>
-        public string GetHeader(string url, string headerName = "Authorization", bool reload = false, int timeoutSeconds = 15)
+        public string GetHeader(string url, string headerName = "Authorization", bool reload = false,
+            int timeoutSeconds = 15)
         {
             var trafficData = Get(url, reload, strict: false, timeoutSeconds: timeoutSeconds);
             var headers = ParseHeaders(trafficData.RequestHeaders);
-            
+
             var headerKey = headerName.ToLower();
             if (headers.ContainsKey(headerKey))
                 return headers[headerKey];
@@ -108,25 +165,62 @@ namespace z3nCore
         #region Private Implementation
 
         /// <summary>
+        /// Обновить кэш трафика
+        /// </summary>
+        private void RefreshCache()
+        {
+            var rawTraffic = _instance.ActiveTab.GetTraffic();
+            _cachedTraffic = new List<TrafficData>();
+
+            foreach (var item in rawTraffic)
+            {
+                // Пропускаем OPTIONS запросы
+                if (item.Method == "OPTIONS") continue;
+
+                _cachedTraffic.Add(ParseTrafficItem(item));
+            }
+
+            _cacheTime = DateTime.Now;
+        }
+
+        /// <summary>
+        /// Убедиться что кэш существует
+        /// </summary>
+        private void EnsureCacheExists()
+        {
+            if (_cachedTraffic == null)
+            {
+                RefreshCache();
+            }
+        }
+
+        /// <summary>
         /// Попытка найти трафик по URL
         /// </summary>
         private TrafficData TryFindTraffic(string url, bool strict)
         {
-            // GetTraffic() возвращает IEnumerable с элементами, у которых есть свойства:
-            // Method, ResultCode, Url, ResponseContentType, RequestHeaders, RequestBody и т.д.
-            var traffic = _instance.ActiveTab.GetTraffic();
+            // Если кэш устарел или не существует - обновляем
+            EnsureCacheExists();
 
-            foreach (var item in traffic)
+            foreach (var item in _cachedTraffic)
             {
-                // Проверка совпадения URL
                 bool urlMatches = strict ? item.Url == url : item.Url.Contains(url);
-                if (!urlMatches) continue;
+                if (urlMatches)
+                {
+                    return item;
+                }
+            }
 
-                // Пропускаем OPTIONS запросы
-                if (item.Method == "OPTIONS") continue;
+            // Не нашли в кэше - обновляем кэш и пробуем еще раз
+            RefreshCache();
 
-                // Нашли подходящий трафик - парсим
-                return ParseTrafficItem(item);
+            foreach (var item in _cachedTraffic)
+            {
+                bool urlMatches = strict ? item.Url == url : item.Url.Contains(url);
+                if (urlMatches)
+                {
+                    return item;
+                }
             }
 
             return null;
@@ -134,15 +228,14 @@ namespace z3nCore
 
         /// <summary>
         /// Парсинг одного элемента трафика в TrafficData
-        /// Работает с dynamic типом из GetTraffic()
         /// </summary>
         private TrafficData ParseTrafficItem(dynamic item)
         {
-            var responseBody = item.ResponseBody == null 
-                ? string.Empty 
+            var responseBody = item.ResponseBody == null
+                ? string.Empty
                 : Encoding.UTF8.GetString(item.ResponseBody, 0, item.ResponseBody.Length);
 
-            return new TrafficData(_project)  
+            return new TrafficData(_project)
             {
                 Method = item.Method ?? string.Empty,
                 ResultCode = item.ResultCode.ToString(),
@@ -163,7 +256,7 @@ namespace z3nCore
         private Dictionary<string, string> ParseHeaders(string headersString)
         {
             var headers = new Dictionary<string, string>();
-            
+
             if (string.IsNullOrWhiteSpace(headersString))
                 return headers;
 
@@ -177,7 +270,7 @@ namespace z3nCore
 
                 var key = trimmed.Substring(0, colonIndex).Trim().ToLower();
                 var value = trimmed.Substring(colonIndex + 1).Trim();
-                
+
                 headers[key] = value;
             }
 
@@ -210,26 +303,53 @@ namespace z3nCore
 
         #region Nested Class - TrafficData
 
-        /// <summary>
-        /// Данные трафика с типизированным доступом к полям
-        /// Потокобезопасен - каждый поток получает свою копию
-        /// </summary>
         public class TrafficData
         {
+            private readonly IZennoPosterProjectModel _project;
+
+            internal TrafficData(IZennoPosterProjectModel project)
+            {
+                _project = project;
+            }
+
             public string Method { get; internal set; }
             public string ResultCode { get; internal set; }
             public string Url { get; internal set; }
             public string ResponseContentType { get; internal set; }
-            
-            // Headers & Cookies
+
             public string RequestHeaders { get; internal set; }
             public string RequestCookies { get; internal set; }
             public string ResponseHeaders { get; internal set; }
             public string ResponseCookies { get; internal set; }
-            
-            // Bodies
+
             public string RequestBody { get; internal set; }
             public string ResponseBody { get; internal set; }
+
+            /// <summary>
+            /// Распарсить ResponseBody как JSON
+            /// </summary>
+            public TrafficData ParseResponseJson()
+            {
+                if (!string.IsNullOrEmpty(ResponseBody))
+                {
+                    _project.Json.FromString(ResponseBody);
+                }
+
+                return this;
+            }
+
+            /// <summary>
+            /// Распарсить RequestBody как JSON
+            /// </summary>
+            public TrafficData ParseRequestJson()
+            {
+                if (!string.IsNullOrEmpty(RequestBody))
+                {
+                    _project.Json.FromString(RequestBody);
+                }
+
+                return this;
+            }
 
             /// <summary>
             /// Получить конкретный заголовок из RequestHeaders
@@ -271,56 +391,24 @@ namespace z3nCore
 
                 return headers;
             }
-            
-            //new
-            private readonly IZennoPosterProjectModel _project;
-
-            // Добавляем конструктор с project
-            internal TrafficData(IZennoPosterProjectModel project)
-            {
-                _project = project;
-            }
-
-            /// <summary>
-            /// Распарсить ResponseBody как JSON
-            /// </summary>
-            public TrafficData ParseResponseJson()
-            {
-                if (!string.IsNullOrEmpty(ResponseBody))
-                {
-                    _project.Json.FromString(ResponseBody);
-                }
-                return this;
-            }
-
-            /// <summary>
-            /// Распарсить RequestBody как JSON
-            /// </summary>
-            public TrafficData ParseRequestJson()
-            {
-                if (!string.IsNullOrEmpty(RequestBody))
-                {
-                    _project.Json.FromString(RequestBody);
-                }
-                return this;
-            }
-            //
-            
         }
 
         #endregion
 
-        #region Legacy Methods - Сохранены для обратной совместимости
+        #region Legacy Methods
 
-        /// <summary>
-        /// УСТАРЕЛО: Используйте Get(url).ResponseBody или Get(url, parse: true)
-        /// </summary>
-        [Obsolete("Get(url)")]
-        public string Get(string url, string parametr, bool reload = false, bool parse = false, int deadline = 15, int delay = 3)
+        [Obsolete("Используйте Get(url)")]
+        public string Get(string url, string parametr, bool reload = false, bool parse = false, int deadline = 15,
+            int delay = 3)
         {
-            var validParameters = new[] { "Method", "ResultCode", "Url", "ResponseContentType", "RequestHeaders", "RequestCookies", "RequestBody", "ResponseHeaders", "ResponseCookies", "ResponseBody" };
+            var validParameters = new[]
+            {
+                "Method", "ResultCode", "Url", "ResponseContentType", "RequestHeaders", "RequestCookies", "RequestBody",
+                "ResponseHeaders", "ResponseCookies", "ResponseBody"
+            };
             if (!validParameters.Contains(parametr))
-                throw new ArgumentException($"Invalid parameter: '{parametr}'. Valid parameters are: {string.Join(", ", validParameters)}");
+                throw new ArgumentException(
+                    $"Invalid parameter: '{parametr}'. Valid parameters are: {string.Join(", ", validParameters)}");
 
             var data = Get(url, reload, strict: false, timeoutSeconds: deadline, delaySeconds: delay);
             var result = GetFieldValue(data, parametr);
@@ -333,33 +421,28 @@ namespace z3nCore
             return result;
         }
 
-        /// <summary>
-        /// УСТАРЕЛО: Используйте Get(url) и работайте с TrafficData
-        /// </summary>
-        [Obsolete("Get(url) returns TrafficData")]
-        public Dictionary<string, string> GetDictionary(string url, bool reload = false, bool strict = true, int deadline = 10)
+        [Obsolete("Используйте Get(url) который возвращает TrafficData")]
+        public Dictionary<string, string> GetDictionary(string url, bool reload = false, bool strict = true,
+            int deadline = 10)
         {
             var data = Get(url, reload, strict, timeoutSeconds: deadline);
-            
+
             return new Dictionary<string, string>
             {
-                {"Method", data.Method},
-                {"ResultCode", data.ResultCode},
-                {"Url", data.Url},
-                {"ResponseContentType", data.ResponseContentType},
-                {"RequestHeaders", data.RequestHeaders},
-                {"RequestCookies", data.RequestCookies},
-                {"RequestBody", data.RequestBody},
-                {"ResponseHeaders", data.ResponseHeaders},
-                {"ResponseCookies", data.ResponseCookies},
-                {"ResponseBody", data.ResponseBody}
+                { "Method", data.Method },
+                { "ResultCode", data.ResultCode },
+                { "Url", data.Url },
+                { "ResponseContentType", data.ResponseContentType },
+                { "RequestHeaders", data.RequestHeaders },
+                { "RequestCookies", data.RequestCookies },
+                { "RequestBody", data.RequestBody },
+                { "ResponseHeaders", data.ResponseHeaders },
+                { "ResponseCookies", data.ResponseCookies },
+                { "ResponseBody", data.ResponseBody }
             };
         }
 
-        /// <summary>
-        /// УСТАРЕЛО: Используйте Get(url).GetRequestHeader(headerName)
-        /// </summary>
-        [Obsolete("Get(url).GetRequestHeader(headerName) || GetHeader(url, headerName)")]
+        [Obsolete("Используйте Get(url).GetRequestHeader(headerName)")]
         public string GetParam(string url, string parametr, bool reload = false, int deadline = 10)
         {
             var data = Get(url, reload, strict: false, timeoutSeconds: deadline);
@@ -367,6 +450,5 @@ namespace z3nCore
         }
 
         #endregion
-        
     }
 }

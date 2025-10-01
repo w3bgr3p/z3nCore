@@ -387,5 +387,76 @@ namespace z3nCore
         }
         
     }
+    
+    
+    public static partial class ProjectExtensions
+    {
+        public static void _ToJson(this IZennoPosterProjectModel project, string json, bool thrw = false)
+        {
+            try
+            {
+                project.Json.FromString(json);
+            }
+            catch (Exception e)
+            {
+                project.warn(e.Message,thrw:thrw);
+                
+            }
+        }
+        public static string RndFromList(this IZennoPosterProjectModel project, string listName)
+        {
+            var list = project.Lists[listName];
+            if (list.Count > 0)
+                return list[new Random().Next(0, list.Count - 1)];
+            return string.Empty;
+        }
+        public static void ListSync(this IZennoPosterProjectModel project, string listName, List<string> localList)
+        {
+            var listToSync = project.Lists[listName];
+            listToSync.Clear();
+            foreach (var item in localList) listToSync.Add(item); 
+        }
+        public static void ToJson(this IZennoPosterProjectModel project, string response, int objIndex = 1)
+        {
+            try
+            {
+                project.Json.FromString(response);
+                return;
+            }
+            catch (Exception ex)
+            {
+                project.SendWarningToLog(ex.Message);
+            }
+
+            try
+            {
+                string[] lines = response.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+                string jsonData = "";
+                for (int i = 0; i < lines.Length; i++) 
+                {
+                    if (lines[i].StartsWith($"{objIndex}:")) 
+                    {
+                        jsonData = lines[i].Substring(2);
+                        break;
+                    }
+                }
+                if (jsonData == "") {
+                    throw new Exception($"Не найдены данные с индексом {objIndex}");
+                }
+                project.Json.FromString(jsonData);
+                return;
+            }
+            catch (Exception ex)
+            {
+                project.SendWarningToLog(ex.Message);
+                throw;
+            }
+            
+        }
+    }
+    
+    
+    
+    
 
 }

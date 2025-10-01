@@ -96,9 +96,11 @@
     <Compile Include="Browser\Captcha.cs" />
     <Compile Include="Browser\HtmlExtensions.cs" />
     <Compile Include="Browser\Traffic.cs" />
+    <None Include="Browser\_Traffic.cs" />
     <Compile Include="Core\Disposer.cs" />
     <Compile Include="Core\Init.cs" />
     <Compile Include="Core\Reporter.cs" />
+    <Compile Include="MethodExtensions\ListExtentions.cs" />
     <Compile Include="MethodExtensions\StringExtentions.cs" />
     <Compile Include="ProjectExtentions\Exceptions.cs" />
     <Compile Include="ProjectExtentions\FS.cs" />
@@ -131,7 +133,7 @@
     <Compile Include="Requests\NetHttp.cs" />
     <Compile Include="Browser\BrowserScan.cs" />
     <Compile Include="Browser\ChromeExt.cs" />
-    <Compile Include="Browser\Traffic_.cs" />
+    <None Include="Browser\Traffic_.cs" />
     <Compile Include="W3b\Tx.cs" />
     <Compile Include="Api\GazZip.cs" />
     <Compile Include="Tools\F0rms.cs" />

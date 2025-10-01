@@ -56,7 +56,7 @@ namespace z3nCore
         }
         private string DSgetToken()
         {
-            var stats = new Traffic(_project,_instance).Get("https://discord.com/api/v9/science", "RequestHeaders", reload:true);
+            var stats = new Traffic(_project,_instance).Get("https://discord.com/api/v9/science",  reload:true).RequestHeaders;
             string patern = @"(?<=uthorization:\ ).*";
             string token = System.Text.RegularExpressions.Regex.Match(stats, patern).Value;
             return token;
