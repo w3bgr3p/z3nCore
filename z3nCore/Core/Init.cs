@@ -67,6 +67,10 @@ namespace z3nCore
                 _project.GSetAcc(force: true); 
                 goto run; 
             }
+            if (_project.Var("wkMode") == "UpdBalance")
+            {
+                return;
+            }
     
             getAcc:
             
@@ -132,6 +136,12 @@ namespace z3nCore
         
         public void PrepareInstance(string browserToLaunch = null)
         {
+            if (_project.Var("wkMode") == "UpdBalance")
+            {
+                _instance.Launch(ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.WithoutBrowser, false);
+                return;
+            }
+            
             LaunchBrowser(browserToLaunch);
             int exCnt = 0;
             string browserType = _instance.BrowserType.ToString();
@@ -691,6 +701,10 @@ namespace z3nCore
             
             switch (mode)
             {
+                case "UpdBalance":
+                    _project.Var("acc0", 0);
+                    _project.Var("cfgBrowser", "WithoutBrowser");
+                    return _project.Var("acc0");
                 case "Cooldown":
                     if (!ChooseSingleAcc())
                     {
