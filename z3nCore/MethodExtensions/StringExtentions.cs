@@ -16,7 +16,7 @@ using System.Collections.Specialized;
 
 namespace z3nCore
 {
-    public static class StringExtensions
+    public static partial class StringExtensions
     {
         public static string EscapeMarkdown(this string text)
         {
@@ -480,17 +480,43 @@ namespace z3nCore
     }
     public static partial class ProjectExtensions
     {
-        public static void ToJson(this IZennoPosterProjectModel project, string json, bool thrw = false)
+        public static void ToJson(this IZennoPosterProjectModel project, string json, bool thrw = false, int objIndex = 1)
         {
             try
             {
                 project.Json.FromString(json);
+                return;
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                project.warn(e.Message,thrw:thrw);
-                
+                project.SendWarningToLog(ex.Message);
             }
+
+            try
+            {
+                string[] lines = json.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+                string jsonData = "";
+                for (int i = 0; i < lines.Length; i++) 
+                {
+                    if (lines[i].StartsWith($"{objIndex}:")) 
+                    {
+                        jsonData = lines[i].Substring(2);
+                        break;
+                    }
+                }
+                if (jsonData == "") {
+                    throw new Exception($"Не найдены данные с индексом {objIndex}");
+                }
+                project.Json.FromString(jsonData);
+                return;
+            }
+            catch (Exception ex)
+            {
+                project.SendWarningToLog(ex.Message);
+                if (thrw)throw;
+            }
+            
         }
     }
+    
 }

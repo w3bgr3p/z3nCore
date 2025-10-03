@@ -451,4 +451,21 @@ namespace z3nCore
 
         #endregion
     }
+    public static partial class ProjectExtensions
+    {
+        public static void HeadersToProject(this IZennoPosterProjectModel project, Instance instance, string url, bool strict= false)
+        {
+            var headers  = new Traffic(project, instance).Get(url, strict:strict).RequestHeaders.Split('\n');
+            var refactoredHeaders = new StringBuilder();
+            foreach (string header in headers)
+            {
+                if (header.StartsWith(":")) continue;
+                refactoredHeaders.AppendLine(header);
+            }
+            project.Var("headers", refactoredHeaders.ToString());
+        }
+    }
+    
+    
+    
 }

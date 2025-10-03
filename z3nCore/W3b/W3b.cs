@@ -1022,8 +1022,9 @@ namespace z3nCore
             string nativeHex = new EvmTools().Native(rpc, address).GetAwaiter().GetResult();
             return nativeHex.ToDecimal();
         }
-        public static decimal EvmNative(this IZennoPosterProjectModel project, string rpc, string address, bool log = false)
+        public static decimal EvmNative(this IZennoPosterProjectModel project, string rpc, string address = null, bool log = false)
         {
+            if (string.IsNullOrEmpty(address)) address = (project.Var("addressEvm"));
             return new W3bLegacy(project).NativeEvm(rpc, address, log:log);
         }
         
@@ -1246,7 +1247,15 @@ namespace z3nCore
         }
 
     }
-    
-    
-    
+
+    public static partial class StringExtensions
+    {
+        public static BigInteger WeiToEth(this string wei, int decimals = 18)
+        {
+            return BigInteger.Parse(wei, NumberStyles.AllowHexSpecifier);
+        }
+    }
+
+
+
 }

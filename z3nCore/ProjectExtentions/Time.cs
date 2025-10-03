@@ -49,9 +49,20 @@ namespace z3nCore
             else
                 throw new ArgumentException($"unexpected format {o}");
         }
+        
+        
+        #region obsolete
 
-        
-        
+        public static string cd(object input = null, string o = "unix")
+        {
+            return Cd(input, o);
+        }
+        #endregion
+
+    }
+
+    public static partial class ProjectExtensions
+    {
         public static int TimeElapsed(this IZennoPosterProjectModel project, string varName = "varSessionId")
         {
             var start = project.Variables[varName].Value;
@@ -108,7 +119,7 @@ namespace z3nCore
             if (project.TimeElapsed() > 60 * min)
                 throw new Exception($"GlobalTimeout {min}min, after {project.LastExecutedActionId}");
         }
-        public static int Deadline(this IZennoPosterProjectModel project, int sec = 0)
+        public static int Deadline(this IZennoPosterProjectModel project, int sec = 0, bool log = false)
         {
             if (sec != 0)
             {
@@ -117,8 +128,8 @@ namespace z3nCore
                 long startTime = long.Parse(start);
                 int difference = (int)(currentTime - startTime);
                 if (difference > sec) throw new Exception($"Deadline Exception: {sec}s, after {project.LastExecutedActionId}");
+                if (log) project.log($"{difference}s");
                 return difference;
-
             }
             else
             {
@@ -138,13 +149,7 @@ namespace z3nCore
         {
             project.Var("varSessionId", (DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString());
         }
-        #region obsolete
-
-        public static string cd(object input = null, string o = "unix")
-        {
-            return Cd(input, o);
-        }
-        #endregion
-
+        
     }
+
 }

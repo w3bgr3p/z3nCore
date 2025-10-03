@@ -19,118 +19,405 @@ namespace z3nCore
             _project = project;
             _logger = new Logger(project, log: log, classEmoji: "💠");
         }
-        public string SendTx(string chainRpc, string contractAddress, string encodedData, decimal value, string walletKey, int txType = 2, int speedup = 1)
+        public string SendTx(string chainRpc, string contractAddress, string encodedData, object value, string walletKey, int txType = 2, int speedup = 1)
+{
+    if (string.IsNullOrEmpty(chainRpc))
+        throw new ArgumentException("Chain RPC is null or empty");
+
+    if (string.IsNullOrEmpty(walletKey))
+        walletKey = _project.DbKey("evm");            
+    
+    if (string.IsNullOrEmpty(walletKey))
+        throw new ArgumentException("Wallet key is null or empty");
+    
+    var web3 = new Web3(chainRpc);
+    int chainId;
+    try
+    {
+        var chainIdTask = web3.Eth.ChainId.SendRequestAsync();
+        chainIdTask.Wait();
+        chainId = (int)chainIdTask.Result.Value;
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Failed to get chain ID: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
+    }
+
+    string fromAddress;
+    try
+    {
+        var ethECKey = new Nethereum.Signer.EthECKey(walletKey);
+        fromAddress = ethECKey.GetPublicAddress();
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Failed to initialize EthECKey: length={walletKey.Length}, startsWith={walletKey.Substring(0, Math.Min(6, walletKey.Length))}..., Message={ex.Message}, InnerException={ex.InnerException?.Message}", ex);
+    }
+
+    BigInteger _value = ConvertValueToWei(value);
+    BigInteger gasLimit = 0;
+    BigInteger gasPrice = 0;
+    BigInteger maxFeePerGas = 0;
+    BigInteger priorityFee = 0;
+
+    try
+    {
+        var gasPriceTask = web3.Eth.GasPrice.SendRequestAsync();
+        gasPriceTask.Wait();
+        BigInteger baseGasPrice = gasPriceTask.Result.Value / 100 + gasPriceTask.Result.Value;
+        if (txType == 0)
         {
-            if (string.IsNullOrEmpty(chainRpc))
-                throw new ArgumentException("Chain RPC is null or empty");
-
-            if (string.IsNullOrEmpty(walletKey))
-                walletKey = _project.DbKey("evm");            
-            
-            if (string.IsNullOrEmpty(walletKey))
-                throw new ArgumentException("Wallet key is null or empty");
-            
-
-            var web3 = new Web3(chainRpc);
-            int chainId;
-            try
-            {
-                var chainIdTask = web3.Eth.ChainId.SendRequestAsync();
-                chainIdTask.Wait();
-                chainId = (int)chainIdTask.Result.Value;
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Failed to get chain ID: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
-            }
-
-            string fromAddress;
-            try
-            {
-                var ethECKey = new Nethereum.Signer.EthECKey(walletKey);
-                fromAddress = ethECKey.GetPublicAddress();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Failed to initialize EthECKey: length={walletKey.Length}, startsWith={walletKey.Substring(0, Math.Min(6, walletKey.Length))}..., Message={ex.Message}, InnerException={ex.InnerException?.Message}", ex);
-            }
-
-            BigInteger _value = (BigInteger)(value * 1000000000000000000m);
-            BigInteger gasLimit = 0;
-            BigInteger gasPrice = 0;
-            BigInteger maxFeePerGas = 0;
-            BigInteger priorityFee = 0;
-
-            try
-            {
-                var gasPriceTask = web3.Eth.GasPrice.SendRequestAsync();
-                gasPriceTask.Wait();
-                BigInteger baseGasPrice = gasPriceTask.Result.Value / 100 + gasPriceTask.Result.Value;
-                if (txType == 0)
-                {
-                    gasPrice = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
-                }
-                else
-                {
-                    priorityFee = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
-                    maxFeePerGas = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Failed to estimate gas price: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
-            }
-
-            try
-            {
-                var transactionInput = new TransactionInput
-                {
-                    To = contractAddress,
-                    From = fromAddress,
-                    Data = encodedData,
-                    Value = new HexBigInteger(_value),
-                    GasPrice = txType == 0 ? new HexBigInteger(gasPrice) : null,
-                    MaxPriorityFeePerGas = txType == 2 ? new HexBigInteger(priorityFee) : null,
-                    MaxFeePerGas = txType == 2 ? new HexBigInteger(maxFeePerGas) : null,
-                    Type = txType == 2 ? new HexBigInteger(2) : null
-                };
-
-                var gasEstimateTask = web3.Eth.Transactions.EstimateGas.SendRequestAsync(transactionInput);
-                gasEstimateTask.Wait();
-                var gasEstimate = gasEstimateTask.Result;
-                gasLimit = gasEstimate.Value + (gasEstimate.Value / 2);
-            }
-            catch (AggregateException ae)
-            {
-                if (ae.InnerException is Nethereum.JsonRpc.Client.RpcResponseException rpcEx)
-                {
-                    var error = $"Code: {rpcEx.RpcError.Code}, Message: {rpcEx.RpcError.Message}, Data: {rpcEx.RpcError.Data}";
-                    throw new Exception($"RPC error during gas estimation: {error}, InnerException: {ae.InnerException?.Message}", ae);
-                }
-                throw new Exception($"Gas estimation failed: {ae.Message}, InnerException: {ae.InnerException?.Message}", ae);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Gas estimation failed: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
-            }
-
-            try
-            {
-                var blockchain = new Blockchain(walletKey, chainId, chainRpc);
-                string hash = txType == 0
-                    ? blockchain.SendTransaction(contractAddress, value, encodedData, gasLimit, gasPrice).Result
-                    : blockchain.SendTransactionEIP1559(contractAddress, value, encodedData, gasLimit, maxFeePerGas, priorityFee).Result;
-                return hash;
-            }
-            catch (AggregateException ae)
-            {
-                throw new Exception($"Transaction send failed: {ae.Message}, InnerException: {ae.InnerException?.Message}", ae);
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Transaction send failed: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
-            }
+            gasPrice = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
         }
+        else
+        {
+            priorityFee = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
+            maxFeePerGas = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
+        }
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Failed to estimate gas price: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
+    }
+
+    try
+    {
+        var transactionInput = new TransactionInput
+        {
+            To = contractAddress,
+            From = fromAddress,
+            Data = encodedData,
+            Value = new HexBigInteger(_value),
+            GasPrice = txType == 0 ? new HexBigInteger(gasPrice) : null,
+            MaxPriorityFeePerGas = txType == 2 ? new HexBigInteger(priorityFee) : null,
+            MaxFeePerGas = txType == 2 ? new HexBigInteger(maxFeePerGas) : null,
+            Type = txType == 2 ? new HexBigInteger(2) : null
+        };
+
+        var gasEstimateTask = web3.Eth.Transactions.EstimateGas.SendRequestAsync(transactionInput);
+        gasEstimateTask.Wait();
+        var gasEstimate = gasEstimateTask.Result;
+        gasLimit = gasEstimate.Value + (gasEstimate.Value / 2);
+    }
+    catch (AggregateException ae)
+    {
+        if (ae.InnerException is Nethereum.JsonRpc.Client.RpcResponseException rpcEx)
+        {
+            var error = $"Code: {rpcEx.RpcError.Code}, Message: {rpcEx.RpcError.Message}, Data: {rpcEx.RpcError.Data}";
+            throw new Exception($"RPC error during gas estimation: {error}, InnerException: {ae.InnerException?.Message}", ae);
+        }
+        throw new Exception($"Gas estimation failed: {ae.Message}, InnerException: {ae.InnerException?.Message}", ae);
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Gas estimation failed: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
+    }
+
+    try
+    {
+        var blockchain = new Blockchain(walletKey, chainId, chainRpc);
+        string hash = txType == 0
+            ? blockchain.SendTransaction(contractAddress, _value, encodedData, gasLimit, gasPrice).Result
+            : blockchain.SendTransactionEIP1559(contractAddress, _value, encodedData, gasLimit, maxFeePerGas, priorityFee).Result;
+        return hash;
+    }
+    catch (AggregateException ae)
+    {
+        throw new Exception($"Transaction send failed: {ae.Message}, InnerException: {ae.InnerException?.Message}", ae);
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Transaction send failed: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
+    }
+}
+        private BigInteger ConvertValueToWei(object value)
+        {
+            // Уже готовое значение в Wei
+            if (value is BigInteger bigInt)
+                return bigInt;
+    
+            if (value is HexBigInteger hexBigInt)
+                return hexBigInt.Value;
+    
+            // Строка - пытаемся распарсить как hex (с или без 0x)
+            if (value is string strValue)
+            {
+                if (string.IsNullOrWhiteSpace(strValue))
+                    throw new ArgumentException("Value string is null or empty");
+        
+                // Убираем 0x если есть
+                string hexValue = strValue.StartsWith("0x") || strValue.StartsWith("0X") 
+                    ? strValue.Substring(2) 
+                    : strValue;
+        
+                try
+                {
+                    return BigInteger.Parse(hexValue, NumberStyles.AllowHexSpecifier);
+                }
+                catch (Exception ex)
+                {
+                    throw new ArgumentException($"Невозможно распарсить строку '{strValue}' как hex значение: {ex.Message}", ex);
+                }
+            }
+    
+            // Числовые типы - конвертируем в Wei (умножаем на 10^18)
+            if (value is decimal decValue)
+                return (BigInteger)(decValue * 1000000000000000000m);
+    
+            if (value is int intValue)
+                return (BigInteger)intValue * 1000000000000000000;
+    
+            if (value is long longValue)
+                return (BigInteger)longValue * 1000000000000000000;
+    
+            if (value is double doubleValue)
+                return (BigInteger)(doubleValue * 1000000000000000000.0);
+    
+            if (value is float floatValue)
+                return (BigInteger)(floatValue * 1000000000000000000.0f);
+    
+            throw new ArgumentException(
+                $"Невозможно конвертировать value типа '{value?.GetType().Name ?? "null"}' в Wei. " +
+                "Поддерживаемые типы: decimal, int, long, double, float, BigInteger, HexBigInteger, string (hex)"
+            );
+        }
+        
+#region obsolete
+        
+/*
+
+public string SendTx(string chainRpc, string contractAddress, string encodedData, decimal value, string walletKey, int txType = 2, int speedup = 1)
+{
+    if (string.IsNullOrEmpty(chainRpc))
+        throw new ArgumentException("Chain RPC is null or empty");
+
+    if (string.IsNullOrEmpty(walletKey))
+        walletKey = _project.DbKey("evm");
+
+    if (string.IsNullOrEmpty(walletKey))
+        throw new ArgumentException("Wallet key is null or empty");
+
+
+    var web3 = new Web3(chainRpc);
+    int chainId;
+    try
+    {
+        var chainIdTask = web3.Eth.ChainId.SendRequestAsync();
+        chainIdTask.Wait();
+        chainId = (int)chainIdTask.Result.Value;
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Failed to get chain ID: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
+    }
+
+    string fromAddress;
+    try
+    {
+        var ethECKey = new Nethereum.Signer.EthECKey(walletKey);
+        fromAddress = ethECKey.GetPublicAddress();
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Failed to initialize EthECKey: length={walletKey.Length}, startsWith={walletKey.Substring(0, Math.Min(6, walletKey.Length))}..., Message={ex.Message}, InnerException={ex.InnerException?.Message}", ex);
+    }
+
+    BigInteger _value = (BigInteger)(value * 1000000000000000000m);
+    BigInteger gasLimit = 0;
+    BigInteger gasPrice = 0;
+    BigInteger maxFeePerGas = 0;
+    BigInteger priorityFee = 0;
+
+    try
+    {
+        var gasPriceTask = web3.Eth.GasPrice.SendRequestAsync();
+        gasPriceTask.Wait();
+        BigInteger baseGasPrice = gasPriceTask.Result.Value / 100 + gasPriceTask.Result.Value;
+        if (txType == 0)
+        {
+            gasPrice = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
+        }
+        else
+        {
+            priorityFee = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
+            maxFeePerGas = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
+        }
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Failed to estimate gas price: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
+    }
+
+    try
+    {
+        var transactionInput = new TransactionInput
+        {
+            To = contractAddress,
+            From = fromAddress,
+            Data = encodedData,
+            Value = new HexBigInteger(_value),
+            GasPrice = txType == 0 ? new HexBigInteger(gasPrice) : null,
+            MaxPriorityFeePerGas = txType == 2 ? new HexBigInteger(priorityFee) : null,
+            MaxFeePerGas = txType == 2 ? new HexBigInteger(maxFeePerGas) : null,
+            Type = txType == 2 ? new HexBigInteger(2) : null
+        };
+
+        var gasEstimateTask = web3.Eth.Transactions.EstimateGas.SendRequestAsync(transactionInput);
+        gasEstimateTask.Wait();
+        var gasEstimate = gasEstimateTask.Result;
+        gasLimit = gasEstimate.Value + (gasEstimate.Value / 2);
+    }
+    catch (AggregateException ae)
+    {
+        if (ae.InnerException is Nethereum.JsonRpc.Client.RpcResponseException rpcEx)
+        {
+            var error = $"Code: {rpcEx.RpcError.Code}, Message: {rpcEx.RpcError.Message}, Data: {rpcEx.RpcError.Data}";
+            throw new Exception($"RPC error during gas estimation: {error}, InnerException: {ae.InnerException?.Message}", ae);
+        }
+        throw new Exception($"Gas estimation failed: {ae.Message}, InnerException: {ae.InnerException?.Message}", ae);
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Gas estimation failed: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
+    }
+
+    try
+    {
+        var blockchain = new Blockchain(walletKey, chainId, chainRpc);
+        string hash = txType == 0
+            ? blockchain.SendTransaction(contractAddress, value, encodedData, gasLimit, gasPrice).Result
+            : blockchain.SendTransactionEIP1559(contractAddress, value, encodedData, gasLimit, maxFeePerGas, priorityFee).Result;
+        return hash;
+    }
+    catch (AggregateException ae)
+    {
+        throw new Exception($"Transaction send failed: {ae.Message}, InnerException: {ae.InnerException?.Message}", ae);
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Transaction send failed: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
+    }
+}
+public string SendTx(string chainRpc, string contractAddress, string encodedData, string value, string walletKey, int txType = 2, int speedup = 1)
+{
+    if (string.IsNullOrEmpty(chainRpc))
+        throw new ArgumentException("Chain RPC is null or empty");
+
+    if (string.IsNullOrEmpty(walletKey))
+        walletKey = _project.DbKey("evm");
+
+    if (string.IsNullOrEmpty(walletKey))
+        throw new ArgumentException("Wallet key is null or empty");
+
+
+    var web3 = new Web3(chainRpc);
+    int chainId;
+    try
+    {
+        var chainIdTask = web3.Eth.ChainId.SendRequestAsync();
+        chainIdTask.Wait();
+        chainId = (int)chainIdTask.Result.Value;
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Failed to get chain ID: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
+    }
+
+    string fromAddress;
+    try
+    {
+        var ethECKey = new Nethereum.Signer.EthECKey(walletKey);
+        fromAddress = ethECKey.GetPublicAddress();
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Failed to initialize EthECKey: length={walletKey.Length}, startsWith={walletKey.Substring(0, Math.Min(6, walletKey.Length))}..., Message={ex.Message}, InnerException={ex.InnerException?.Message}", ex);
+    }
+
+    //BigInteger.Parse(wei, NumberStyles.AllowHexSpecifier);
+    BigInteger _value = BigInteger.Parse(value, NumberStyles.AllowHexSpecifier);//(BigInteger)(value * 1000000000000000000m);
+    BigInteger gasLimit = 0;
+    BigInteger gasPrice = 0;
+    BigInteger maxFeePerGas = 0;
+    BigInteger priorityFee = 0;
+
+    try
+    {
+        var gasPriceTask = web3.Eth.GasPrice.SendRequestAsync();
+        gasPriceTask.Wait();
+        BigInteger baseGasPrice = gasPriceTask.Result.Value / 100 + gasPriceTask.Result.Value;
+        if (txType == 0)
+        {
+            gasPrice = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
+        }
+        else
+        {
+            priorityFee = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
+            maxFeePerGas = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
+        }
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Failed to estimate gas price: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
+    }
+
+    try
+    {
+        var transactionInput = new TransactionInput
+        {
+            To = contractAddress,
+            From = fromAddress,
+            Data = encodedData,
+            Value = new HexBigInteger(_value),
+            GasPrice = txType == 0 ? new HexBigInteger(gasPrice) : null,
+            MaxPriorityFeePerGas = txType == 2 ? new HexBigInteger(priorityFee) : null,
+            MaxFeePerGas = txType == 2 ? new HexBigInteger(maxFeePerGas) : null,
+            Type = txType == 2 ? new HexBigInteger(2) : null
+        };
+
+        var gasEstimateTask = web3.Eth.Transactions.EstimateGas.SendRequestAsync(transactionInput);
+        gasEstimateTask.Wait();
+        var gasEstimate = gasEstimateTask.Result;
+        gasLimit = gasEstimate.Value + (gasEstimate.Value / 2);
+    }
+    catch (AggregateException ae)
+    {
+        if (ae.InnerException is Nethereum.JsonRpc.Client.RpcResponseException rpcEx)
+        {
+            var error = $"Code: {rpcEx.RpcError.Code}, Message: {rpcEx.RpcError.Message}, Data: {rpcEx.RpcError.Data}";
+            throw new Exception($"RPC error during gas estimation: {error}, InnerException: {ae.InnerException?.Message}", ae);
+        }
+        throw new Exception($"Gas estimation failed: {ae.Message}, InnerException: {ae.InnerException?.Message}", ae);
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Gas estimation failed: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
+    }
+
+    try
+    {
+        var blockchain = new Blockchain(walletKey, chainId, chainRpc);
+        string hash = txType == 0
+            ? blockchain.SendTransaction(contractAddress, _value, encodedData, gasLimit, gasPrice).Result
+            : blockchain.SendTransactionEIP1559(contractAddress, _value, encodedData, gasLimit, maxFeePerGas, priorityFee).Result;
+        return hash;
+    }
+    catch (AggregateException ae)
+    {
+        throw new Exception($"Transaction send failed: {ae.Message}, InnerException: {ae.InnerException?.Message}", ae);
+    }
+    catch (Exception ex)
+    {
+        throw new Exception($"Transaction send failed: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
+    }
+}
+
+
+
+        */
+        #endregion
+
+        
         public string Approve(string contract, string spender, string amount, string rpc)
         {
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
@@ -172,7 +459,7 @@ namespace z3nCore
 
             try
             {
-                txHash = SendTx(rpc, contract, encoded, 0, key, 0, 3);        
+                txHash = SendTx(rpc, contract, encoded, 0, key, 0, 3);
                 try
                 {
                     _project.Variables["blockchainHash"].Value = txHash;
@@ -255,7 +542,7 @@ namespace z3nCore
 
             return txHash;
         }
-        public string SendERC20(string contract, string to, decimal amount, string rpc)
+        public string SendErc20(string contract, string to, decimal amount, string rpc)
         {
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             string key = _project.DbKey("evm");
@@ -267,10 +554,10 @@ namespace z3nCore
                 string abi = @"[{""inputs"":[{""name"":""to"",""type"":""address""},{""name"":""amount"",""type"":""uint256""}],""name"":""transfer"",""outputs"":[{""name"":"""",""type"":""bool""}],""stateMutability"":""nonpayable"",""type"":""function""}]";
                 string[] types = { "address", "uint256" };
                 decimal scaledAmount = amount * 1000000000000000000m;
-                BigInteger amountValue = (BigInteger)Math.Floor(scaledAmount); 
+                BigInteger amountValue = (BigInteger)Math.Floor(scaledAmount);
                 object[] values = { to, amountValue };
                 string encoded = z3nCore.Encoder.EncodeTransactionData(abi, "transfer", types, values);
-                txHash = SendTx(rpc, contract, encoded, 0, key, 0, 3);      
+                txHash = SendTx(rpc, contract, encoded, 0, key, 0, 3);
                 try
                 {
                     _project.Variables["blockchainHash"].Value = txHash;
@@ -289,7 +576,7 @@ namespace z3nCore
             _logger.Send($"sent [{amount}] of [{contract}]  to [{to}] by [{rpc}] [{txHash}]");
             return txHash;
         }
-        public string SendERC721(string contract, string to, BigInteger tokenId, string rpc)
+        public string SendErc721(string contract, string to, BigInteger tokenId, string rpc)
         {
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 
@@ -301,7 +588,7 @@ namespace z3nCore
                 string[] types = { "address", "address", "uint256" };
                 object[] values = { key.ToPubEvm(), to, tokenId };
                 string encoded = z3nCore.Encoder.EncodeTransactionData(abi, "safeTransferFrom", types, values);
-                
+
 
                 txHash = SendTx(rpc, contract, encoded, 0, key, 0, 3);
                 try

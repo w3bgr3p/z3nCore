@@ -30,9 +30,10 @@ namespace z3nCore
             {"Polygon", "https://polygon-rpc.com"},
 
             {"Sepolia", "https://ethereum-sepolia-rpc.publicnode.com"},
-            {"Monad", "https://testnet-rpc.monad.xyz"},
+            {"MonadTestnet", "https://testnet-rpc.monad.xyz"},
             {"Aptos", "https://fullnode.mainnet.aptoslabs.com/v1"},
             {"Movement", "https://mainnet.movementnetwork.xyz/v1"},
+            {"NeuraTestnet", "https://testnet.rpc.neuraprotocol.io"},
 
             {"Solana", "https://api.mainnet-beta.solana.com"},
             {"Solana_Devnet", "https://api.devnet.solana.com"},
@@ -73,12 +74,16 @@ namespace z3nCore
         public static string Sepolia => _rpcs["Sepolia"];
         public static string Reddio => _rpcs["Reddio"];
         public static string Xrp => _rpcs["Xrp"];
-        public static string Monad => _rpcs["Monad"];
         public static string Aptos => _rpcs["Aptos"];
         public static string Movement => _rpcs["Movement"];
         public static string Solana => _rpcs["Solana"];
         public static string Solana_Devnet => _rpcs["Solana_Devnet"];
         public static string Solana_Testnet => _rpcs["Solana_Testnet"];
+        
+        //testnets
+        public static string NeuraTestnet => _rpcs["NeuraTestnet"];
+        public static string MonadTestnet => _rpcs["MonadTestnet"];
+
     }
 
 }

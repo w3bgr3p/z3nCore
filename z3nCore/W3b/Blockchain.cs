@@ -13,7 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
-
+using System.Globalization;
 
 
 
@@ -79,7 +79,91 @@ namespace z3nCore
             else return result?.ToString() ?? "null";
         }
 
+        private HexBigInteger ConvertToHexBigInteger(object amount)
+        {
+            // Уже готовое значение - используем как есть
+            if (amount is HexBigInteger hex)
+                return hex;
+    
+            // BigInteger считаем уже в Wei - используем как есть
+            if (amount is BigInteger bigInt)
+                return new HexBigInteger(bigInt);
+    
+            // Человеко-читаемые форматы - конвертируем в Wei
+            if (amount is decimal decValue)
+                return Web3.Convert.ToWei(decValue).ToHexBigInteger();
+    
+            if (amount is int intValue)
+                return Web3.Convert.ToWei(intValue).ToHexBigInteger();
+    
+            if (amount is long longValue)
+                return Web3.Convert.ToWei(longValue).ToHexBigInteger();
+    
+            if (amount is double doubleValue)
+                return Web3.Convert.ToWei((decimal)doubleValue).ToHexBigInteger();
+    
+            if (amount is float floatValue)
+                return Web3.Convert.ToWei((decimal)floatValue).ToHexBigInteger();
+    
+            // Попытка распарсить строку
+            if (amount is string strValue)
+            {
+                if (decimal.TryParse(strValue, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal parsedDecimal))
+                    return Web3.Convert.ToWei(parsedDecimal).ToHexBigInteger();
+        
+                throw new ArgumentException($"Невозможно распарсить строку '{strValue}' как число");
+            }
+    
+            throw new ArgumentException(
+                $"Невозможно конвертировать amount типа '{amount?.GetType().Name ?? "null"}' в HexBigInteger. " +
+                "Поддерживаемые типы: decimal, int, long, double, float, BigInteger, HexBigInteger, string (число)"
+            );
+        }
+        
 
+        public async Task<string> SendTransaction(string addressTo, object amount, string data, BigInteger gasLimit, BigInteger gasPrice)
+        {
+            var account = new Account(walletKey, chainId);
+            var web3 = new Web3(account, jsonRpc);
+            web3.TransactionManager.UseLegacyAsDefault = true;
+    
+            var transaction = new TransactionInput
+            {
+                From = account.Address,
+                To = addressTo,
+                Value = ConvertToHexBigInteger(amount),
+                Data = data,
+                Gas = new HexBigInteger(gasLimit),
+                GasPrice = new HexBigInteger(gasPrice)
+            };
+    
+            var hash = await web3.TransactionManager.SendTransactionAsync(transaction);
+            return hash;
+        }
+        public async Task<string> SendTransactionEIP1559(string addressTo, object amount, string data, BigInteger gasLimit, BigInteger maxFeePerGas, BigInteger maxPriorityFeePerGas)
+        {
+            var account = new Account(walletKey, chainId);
+            var web3 = new Web3(account, jsonRpc);
+    
+            var transaction = new TransactionInput
+            {
+                From = account.Address,
+                To = addressTo,
+                Value = ConvertToHexBigInteger(amount),
+                Data = data,
+                Gas = new HexBigInteger(gasLimit),
+                MaxFeePerGas = new HexBigInteger(maxFeePerGas),
+                MaxPriorityFeePerGas = new HexBigInteger(maxPriorityFeePerGas),
+                Type = new HexBigInteger(2) // EIP-1559 транзакция
+            };
+
+            var hash = await web3.TransactionManager.SendTransactionAsync(transaction);
+            return hash;
+        }
+
+        #region obsolete
+        
+        /*
         public async Task<string> SendTransaction(string addressTo, decimal amount, string data, BigInteger gasLimit, BigInteger gasPrice)
         {
             var account = new Account(walletKey, chainId);
@@ -152,7 +236,46 @@ namespace z3nCore
             return hash;
         }
 
+        public async Task<string> SendTransaction(string addressTo, BigInteger amount, string data, BigInteger gasLimit, BigInteger gasPrice)
+        {
+            var account = new Account(walletKey, chainId);
+            var web3 = new Web3(account, jsonRpc);
+            web3.TransactionManager.UseLegacyAsDefault = true;
+            var transaction = new TransactionInput();
+            transaction.From = account.Address;
+            transaction.To = addressTo;
+            transaction.Value = Web3.Convert.ToWei(amount).ToHexBigInteger();
+            transaction.Data = data;
+            transaction.Gas = new HexBigInteger(gasLimit);
+            transaction.GasPrice = new HexBigInteger(gasPrice);
+            var hash = await web3.TransactionManager.SendTransactionAsync(transaction);
+            return hash;
+        }
 
+        public async Task<string> SendTransactionEIP1559(string addressTo, BigInteger amount, string data, BigInteger gasLimit, BigInteger maxFeePerGas, BigInteger maxPriorityFeePerGas)
+        {
+            var account = new Account(walletKey, chainId);
+            var web3 = new Web3(account, jsonRpc);
+            var transaction = new TransactionInput
+            {
+                From = account.Address,
+                To = addressTo,
+                Value = Web3.Convert.ToWei(amount).ToHexBigInteger(),
+                Data = data,
+                Gas = new HexBigInteger(gasLimit),
+                MaxFeePerGas = new HexBigInteger(maxFeePerGas),
+                MaxPriorityFeePerGas = new HexBigInteger(maxPriorityFeePerGas),
+                Type = new HexBigInteger(2) // EIP-1559 транзакция
+            };
+
+            var hash = await web3.TransactionManager.SendTransactionAsync(transaction);
+            return hash;
+        }
+
+        
+        */
+        #endregion
+        
         public async Task<(BigInteger GasLimit, BigInteger GasPrice, BigInteger MaxFeePerGas, BigInteger PriorityFee)> EstimateGasAsync(string contractAddress, string encodedData, string value, int txType, int speedup, Web3 web3, string fromAddress)
         {
             BigInteger gasLimit = 0;

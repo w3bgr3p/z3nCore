@@ -76,10 +76,15 @@ namespace z3nCore
             int deadline = 15,
             bool throwOnFail = false)
         {
-            if (project == null) throw new ArgumentNullException(nameof(project));
             var logger = new Logger(project, log, classEmoji: "↑↓");
             string debugProxy = proxy;
-
+            if (headers == null)
+                try
+                {
+                    headers = project.Var("headers").Split('\n');
+                }
+                catch { }
+            
             try
             {
                 string response;
@@ -106,7 +111,6 @@ namespace z3nCore
                         project.Profile.CookieContainer);
                 }
 
-                //if (log) logger.Send($"body sent: [{body}]");
                 if (parseJson) ParseJson(project, response, logger);
                 if (log) logger.Send($"response: [{response}]");
                 return response.Trim();
@@ -130,8 +134,7 @@ namespace z3nCore
                     proxyString = projectProxy;
                 else
                 {
-                    proxyString = project.SqlGet("proxy", "_instance");
-                    logger?.Send($"Proxy retrieved from SQL: [{proxyString}]");
+                    proxyString = project.DbGet("proxy", "_instance");
                 }
             }
 

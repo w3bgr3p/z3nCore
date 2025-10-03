@@ -96,7 +96,6 @@
     <Compile Include="Browser\Captcha.cs" />
     <Compile Include="Browser\HtmlExtensions.cs" />
     <Compile Include="Browser\Traffic.cs" />
-    <None Include="Browser\_Traffic.cs" />
     <Compile Include="Core\Disposer.cs" />
     <Compile Include="Core\Init.cs" />
     <Compile Include="Core\Reporter.cs" />
@@ -104,6 +103,7 @@
     <Compile Include="MethodExtensions\StringExtentions.cs" />
     <Compile Include="ProjectExtentions\Exceptions.cs" />
     <Compile Include="ProjectExtentions\FS.cs" />
+    <Compile Include="ProjectExtentions\Time.cs" />
     <Compile Include="ProjectExtentions\Utils.cs" />
     <Compile Include="Utilities\Helper.cs" />
     <Compile Include="Utilities\Snapper.cs" />
@@ -115,7 +115,6 @@
     <Compile Include="Essentials\Cryptography.cs" />
     <Compile Include="Essentials\ISAFU.cs" />
     <Compile Include="Essentials\Logger.cs" />
-    <Compile Include="Essentials\Time.cs" />
     <Compile Include="ProjectExtentions\Rnd.cs" />
     <Compile Include="ProjectExtentions\Vars.cs" />
     <Compile Include="Properties\VersionInfo.cs" />
@@ -133,7 +132,6 @@
     <Compile Include="Requests\NetHttp.cs" />
     <Compile Include="Browser\BrowserScan.cs" />
     <Compile Include="Browser\ChromeExt.cs" />
-    <None Include="Browser\Traffic_.cs" />
     <Compile Include="W3b\Tx.cs" />
     <Compile Include="Api\GazZip.cs" />
     <Compile Include="Tools\F0rms.cs" />
