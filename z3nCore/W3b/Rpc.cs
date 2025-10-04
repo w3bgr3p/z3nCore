@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using ZennoLab.InterfacesLibrary.ProjectModel;
+using ZennoLab.InterfacesLibrary.ZennoPoster;
 
 namespace z3nCore
 {
@@ -84,6 +86,17 @@ namespace z3nCore
         public static string NeuraTestnet => _rpcs["NeuraTestnet"];
         public static string MonadTestnet => _rpcs["MonadTestnet"];
 
+
+    }
+
+    public static partial class ProjectExtensions
+    {
+    
+        private static string DbRpc(this IZennoPosterProjectModel project, string rpc)
+        {
+            return project.DbGet("rpc","_rpc", where: $"id = '{rpc}'");
+        }
+        
     }
 
 }

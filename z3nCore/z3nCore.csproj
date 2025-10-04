@@ -110,6 +110,7 @@
     <Compile Include="W3b\CosmosTools.cs" />
     <Compile Include="Wallets\Keplr.cs" />
     <Compile Include="Wallets\Zerion.cs" />
+    <Compile Include="_projects\Neura.cs" />
     <None Include="cmnc0de.cs" />
     <Compile Include="Browser\InstanceExtensions.cs" />
     <Compile Include="Essentials\Cryptography.cs" />
@@ -216,8 +217,5 @@
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Connected Services\" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="_projects\" />
   </ItemGroup>
 </Project>
