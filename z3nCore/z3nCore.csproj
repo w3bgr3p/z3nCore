@@ -103,8 +103,11 @@
     <Compile Include="MethodExtensions\StringExtentions.cs" />
     <Compile Include="ProjectExtentions\Exceptions.cs" />
     <Compile Include="ProjectExtentions\FS.cs" />
+    <Compile Include="ProjectExtentions\Logger.cs" />
     <Compile Include="ProjectExtentions\Time.cs" />
     <Compile Include="ProjectExtentions\Utils.cs" />
+    <Compile Include="Security\Cryptography.cs" />
+    <Compile Include="Security\ISAFU.cs" />
     <Compile Include="Utilities\Helper.cs" />
     <Compile Include="Utilities\Snapper.cs" />
     <Compile Include="W3b\CosmosTools.cs" />
@@ -112,9 +115,6 @@
     <Compile Include="Wallets\Zerion.cs" />
     <None Include="cmnc0de.cs" />
     <Compile Include="Browser\InstanceExtensions.cs" />
-    <Compile Include="Essentials\Cryptography.cs" />
-    <Compile Include="Essentials\ISAFU.cs" />
-    <Compile Include="Essentials\Logger.cs" />
     <Compile Include="ProjectExtentions\Rnd.cs" />
     <Compile Include="ProjectExtentions\Vars.cs" />
     <Compile Include="Properties\VersionInfo.cs" />

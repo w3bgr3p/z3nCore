@@ -222,7 +222,7 @@ namespace z3nCore
                 project.warn("acc0 isNullOrEmpty");
                 return "";
             }
-            return Path.Combine(project.PathProfiles(),"accounts","cookies",acc0,".json");
+            return Path.Combine(project.PathProfiles(),"accounts","cookies",$"{acc0}.json");
         }
         public static string PathProfileFolder(this IZennoPosterProjectModel project)
         {
@@ -234,9 +234,6 @@ namespace z3nCore
             }
             return Path.Combine(project.PathProfiles(),"accounts","profilesFolder",acc0);
         }
-        
-
-    
         
         
     }
