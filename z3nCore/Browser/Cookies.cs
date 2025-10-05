@@ -79,7 +79,7 @@ namespace z3nCore
 
                 case "fromFile":
                     if(string.IsNullOrEmpty(jsonPath)) 
-                        jsonPath = $"{_project.Variables["profiles_folder"].Value}accounts\\cookies\\{_project.Variables["acc0"].Value}.json";
+                        jsonPath = _project.PathCookies();
                     cookieSourse = File.ReadAllText(jsonPath);
                     break;
                 

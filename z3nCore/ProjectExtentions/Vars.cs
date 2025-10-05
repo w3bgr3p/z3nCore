@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using ZennoLab.InterfacesLibrary.ProjectModel;
@@ -190,6 +191,54 @@ namespace z3nCore
             return range.Split(',').ToList();
             //project.L0g($"{rangeS}-{rangeE}\n{range}");
         }
+
+        //pathes
+        public static string PathProfiles(this IZennoPosterProjectModel project)
+        {
+            string pathLocal = project.Var("profiles_folder");
+            string pathGlobal = project.GVar("profiles_folder");
+
+            if (!string.IsNullOrEmpty(pathLocal))
+            {
+                if (string.IsNullOrEmpty(pathGlobal))
+                    project.GVar("profiles_folder", pathLocal);
+                return pathLocal;
+            }
+
+            if (!string.IsNullOrEmpty(pathGlobal))
+            {
+                project.Var("profiles_folder", pathGlobal);
+                return pathGlobal;
+            }
+
+            throw new Exception("No profiles folder defined");
+
+        }
+        public static string PathCookies(this IZennoPosterProjectModel project)
+        {
+            string acc0 = project.Var("acc0");
+            if (string.IsNullOrEmpty(acc0))
+            {
+                project.warn("acc0 isNullOrEmpty");
+                return "";
+            }
+            return Path.Combine(project.PathProfiles(),"accounts","cookies",acc0,".json");
+        }
+        public static string PathProfileFolder(this IZennoPosterProjectModel project)
+        {
+            string acc0 = project.Var("acc0");
+            if (string.IsNullOrEmpty(acc0))
+            {
+                project.warn("acc0 isNullOrEmpty");
+                return "";
+            }
+            return Path.Combine(project.PathProfiles(),"accounts","profilesFolder",acc0);
+        }
+        
+
+    
+        
+        
     }
 
 
@@ -346,7 +395,6 @@ namespace z3nCore
                 }
             }
         }
-
         public static List<int> GClean(this IZennoPosterProjectModel project, bool log = false)
         {
             string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
@@ -385,6 +433,8 @@ namespace z3nCore
                 }
             }
         }
+        
+        
         
     }
     

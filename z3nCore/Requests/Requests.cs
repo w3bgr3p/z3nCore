@@ -20,7 +20,7 @@ namespace z3nCore
             bool log = false,
             bool parseJson = false,
             int deadline = 15,
-            bool throwOnFail = false)
+            bool thrw = false)
         {
             if (project == null) throw new ArgumentNullException(nameof(project));
             var logger = new Logger(project, log, classEmoji: "↑↓");
@@ -73,7 +73,7 @@ namespace z3nCore
                 }
 
                 // Бросаем исключение если статус плохой и требуется
-                if (throwOnFail && (statusCode < 200 || statusCode >= 300))
+                if (thrw && (statusCode < 200 || statusCode >= 300))
                 {
                     throw new Exception($"HTTP {statusCode}: {body}");
                 }
@@ -83,7 +83,7 @@ namespace z3nCore
             catch (Exception e)
             {
                 logger.Send($"!W RequestErr: [{e.Message}] url:[{url}] (proxy: [{debugProxy})]");
-                if (throwOnFail) throw;
+                if (thrw) throw;
                 return string.Empty;
             }
         }
@@ -97,7 +97,7 @@ namespace z3nCore
             bool log = false,
             bool parseJson = false,
             int deadline = 15,
-            bool throwOnFail = false)
+            bool thrw = false)
         {
             var logger = new Logger(project, log, classEmoji: "↑↓");
             string debugProxy = proxy;
@@ -139,26 +139,22 @@ namespace z3nCore
                         project.Profile.CookieContainer);
                 }
 
-                // Парсим ответ: извлекаем статус и body
                 int statusCode;
                 string responseBody;
                 ParseResponse(fullResponse, out statusCode, out responseBody);
 
-                // Логируем статус если включен log
                 if (log)
                 {
                     LogStatus(logger, statusCode, url, debugProxy);
                     logger.Send($"response: [{responseBody}]");
                 }
 
-                // Парсим JSON если нужно и статус успешный
                 if (parseJson && statusCode >= 200 && statusCode < 300)
                 {
                     ParseJson(project, responseBody, logger);
                 }
 
-                // Бросаем исключение если статус плохой и требуется
-                if (throwOnFail && (statusCode < 200 || statusCode >= 300))
+                if (thrw && (statusCode < 200 || statusCode >= 300))
                 {
                     throw new Exception($"HTTP {statusCode}: {responseBody}");
                 }
@@ -168,7 +164,7 @@ namespace z3nCore
             catch (Exception e)
             {
                 logger.Send($"!W RequestErr: [{e.Message}] url:[{url}] (proxy: [{debugProxy})]");
-                if (throwOnFail) throw;
+                if (thrw) throw;
                 return string.Empty;
             }
         }

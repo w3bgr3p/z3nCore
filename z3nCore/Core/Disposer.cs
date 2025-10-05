@@ -137,7 +137,8 @@ namespace z3nCore
             
             if (ShouldSaveCookies(_instance, acc0, accRnd))
             {
-                new Cookies(_project, _instance).Save("all", _project.Var("pathCookies"));
+                var pathCookies = _project.PathCookies();
+                new Cookies(_project, _instance).Save("all", pathCookies);
             }
             LogSessionComplete();
             ClearAccountState(acc0);
