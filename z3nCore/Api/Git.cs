@@ -198,14 +198,14 @@ namespace z3nCore.Api
         {
             ConfigureSafeDirectory(subDir);
             
-            RunGit($"config user.name \"{_username}\"", subDir);
-            RunGit($"config user.email \"{_username}@users.noreply.github.com\"", subDir);
-
             if (!Directory.Exists(Path.Combine(subDir, ".git")))
             {
                 RunGit("init", subDir);
                 RunGit("checkout -b master", subDir);
             }
+            
+            RunGit($"config user.name \"{_username}\"", subDir);
+            RunGit($"config user.email \"{_username}@users.noreply.github.com\"", subDir);
 
             if (!RunGit("remote -v", subDir).Contains("origin"))
             {
