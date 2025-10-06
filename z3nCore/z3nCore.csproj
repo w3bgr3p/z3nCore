@@ -110,7 +110,11 @@
     <Compile Include="Security\ISAFU.cs" />
     <Compile Include="Utilities\Helper.cs" />
     <Compile Include="Utilities\Snapper.cs" />
+    <Compile Include="W3b\AptosTools.cs" />
     <Compile Include="W3b\CosmosTools.cs" />
+    <Compile Include="W3b\EvmTools.cs" />
+    <Compile Include="W3b\SolTools.cs" />
+    <Compile Include="W3b\SuiTools.cs" />
     <Compile Include="Wallets\Keplr.cs" />
     <Compile Include="Wallets\Zerion.cs" />
     <None Include="cmnc0de.cs" />

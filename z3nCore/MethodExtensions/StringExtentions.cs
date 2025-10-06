@@ -61,6 +61,11 @@ namespace z3nCore
         }
         public static string ToPubEvm(this string key)
         {
+            return ToEvmAddress(key);
+        }
+
+        public static string ToEvmAddress(this string key)
+        {
             string keyType = key.DetectKeyType();
             var blockchain = new Blockchain();
 
@@ -74,7 +79,7 @@ namespace z3nCore
             }
             return blockchain.GetAddressFromPrivateKey(key);
         }
-
+   
         public static string ToSepc256k1(this string seed, int path = 0)
         {
             var blockchain = new Blockchain();

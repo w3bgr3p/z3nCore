@@ -37,7 +37,7 @@ namespace z3nCore
 
         public void InitProject(string author = "w3bgr3p", string[] customQueries = null)
         {
-            _SAFU();
+            //_SAFU();
             InitVariables(author);
             BuildNewDatabase();
 
@@ -298,7 +298,7 @@ namespace z3nCore
         public void InitVariables(string author = "")
         {
             DisableLogs();
-            
+            _SAFU();
             string fileName = System.IO.Path.GetFileName(_project.Variables["projectScript"].Value);
             string sessionId = _project.SetSessionId();
             string projectName = _project.ProjectName();

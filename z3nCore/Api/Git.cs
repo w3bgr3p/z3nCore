@@ -12,12 +12,13 @@ namespace z3nCore.Api
 {
     public class Git
     {
-        #region Fields and Constants
+        #region Fields , Constants, Classes
         private readonly IZennoPosterProjectModel _project;
         private readonly Logger _log;
         private readonly string _token;
         private readonly string _username;
         private readonly string _organization;
+        private readonly string _branch;
         
         private const long MAX_FILE_SIZE_MB = 100;
         private const long MAX_TOTAL_SIZE_MB = 1000;
@@ -34,10 +35,27 @@ namespace z3nCore.Api
             ".psd", ".ai", ".sketch", ".fig",
             ".db", ".sqlite", ".mdb", ".accdb"
         };
-        #endregion
+        
+        private class SyncStatistics
+        {
+            public int TotalFolders { get; set; }
+            public int FoldersWithChanges { get; set; }
+            public int FoldersSkipped { get; set; }
+            public int SuccessfullyCommitted { get; set; }
+            public int ErrorCount { get; set; }
+            public int FoldersSkippedBySize { get; set; }
+        }
 
-        #region Constructors
-        public Git(IZennoPosterProjectModel project, string token, string username, string organization = null)
+        private class SizeCheckResult
+        {
+            public bool IsValid { get; set; }
+            public string Reason { get; set; }
+            public double TotalSizeMB { get; set; }
+            public int FilesCount { get; set; }
+        }
+        #endregion
+        
+        public Git(IZennoPosterProjectModel project, string token, string username, string branch = "master", string organization = null)
         {
             _project = project ?? throw new ArgumentNullException(nameof(project));
             _log = new Logger(_project, true);
@@ -51,16 +69,14 @@ namespace z3nCore.Api
             _token = token;
             _username = username;
             _organization = organization;
+            _branch = branch;
         }
 
-        // Для обратной совместимости
         public Git(IZennoPosterProjectModel project) : this(project, "", "", null)
         {
             // Оставлен для совместимости, но потребует передачи данных в SyncRepositories
         }
-        #endregion
-
-        #region Public API
+        
         public void SyncRepositories(string baseDir, string commitMessage = "ts")
         {
             #region Validation
@@ -108,7 +124,6 @@ namespace z3nCore.Api
             #endregion
         }
 
-        // Для обратной совместимости
         [Obsolete("Используйте конструктор с параметрами авторизации и SyncRepositories()")]
         public void Main(string baseDir, string token, string username, string commitMessage = "ts")
         {
@@ -133,46 +148,48 @@ namespace z3nCore.Api
                 return string.Empty;
             }
         }
-        #endregion
+   
 
-        #region Private Implementation
-        private List<string> LoadProjectsConfiguration(string baseDir)
-        {
-            var syncConfig = Path.Combine(baseDir, ".sync.txt");
-            var projectsList = new List<string>();
-            
-            try
-            {
-                projectsList = File.ReadAllLines(syncConfig).ToList();
-            }
-            catch (Exception ex)
-            {
-                _project.SendWarningToLog(ex.Message);
-            }
-            
-            return projectsList;
-        }
+  
+       private List<string> LoadProjectsConfiguration(string baseDir)
+		{
+		    var syncConfig = Path.Combine(baseDir, ".sync.txt");
+		    var projectsList = new List<string>();
+		    
+		    try
+		    {
+		        projectsList = File.ReadAllLines(syncConfig)
+		            .Where(line => !string.IsNullOrWhiteSpace(line))           // Убираем пустые
+		            .Where(line => !line.TrimStart().StartsWith("#"))          // Убираем комментарии
+		            .Select(line => line.Trim())                                // Убираем пробелы
+		            .ToList();
+		    }
+		    catch (Exception ex)
+		    {
+		        _project.SendWarningToLog(ex.Message);
+		    }
+		    
+		    return projectsList;
+		}
 
         private void ProcessSingleProject(string baseDir, string projectToSync, string commitMessage, SyncStatistics stats)
         {
             try
             {
-                #region Skip Check
                 if (projectToSync.Contains("false"))
                 {
                     _log.Send($"[SKIP] (sync is off for: {projectToSync})");
                     stats.FoldersSkipped++;
                     return;
                 }
-                #endregion
+                
+                
 
-                #region Setup Project Path
                 string subDir = Path.Combine(baseDir, projectToSync.Split(':')[0].Trim());
                 string projectName = Path.GetFileName(subDir);
+                _log.Send($"[DEBUG] \nProjectToSync: '{projectToSync}'\nSubDir: '{subDir}'\nProjectName: '{projectName}'");
                 string repoUrl = BuildRepositoryUrl(projectName);
-                #endregion
 
-                #region Size Validation
                 var sizeCheck = CheckRepositorySize(subDir);
                 if (!sizeCheck.IsValid)
                 {
@@ -180,11 +197,8 @@ namespace z3nCore.Api
                     stats.FoldersSkippedBySize++;
                     return;
                 }
-                #endregion
 
-                #region Git Operations
                 PerformGitOperations(subDir, repoUrl, commitMessage, sizeCheck, stats);
-                #endregion
             }
             catch (Exception ex)
             {
@@ -201,7 +215,7 @@ namespace z3nCore.Api
             if (!Directory.Exists(Path.Combine(subDir, ".git")))
             {
                 RunGit("init", subDir);
-                RunGit("checkout -b master", subDir);
+                RunGit($"checkout -b {_branch}", subDir);
             }
             
             RunGit($"config user.name \"{_username}\"", subDir);
@@ -236,7 +250,7 @@ namespace z3nCore.Api
 			string currentRemote = RunGit("remote get-url origin", subDir);
 			_log.Send($"[DEBUG] Current remote URL: {currentRemote}");
 			_log.Send($"[DEBUG] Expected username: {_username}");
-            RunGit("push origin master --force", subDir);
+            RunGit($"push origin {_branch} --force", subDir);
 
             string toLog = $"[COMMIT] {subDir} ({sizeCheck.TotalSizeMB:F1}MB, {sizeCheck.FilesCount} files)";
             _project.SendToLog(toLog, LogType.Info, true, LogColor.Blue);
@@ -264,29 +278,8 @@ namespace z3nCore.Api
                      $"Skipped={stats.FoldersSkipped}, SizeSkipped={stats.FoldersSkippedBySize}, " +
                      $"Committed={stats.SuccessfullyCommitted}, Failed={stats.ErrorCount}");
         }
-        #endregion
-
-        #region Helper Classes
-        private class SyncStatistics
-        {
-            public int TotalFolders { get; set; }
-            public int FoldersWithChanges { get; set; }
-            public int FoldersSkipped { get; set; }
-            public int SuccessfullyCommitted { get; set; }
-            public int ErrorCount { get; set; }
-            public int FoldersSkippedBySize { get; set; }
-        }
-
-        private class SizeCheckResult
-        {
-            public bool IsValid { get; set; }
-            public string Reason { get; set; }
-            public double TotalSizeMB { get; set; }
-            public int FilesCount { get; set; }
-        }
-        #endregion
-
-        #region Size and File Management
+        
+        
         private SizeCheckResult CheckRepositorySize(string directory)
         {
             var result = new SizeCheckResult { IsValid = true };
@@ -377,7 +370,6 @@ namespace z3nCore.Api
                 _log.Send($"Warning: Failed to update .gitignore in {directory}: {ex.Message}");
             }
         }
-        #endregion
 
         #region Git Operations
         private void ConfigureSafeDirectory(string directory)
