@@ -100,10 +100,9 @@ namespace z3nCore
                 Thread.Sleep(1000 * delaySeconds);
             }
 
-            // Получаем и кэшируем весь трафик
             RefreshCache();
 
-            if (_showLog) _logger.Send($"✓ Снапшот трафика создан: {_cachedTraffic.Count} записей");
+            _logger.Send($"Snapped records: {_cachedTraffic.Count} ");
 
             return this;
         }
@@ -464,7 +463,31 @@ namespace z3nCore
             }
             project.Var("headers", refactoredHeaders.ToString());
         }
+        
+        public static void GetHeaders(this IZennoPosterProjectModel project, Instance instance, string url, bool strict= false ,bool toProject = true, bool toDb = true, bool log = false)
+        {
+            var _project = project;
+            var _instance = instance;
+			
+            var traffic = new Traffic(_project, _instance, log: log).Snapshot();
+            var result = new StringBuilder();
+    
+            int apiCount = 0;
+            foreach (var h in traffic.Get(url, strict: strict).RequestHeaders.Split('\n'))
+            {
+                if (!h.StartsWith(":") && !string.IsNullOrWhiteSpace(h))
+                {
+                    result.AppendLine(h.Trim());
+                    apiCount++;
+                }
+            }
+            var headers = result.ToString();
+            if (log) _project.log($"[SUCCSESS]: collected={apiCount}, length={headers.Length}\n{headers}");
+            if (toProject)_project.Var("headers", headers);
+            if (toDb)_project.DbUpd($"headers = '{headers}'");
+        }
     }
+    
     
     
     

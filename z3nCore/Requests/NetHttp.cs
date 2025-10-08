@@ -145,7 +145,222 @@ namespace z3nCore
             return restrictedHeaders.Contains(headerName);
         }
 
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         public string GET(
+            string url,
+            string proxyString = "",
+            Dictionary<string, string> headers = null,
+            bool parse = false,
+            int deadline = 15,
+            bool throwOnFail = false)
+        {
+            string debugHeaders = "";
+            try
+            {
+                WebProxy proxy = ParseProxy(proxyString);
+                var handler = new HttpClientHandler
+                {
+                    Proxy = proxy,
+                    UseProxy = proxy != null
+                };
+                using (var client = new HttpClient(handler))
+                {
+                    client.Timeout = TimeSpan.FromSeconds(deadline);
+
+                    // Добавляем User-Agent отдельно
+                    client.DefaultRequestHeaders.Add("User-Agent", _project.Profile.UserAgent);
+                    debugHeaders += $"User-Agent: {_project.Profile.UserAgent}\n";
+
+                    if (headers != null)
+                    {
+                        foreach (var header in headers)
+                        {
+                            try
+                            {
+                                // Пропускаем проблемные заголовки
+                                if (IsRestrictedHeader(header.Key))
+                                {
+                                    _logger.Send($"Skipping restricted header: {header.Key}");
+                                    continue;
+                                }
+
+                                // Специальная обработка для cookie
+                                if (header.Key.ToLower() == "cookie")
+                                {
+                                    client.DefaultRequestHeaders.Add("Cookie", header.Value);
+                                    debugHeaders += $"{header.Key}: {header.Value}\n";
+                                }
+                                else
+                                {
+                                    client.DefaultRequestHeaders.Add(header.Key, header.Value);
+                                    debugHeaders += $"{header.Key}: {header.Value}\n";
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.Send($"Failed to add header {header.Key}: {ex.Message}");
+                            }
+                        }
+                    }
+
+                    HttpResponseMessage response = client.GetAsync(url).GetAwaiter().GetResult();
+                    
+                    // Сохраняем код статуса для обработки ошибок
+                    int statusCode = (int)response.StatusCode;
+                    
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        string errorMessage = $"{statusCode} !!! {response.ReasonPhrase}";
+                        _logger.Send($"ErrFromServer: [{errorMessage}] \nurl:[{url}]  \nheaders: [{debugHeaders}]");
+                        if (throwOnFail)
+                        {
+                            response.EnsureSuccessStatusCode();
+                        }
+                        return errorMessage;
+                    }
+
+                    string responseHeaders = string.Join("; ", response.Headers.Select(h => $"{h.Key}: {string.Join(", ", h.Value)}"));
+
+                    string cookies = "";
+                    if (response.Headers.TryGetValues("Set-Cookie", out var cookieValues))
+                    {
+                        cookies = string.Join("; ", cookieValues);
+                        _logger.Send($"Set-Cookie found: {cookies}");
+                    }
+
+                    try
+                    {
+                        _project.Variables["debugCookies"].Value = cookies;
+                    }
+                    catch { }
+
+                    string result = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                    if (parse) ParseJson(result);
+                    _logger.Send(result);
+                    return result.Trim();
+                }
+            }
+            catch (HttpRequestException e)
+            {
+                string errorMessage = e.Message.Contains("Response status code") 
+                    ? e.Message.Replace("Response status code does not indicate success:", "").Trim('.').Trim()
+                    : e.Message;
+                _logger.Send($"ErrFromServer: [{errorMessage}] \nurl:[{url}]  \nheaders: [{debugHeaders}]");
+                if (throwOnFail) throw;
+                return errorMessage;
+            }
+            catch (Exception e)
+            {
+                _logger.Send($"!W [GET] ErrSending: [{e.Message}] \nurl:[{url}]  \nheaders: [{debugHeaders}]");
+                if (throwOnFail) throw;
+                return $"Error: {e.Message}";
+            }
+        }
+
+        public string POST(
+            string url,
+            string body,
+            string proxyString = "",
+            Dictionary<string, string> headers = null,
+            bool parse = false,
+            int deadline = 15,
+            bool throwOnFail = false)
+        {
+            string debugHeaders = "";
+            try
+            {
+                WebProxy proxy = ParseProxy(proxyString);
+                var handler = new HttpClientHandler
+                {
+                    Proxy = proxy,
+                    UseProxy = proxy != null
+                };
+
+                using (var client = new HttpClient(handler))
+                {
+                    client.Timeout = TimeSpan.FromSeconds(deadline);
+                    var content = new System.Net.Http.StringContent(body, Encoding.UTF8, "application/json");
+
+                    var requestHeaders = BuildHeaders(headers);
+
+                    foreach (var header in requestHeaders)
+                    {
+                        client.DefaultRequestHeaders.Add(header.Key, header.Value);
+                        debugHeaders += $"{header.Key}: {header.Value}; ";
+                    }
+                    debugHeaders += "Content-Type: application/json; charset=UTF-8; ";
+
+                    _logger.Send(body);
+
+                    HttpResponseMessage response = client.PostAsync(url, content).GetAwaiter().GetResult();
+                    
+                    // Сохраняем код статуса для обработки ошибок
+                    int statusCode = (int)response.StatusCode;
+                    
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        string errorMessage = $"{statusCode} !!! {response.ReasonPhrase}";
+                        _logger.Send($"[POST] SERVER Err: [{errorMessage}] url:[{url}] (proxy: {proxyString}), headers: [{debugHeaders.Trim()}]");
+                        if (throwOnFail)
+                        {
+                            response.EnsureSuccessStatusCode();
+                        }
+                        return errorMessage;
+                    }
+
+                    string responseHeaders = string.Join("; ", response.Headers.Select(h => $"{h.Key}: {string.Join(", ", h.Value)}"));
+
+                    string cookies = "";
+                    if (response.Headers.TryGetValues("Set-Cookie", out var cookieValues))
+                    {
+                        cookies = string.Join("; ", cookieValues);
+                        _logger.Send($"Set-Cookie found: {cookies}");
+                    }
+
+                    try
+                    {
+                        _project.Variables["debugCookies"].Value = cookies;
+                    }
+                    catch { }
+
+                    string result = response.Content.ReadAsStringAsync().GetAwaiter().GetResult();
+                    _logger.Send(result);
+                    if (parse) ParseJson(result);
+                    return result.Trim();
+                }
+            }
+            catch (HttpRequestException e)
+            {
+                string errorMessage = e.Message.Contains("Response status code") 
+                    ? e.Message.Replace("Response status code does not indicate success:", "").Trim('.').Trim()
+                    : e.Message;
+                _logger.Send($"[POST] SERVER Err: [{errorMessage}] url:[{url}] (proxy: {proxyString}), headers: [{debugHeaders.Trim()}]");
+                if (throwOnFail) throw;
+                return errorMessage;
+            }
+            catch (Exception e)
+            {
+                _logger.Send($"!W [POST] RequestErr: [{e.Message}] url:[{url}] (proxy: {proxyString}) headers: [{debugHeaders.Trim()}]");
+                if (throwOnFail) throw;
+                return $"Error: {e.Message}";
+            }
+        }
+        
+        
+        
+        public string GET_(
             string url,
             string proxyString = "",
             Dictionary<string, string> headers = null,
@@ -242,7 +457,7 @@ namespace z3nCore
             }
         }
 
-        public string POST(
+        public string POST_(
             string url,
             string body,
             string proxyString = "",
@@ -554,4 +769,75 @@ namespace z3nCore
             return false;
         }
     }
+
+    public static partial class ProjectExtensions
+    {
+        private static Dictionary<string, string> HeadersConvert(string[] headersArray)
+        {
+            var forbiddenHeaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "authority",    // HTTP/2 псевдо-заголовок :authority
+                "method",       // HTTP/2 псевдо-заголовок :method  
+                "path",         // HTTP/2 псевдо-заголовок :path
+                "scheme",       // HTTP/2 псевдо-заголовок :scheme
+                "host",         // Автоматически устанавливается HttpClient
+                "content-length", // Автоматически вычисляется
+                "connection",   // Управляется HttpClient
+                "upgrade",      // Управляется HttpClient
+                "proxy-connection", // Управляется HttpClient
+                "transfer-encoding" // Управляется HttpClient
+            };
+
+            var adaptedHeaders = new Dictionary<string, string>();
+
+            foreach (var header in headersArray)
+            {
+                // Пропускаем пустые строки
+                if (string.IsNullOrWhiteSpace(header)) continue;
+        
+                // Пропускаем HTTP/2 псевдо-заголовки (начинаются с :)
+                if (header.StartsWith(":")) continue;
+
+                // Разделяем на ключ и значение (только по первому двоеточию)
+                var colonIndex = header.IndexOf(':');
+                if (colonIndex == -1) continue; // Нет двоеточия - пропускаем
+
+                var key = header.Substring(0, colonIndex).Trim();
+                var value = header.Substring(colonIndex + 1).Trim();
+
+                // Проверяем, не входит ли в список запрещенных
+                if (forbiddenHeaders.Contains(key)) continue;
+
+                // Добавляем заголовок (если ключ уже есть - перезаписываем)
+                adaptedHeaders[key] = value;
+            }
+
+            return adaptedHeaders;
+        }
+
+        public static string NetGet(this IZennoPosterProjectModel project, string url,
+            string proxyString = "",
+            string[] headers = null,
+            bool parse = false,
+            int deadline = 15,
+            bool thrw = false)
+        {
+            var headersDic = HeadersConvert(headers);
+            return new NetHttp(project).GET(url, proxyString, headersDic, parse, deadline, thrw);
+        }
+        
+        public static string NetPost(this IZennoPosterProjectModel project, string url,
+            string body,
+            string proxyString = "",
+            string[] headers = null,
+            bool parse = false,
+            int deadline = 15,
+            bool thrw = false)
+        {
+            var headersDic = HeadersConvert(headers);
+            return new NetHttp(project).POST(url, body, proxyString, headersDic, parse, deadline, throwOnFail:thrw);
+        }
+        
+    }
+    
 }

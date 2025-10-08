@@ -361,11 +361,36 @@ namespace z3nCore.Api
             }
         }
 
+        public void GetCoins()
+        {
+            try
+            {
+                string timestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
+                string message = $"timestamp={timestamp}";
+                string signature = CalculateHmacSha256Signature(message);
+                string queryString = $"timestamp={timestamp}&signature={signature}";
+
+                string response = MexcGet("/api/v3/capital/config/getall", queryString);
+                _project.Json.FromString(response);
+                
+            }
+            catch (Exception ex)
+            {
+                _logger.Send($"Exception in GetSupportedCoins: {ex.Message}");
+            }
+        }
+        
+        
         public List<string> GetSupportedCoins()
         {
             try
             {
-                string response = MexcGet("/api/v3/capital/config/getall");
+                string timestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
+                string message = $"timestamp={timestamp}";
+                string signature = CalculateHmacSha256Signature(message);
+                string queryString = $"timestamp={timestamp}&signature={signature}";
+
+                string response = MexcGet("/api/v3/capital/config/getall", queryString);
                 _project.Json.FromString(response);
 
                 var coinsList = new List<string>();

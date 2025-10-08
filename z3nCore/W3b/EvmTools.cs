@@ -206,6 +206,12 @@ namespace z3nCore.W3b
                         await Task.Delay(2000);
                         continue;
                     }
+                    catch (Exception ex)
+                    {
+                        if (log) Console.WriteLine($"Request error: {ex.Message}");
+                        await Task.Delay(2000);
+                        continue;
+                    }
                 }
             }
         }

@@ -65,15 +65,15 @@ namespace z3nCore
             return Regex.IsMatch(range, @"^[\d\s,\-]+$");
         }
 
-        public static string DbGet(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool throwOnEx = false, string key = "id", string acc = null, string where = "")
+        public static string DbGet(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", string acc = null, string where = "")
         {
-            return project.SqlGet(toGet, tableName, log, throwOnEx, key, acc, where);
+            return project.SqlGet(toGet, tableName, log, thrw, key, acc, where);
         }
-        public static void DbUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool throwOnEx = false, bool last = true, string key = "id", object acc = null, string where = "")
+        public static void DbUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, bool last = false, string key = "id", object acc = null, string where = "")
         {
             if (toUpd.Contains("relax")) log = true;
             try { project.Var("lastQuery", toUpd); } catch (Exception Ex){ project.SendWarningToLog(Ex.Message, true); }
-            project.SqlUpd(toUpd, tableName, log, throwOnEx, last, key, acc, where);
+            project.SqlUpd(toUpd, tableName, log, thrw, last, key, acc, where);
 
         }
 
@@ -82,8 +82,6 @@ namespace z3nCore
              project.DbUpd($"status = '{status}'", tableName);
              return;
         }
-
-
         public static string Ref(this IZennoPosterProjectModel project, string refCode = null, bool log = false, string limit = null)
         {
             project.ObsoleteCode("project.RndInvite");
@@ -94,7 +92,6 @@ namespace z3nCore
             project.ObsoleteCode("project.RndInvite");
             return project.RndInvite(limit, log);
         }
-
         public static void DbSettings(this IZennoPosterProjectModel project, bool set = true, bool log = false)
         {
             var dbConfig = new Dictionary<string, string>();
@@ -119,7 +116,6 @@ namespace z3nCore
             }
 
         }
-        
         public static void MigrateTable(this IZennoPosterProjectModel project, string source, string dest)
         {
             ValidateName(source, "source table");
@@ -129,8 +125,7 @@ namespace z3nCore
             try { project.DbQ($"ALTER TABLE {Quote(dest)} RENAME COLUMN {Quote("acc0")} to {Quote("id")}"); } catch { }
             try { project.DbQ($"ALTER TABLE {Quote(dest)} RENAME COLUMN {Quote("key")} to {Quote("id")}"); } catch { }
         }
-
-        public static string DbGetRandom(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool acc = false, bool throwOnEx = false, int range = 0, bool single = true, bool invert = false)
+        public static string DbGetRandom(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool acc = false, bool thrw = false, int range = 0, bool single = true, bool invert = false)
         {
             if (range == 0)
             {
@@ -151,7 +146,7 @@ namespace z3nCore
             if (single) query += " LIMIT 1;";
             if (invert) query = query.Replace("!=", "=");
 
-            return project.DbQ(query, log: log, throwOnEx: throwOnEx);
+            return project.DbQ(query, log: log, thrw: thrw);
         }
         public static string DbKey(this IZennoPosterProjectModel project, string chainType = "evm")
         {
@@ -179,7 +174,7 @@ namespace z3nCore
             return decoded;
 
         }
-        public static string SqlGet(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool throwOnEx = false, string key = "id", object id = null, string where = "")
+        public static string SqlGet(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
         {
 
             if (string.IsNullOrWhiteSpace(toGet))
@@ -203,9 +198,9 @@ namespace z3nCore
                 query = $@"SELECT {toGet} from {Quote(tableName)} WHERE {where};";
             }
 
-            return project.DbQ(query, log: log, throwOnEx: throwOnEx);
+            return project.DbQ(query, log: log, thrw: thrw);
         }
-        private static string SqlUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool throwOnEx = false, bool last = true, string key = "id", object id = null, string where = "")
+        private static string SqlUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, bool last = false, string key = "id", object id = null, string where = "")
         {          
             var parameters = new DynamicParameters();
             if (string.IsNullOrEmpty(tableName)) tableName = project.Var("projectTable");
@@ -235,6 +230,33 @@ namespace z3nCore
             }
             return project.DbQ(query, log:log);
         }
+        
+        private static string SqlUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
+        {          
+            var parameters = new DynamicParameters();
+            if (string.IsNullOrEmpty(tableName)) tableName = project.Var("projectTable");
+            if (string.IsNullOrEmpty(tableName)) throw new Exception("TableName is null");
+            
+            toUpd = QuoteColumns(toUpd);
+            tableName = Quote(tableName);
+            
+            if (id is null)
+                id = project.Variables["acc0"].Value;
+            
+            string query;
+            if (string.IsNullOrEmpty(where))
+            {
+                if (string.IsNullOrEmpty(id.ToString()))
+                    throw new ArgumentException("variable \"acc0\" is null or empty", nameof(id));
+                query = $"UPDATE {tableName} SET {toUpd} WHERE {Quote(key)} = {id}";
+            }
+            else
+            {
+                query = $"UPDATE {tableName} SET {toUpd} WHERE {where}";
+            }
+            return project.DbQ(query, log:log, thrw: thrw);
+        }
+
 
         //Tables
         public static void TblAdd(this IZennoPosterProjectModel project,  Dictionary<string, string> tableStructure, string tblName, bool log = false)
@@ -287,7 +309,7 @@ namespace z3nCore
 
         public static Dictionary<string, string> TblForProject(this IZennoPosterProjectModel project, string[] projectColumns , string defaultType = "TEXT DEFAULT ''")
         {
-            var projectColumnsList =projectColumns.ToList();
+            var projectColumnsList = projectColumns.ToList();
             return TblForProject(project, projectColumnsList, defaultType);
         }
 
@@ -430,7 +452,150 @@ namespace z3nCore
                 }
             }
         }
-
+        public static void ClmnRearrange(this IZennoPosterProjectModel project, Dictionary<string, string> tableStructure, string tblName, bool log = false)
+        {
+            ValidateName(tblName, "table name");
+            
+            bool _pstgr = project.Var("DBmode") == "PostgreSQL";
+            string quotedTable = Quote(tblName);
+            string tempTable = Quote($"{tblName}_temp_{DateTime.Now.Ticks}");
+            
+            try
+            {
+                var currentColumns = project.TblColumns(tblName, log: log);
+                
+                string idType = "INTEGER PRIMARY KEY"; 
+                if (_pstgr)
+                {
+                    string getIdTypeQuery = $@"
+                        SELECT data_type, is_identity 
+                        FROM information_schema.columns 
+                        WHERE table_schema = '{_schemaName}' 
+                        AND table_name = '{UnQuote(tblName)}' 
+                        AND column_name = 'id'";
+                    
+                    var idInfo = project.DbQ(getIdTypeQuery, log: log);
+                    if (!string.IsNullOrEmpty(idInfo))
+                    {
+                        if (idInfo.Contains("character") || idInfo.Contains("text"))
+                            idType = "TEXT PRIMARY KEY";
+                        else if (idInfo.Contains("integer"))
+                            idType = _pstgr ? "SERIAL PRIMARY KEY" : "INTEGER PRIMARY KEY";
+                    }
+                }
+                else
+                {
+                    string getIdTypeQuery = $"SELECT type FROM pragma_table_info('{UnQuote(tblName)}') WHERE name='id'";
+                    var sqliteIdType = project.DbQ(getIdTypeQuery, log: log);
+                    if (!string.IsNullOrEmpty(sqliteIdType) && sqliteIdType.ToUpper().Contains("TEXT"))
+                        idType = "TEXT PRIMARY KEY";
+                }
+                
+                var newTableStructure = new Dictionary<string, string>();
+                
+                newTableStructure.Add("id", idType);
+                
+                foreach (var col in tableStructure)
+                {
+                    if (col.Key.ToLower() != "id" && currentColumns.Contains(col.Key))
+                    {
+                        newTableStructure.Add(col.Key, col.Value);
+                    }
+                }
+                
+                foreach (var col in currentColumns)
+                {
+                    if (col.ToLower() != "id" && !newTableStructure.ContainsKey(col))
+                    {
+                        string colType = "TEXT DEFAULT ''";
+                        
+                        if (_pstgr)
+                        {
+                            string getTypeQuery = $@"
+                                SELECT data_type, character_maximum_length, column_default
+                                FROM information_schema.columns 
+                                WHERE table_schema = '{_schemaName}' 
+                                AND table_name = '{UnQuote(tblName)}' 
+                                AND column_name = '{col}'";
+                            
+                            var typeInfo = project.DbQ(getTypeQuery, log: log);
+                            if (!string.IsNullOrEmpty(typeInfo))
+                            {
+                                if (typeInfo.Contains("integer")) colType = "INTEGER";
+                                else if (typeInfo.Contains("text") || typeInfo.Contains("character")) colType = "TEXT";
+                                else if (typeInfo.Contains("timestamp")) colType = "TIMESTAMP";
+                                else if (typeInfo.Contains("boolean")) colType = "BOOLEAN";
+                                
+                                if (typeInfo.Contains("''::")) colType += " DEFAULT ''";
+                            }
+                        }
+                        else
+                        {
+                            string getTypeQuery = $"SELECT type FROM pragma_table_info('{UnQuote(tblName)}') WHERE name='{col}'";
+                            var sqliteType = project.DbQ(getTypeQuery, log: log);
+                            if (!string.IsNullOrEmpty(sqliteType))
+                                colType = sqliteType;
+                        }
+                        
+                        newTableStructure.Add(col, colType);
+                    }
+                }
+                
+                string createTempTableQuery;
+                if (_pstgr)
+                {
+                    createTempTableQuery = $@"CREATE TABLE {tempTable} ( 
+                        {string.Join(", ", newTableStructure.Select(kvp => $"{Quote(kvp.Key)} {kvp.Value.Replace("AUTOINCREMENT", "SERIAL")}"))} )";
+                }
+                else
+                {
+                    createTempTableQuery = $@"CREATE TABLE {tempTable} ( 
+                        {string.Join(", ", newTableStructure.Select(kvp => $"{Quote(kvp.Key)} {kvp.Value}"))} )";
+                }
+                
+                project.DbQ(createTempTableQuery, log: log);
+                
+                var columnsList = string.Join(", ", newTableStructure.Keys.Select(k => Quote(k)));
+                string copyDataQuery = $@"
+                    INSERT INTO {tempTable} ({columnsList})
+                    SELECT {columnsList}
+                    FROM {quotedTable}";
+                
+                project.DbQ(copyDataQuery, log: log);
+                
+                string dropOldTableQuery = $"DROP TABLE {quotedTable}";
+                project.DbQ(dropOldTableQuery, log: log, unSafe:true);
+                
+                string renameTableQuery;
+                if (_pstgr)
+                {
+                    renameTableQuery = $"ALTER TABLE {tempTable} RENAME TO {quotedTable}";
+                }
+                else
+                {
+                    renameTableQuery = $"ALTER TABLE {tempTable} RENAME TO {UnQuote(tblName)}";
+                }
+                
+                project.DbQ(renameTableQuery, log: log);
+                
+                if (log)
+                {
+                    project.SendInfoToLog($"Table {tblName} rearranged successfully. New column order: {string.Join(", ", newTableStructure.Keys)}", true);
+                }
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    project.DbQ($"DROP TABLE IF EXISTS {tempTable}", log: false, unSafe:true);
+                }
+                catch { }
+                
+                throw new Exception($"Failed to rearrange table {tblName}: {ex.Message}", ex);
+            }
+        }
+        
+        
         //Range
         public static void AddRange(this IZennoPosterProjectModel project, string tblName, int range = 0, bool log = false)
         {
@@ -455,7 +620,7 @@ namespace z3nCore
 
         }
 
-        private static int TableCopy(this IZennoPosterProjectModel project, string sourceTable, string destinationTable, string sqLitePath = null, string pgHost = null, string pgPort = null, string pgDbName = null, string pgUser = null, string pgPass = null, bool throwOnEx = false)
+        private static int TableCopy(this IZennoPosterProjectModel project, string sourceTable, string destinationTable, string sqLitePath = null, string pgHost = null, string pgPort = null, string pgDbName = null, string pgUser = null, string pgPass = null, bool thrw = false)
         {
             if (string.IsNullOrEmpty(sourceTable)) throw new ArgumentNullException(nameof(sourceTable));
             if (string.IsNullOrEmpty(destinationTable)) throw new ArgumentNullException(nameof(destinationTable));
@@ -478,7 +643,7 @@ namespace z3nCore
                 catch (Exception ex)
                 {
                     project.SendWarningToLog(ex.Message, true);
-                    if (throwOnEx) throw;
+                    if (thrw) throw;
                     return 0;
                 }
             }
@@ -520,7 +685,7 @@ namespace z3nCore
 
     public static class DbCore
     {
-        public static string DbQ(this IZennoPosterProjectModel project, string query, bool log = false, string sqLitePath = null, string pgHost = null, string pgPort = null, string pgDbName = null, string pgUser = null, string pgPass = null, bool throwOnEx = false)
+        public static string DbQ(this IZennoPosterProjectModel project, string query, bool log = false, string sqLitePath = null, string pgHost = null, string pgPort = null, string pgDbName = null, string pgUser = null, string pgPass = null, bool thrw = false, bool unSafe = false)
         {
             string dbMode = project.Var("DBmode");
 
@@ -541,10 +706,9 @@ namespace z3nCore
                     
                 {
 
-                    if (Regex.IsMatch(query, @"^\s*(DROP|DELETE)\b", RegexOptions.IgnoreCase) && !query.Contains("WHERE"))
+                    if (!unSafe && (Regex.IsMatch(query, @"^\s*(DROP|DELETE)\b", RegexOptions.IgnoreCase) && !query.Contains("WHERE")))
                         throw new InvalidOperationException("Unsafe query detected: DROP/DELETE without WHERE");
-
-
+                    
                     if (Regex.IsMatch(query.TrimStart(), @"^\s*SELECT\b", RegexOptions.IgnoreCase))
                         result = db.DbReadAsync(query).GetAwaiter().GetResult();
                     else
@@ -554,11 +718,10 @@ namespace z3nCore
             catch (Exception ex)
             {
                 project.SendWarningToLog(ex.Message + $"\n [{query}]");
-                if (throwOnEx) throw ex.Throw();
+                if (thrw) throw ex.Throw();
                 return string.Empty;
             }
  
-            //var _logger = new Logger(project, log: log, classEmoji: dbMode == "PostgreSQL" ? "🐘" : "SQLite");
             string toLog = (query.Contains("SELECT")) ? $"[{query}]\n[{result}]" : $"[{query}] - [{result}]";
             new Logger(project, log: log, classEmoji: dbMode == "PostgreSQL" ? "🐘" : "SQLite").Send(toLog);
             return result;

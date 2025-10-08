@@ -21,7 +21,10 @@ namespace z3nCore
         private string Target(string destination, bool log = false)
         {
             // 0x010066 Sepolia | 0x01019e Soneum | 0x01000e BNB | 0x0100f0 Gravity | 0x010169 Zero
+            
             if (destination.StartsWith("0x")) return destination;
+            
+            destination = destination.ToLower();
             switch (destination)
             {
                 case "sepolia":
@@ -41,7 +44,22 @@ namespace z3nCore
             }
 
         }
-        public string Refuel(string chainTo, decimal value, string rpc = null, bool log = false)
+
+        private void PreCheck(string rpc, decimal value)
+        {
+            decimal fee = 0.0002m;
+            string key = _project.DbKey("evm");
+            var accountAddress = key.ToPubEvm(); 
+            var native = W3bTools.EvmNative(rpc, accountAddress);
+            
+            if (native < value + fee)
+            {
+                _project.warn( $"!no balance over [{value} + {fee}]ETH on {rpc}");
+            }
+            
+        }
+        
+        public string Refuel(string chainTo, decimal value, string rpc, bool log = false)
         {
             chainTo = Target(chainTo);
             string txHash = null;
@@ -50,39 +68,8 @@ namespace z3nCore
             
             string key = _project.DbKey("evm");
             var accountAddress = key.ToPubEvm(); 
-
-            if (string.IsNullOrEmpty(rpc))
-            {
-                string[] defaultChains = { "zksync","linea","arbitrum","optimism","scroll","base","zora"};
-
-                bool found = false;
-                foreach (string RPC in defaultChains)
-                {
-                    rpc = Rpc.Get(RPC);
-                    var native = W3bTools.EvmNative(rpc, accountAddress);
-                    var required = value + 0.00015m;
-                    if (native > required)
-                    {
-                        _logger.Send($"CHOSEN: rpc:[{rpc}] native:[{native}]");
-                        found = true; break;
-                    }
-                    if (log) _logger.Send($"rpc:[{rpc}] native:[{native}] lower than [{required}]");
-                    Thread.Sleep(1000);
-                }
-                if (!found)
-                {
-                    return $"fail: no balance over {value}ETH found by all Chains";
-                }
-            }
-            else
-            {
-                var native = W3bTools.EvmNative(rpc, accountAddress);
-                if (log) _logger.Send($"rpc:[{rpc}] native:[{native}]");
-                if (native < value + 0.0002m)
-                {
-                    return $"fail: no balance over {value}ETH found on {rpc}";
-                }
-            }
+            PreCheck (rpc, value);
+            
             string[] types = { };
             object[] values = { };
             try
@@ -98,5 +85,51 @@ namespace z3nCore
             W3bTools.WaitTx(rpc, txHash);
             return txHash;
         }
+
+        public string Refuel(string chainTo, decimal value, string[] ChainsFrom = null, bool log = false)
+        {
+            string rpc = "";
+            string key = _project.DbKey("evm");
+            var accountAddress = key.ToPubEvm(); 
+            bool found = false;
+            foreach (string RPC in ChainsFrom)
+            {
+                rpc = Rpc.Get(RPC);
+                
+                var native = W3bTools.EvmNative(rpc, accountAddress);
+                var required = value;// + 0.00015m;
+                if (native > required)
+                {
+                    _logger.Send($"CHOSEN: rpc:[{rpc}] native:[{native}]");
+                    found = true;
+                    break;
+                }
+                if (log) _logger.Send($"rpc:[{rpc}] native:[{native}] lower than [{required}]");
+                Thread.Sleep(1000);
+            }
+
+            if (!found)
+            {
+                throw new Exception($"fail: no balance over {value}ETH found by all Chains") ;
+            }
+
+            return Refuel(chainTo, value, rpc, log: log);
+        }
+
     }
+
+    public static partial class ProjectExtensions
+    {
+        public static decimal RandomDecimal(decimal min, decimal max, int decimals = 0)
+        {
+            Random random = new Random();
+            double range = (double)(max - min);
+            double sample = random.NextDouble();
+            decimal result = (decimal)(sample * range) + min;
+            if (decimals != 0) result =  Math.Round(result, decimals);
+            return result;
+        }
+    }
+
+
 }
