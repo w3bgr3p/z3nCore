@@ -206,7 +206,6 @@ namespace z3nCore.Api
                         {
                             balances.Add(asset, free);
                             toLog.AppendLine($"{asset} = {free}");
-                            _logger.Send($"Balance: {asset} = {free}");
                         }
                     }
                 }

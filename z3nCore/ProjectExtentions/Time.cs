@@ -139,11 +139,13 @@ namespace z3nCore
         }
         public static void Sleep(this IZennoPosterProjectModel project, int min = 0, int max = 0)
         {
+            
             if (max == 0)
                 Thread.Sleep(project.RndInt("cfgDelay") * 1000);
             else
                 Thread.Sleep(new Random().Next(min, max) * 1000);
         }
+
 
         public static void StartSession(this IZennoPosterProjectModel project) 
         {

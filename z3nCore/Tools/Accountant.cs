@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
@@ -24,7 +22,7 @@ namespace z3nCore
 
         public void ShowBalanceTable(string chains = null)
         {
-            var tableName = "public_native";
+            var tableName = "_native";
             var columns = new List<string>();
 
             if (string.IsNullOrEmpty(chains))
@@ -250,7 +248,7 @@ namespace z3nCore
                 if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
                 if (grid.Columns[e.ColumnIndex].Name == "acc0")
                 {
-                    e.CellStyle.Font = new System.Drawing.Font("Lucida Console", 9, System.Drawing.FontStyle.Bold);
+                    e.CellStyle.Font = new System.Drawing.Font("Iosevka", 9, System.Drawing.FontStyle.Bold);
                     e.CellStyle.BackColor = System.Drawing.Color.Black;
                     e.CellStyle.ForeColor = System.Drawing.Color.White;
                     return;
@@ -404,8 +402,6 @@ namespace z3nCore
 
             form.ShowDialog();
         }
-
-
-
+        
     }
 }
