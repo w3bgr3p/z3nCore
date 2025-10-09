@@ -70,7 +70,7 @@ namespace z3nCore.Api
             }
         }
 
-        private string BitgetPost(string url, object body, bool log = false)
+        private string BitgetPost(string url, object body)
         {
             var jsonBody = JsonConvert.SerializeObject(body);
             string timestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
@@ -112,7 +112,7 @@ namespace z3nCore.Api
             return result;
         }
 
-        private string BitgetGet(string url, string queryString = "", bool log = false)
+        private string BitgetGet(string url, string queryString = "")
         {
             string timestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
             string fullUrl = url;
@@ -157,7 +157,7 @@ namespace z3nCore.Api
             return result;
         }
 
-        public Dictionary<string, string> GetSpotBalance()
+        public Dictionary<string, string> GetSpotBalance_(bool log = false, bool toJson = false )
         {
             try
             {
@@ -194,6 +194,53 @@ namespace z3nCore.Api
             }
         }
 
+        public Dictionary<string, string> GetSpotBalance(bool log = false, bool toJson = false)
+        {
+            try
+            {
+                string response = BitgetGet("/api/spot/v1/account/assets");
+        
+                var responseData = JsonConvert.DeserializeObject<Dictionary<string, object>>(response);
+                var balances = new Dictionary<string, string>();
+                var toLog = new StringBuilder();
+
+                if (responseData.ContainsKey("code") && responseData["code"].ToString() == "00000")
+                {
+                    if (responseData.ContainsKey("data"))
+                    {
+                        var dataList = JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(responseData["data"].ToString());
+                
+                        foreach (var item in dataList)
+                        {
+                            string coin = item.ContainsKey("coinName") ? item["coinName"].ToString() : "";
+                            string available = item.ContainsKey("available") ? item["available"].ToString() : "";
+
+                            if (!string.IsNullOrEmpty(available) && decimal.Parse(available, CultureInfo.InvariantCulture) > 0)
+                            {
+                                balances.Add(coin, available);
+                                toLog.AppendLine($"{coin} = {available}");
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    string errorMsg = responseData.ContainsKey("msg") ? responseData["msg"].ToString() : "Unknown error";
+                    _logger.Send($"Error getting balance: {errorMsg}");
+                }
+
+                if (toJson) _project.Json.FromString(response);
+                if (log) _logger.Send(toLog.ToString());
+        
+                return balances;
+            }
+            catch (Exception ex)
+            {
+                _logger.Send($"Exception in GetSpotBalance: {ex.Message}");
+                return new Dictionary<string, string>();
+            }
+        }
+
         public string GetSpotBalance(string coin)
         {
             var balances = GetSpotBalance();
@@ -210,12 +257,12 @@ namespace z3nCore.Api
 
                 var body = new
                 {
-                    coin = coin,
-                    address = address,
+                    coin,
+                    address,
                     chain = network,
-                    amount = amount,
-                    tag = tag,
-                    remark = remark
+                    amount,
+                    tag,
+                    remark
                 };
 
                 string response = BitgetPost("/api/spot/v1/wallet/withdrawal-v2", body);
@@ -482,13 +529,13 @@ namespace z3nCore.Api
 
                 var body = new
                 {
-                    fromType = fromType,
-                    toType = toType,
-                    amount = amount,
-                    coin = coin,
-                    clientOid = clientOid,
-                    fromUserId = fromUserId,
-                    toUserId = toUserId
+                    fromType,
+                    toType,
+                    amount,
+                    coin,
+                    clientOid,
+                    fromUserId,
+                    toUserId
                 };
 
                 string response = BitgetPost("/api/spot/v1/wallet/subTransfer", body);
@@ -525,13 +572,15 @@ namespace z3nCore.Api
                     clientOid = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
                 }
 
+     
+                
                 var body = new
                 {
-                    fromType = fromType,
-                    toType = toType,
-                    amount = amount,
-                    coin = coin,
-                    clientOid = clientOid
+                    fromType,
+                    toType,
+                    amount,
+                    coin,
+                    clientOid
                 };
 
                 string response = BitgetPost("/api/spot/v1/wallet/transfer-v2", body);

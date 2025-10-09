@@ -36,7 +36,6 @@ namespace z3nCore.Api
 
         private string MapNetwork(string chain)
         {
-            _logger.Send("Mapping network: " + chain);
             chain = chain.ToLower();
             switch (chain)
             {
@@ -46,12 +45,11 @@ namespace z3nCore.Api
                 case "bsc": return "BEP20(BSC)";
                 case "avalanche": return "AVAX-C";
                 case "polygon": return "POLYGON";
-                case "optimism": return "OPTIMISM";
+                case "optimism": return "OP";
                 case "trc20": return "TRC20";
                 case "zksync": return "ZKSYNC";
                 case "aptos": return "APTOS";
                 default:
-                    _logger.Send("Unsupported network: " + chain);
                     return chain.ToUpper();
             }
         }
@@ -133,7 +131,7 @@ namespace z3nCore.Api
             return result;
         }
 
-        public Dictionary<string, string> GetSpotBalance()
+        public Dictionary<string, string> GetSpotBalance_()
         {
             try
             {
@@ -168,6 +166,58 @@ namespace z3nCore.Api
             {
                 _logger.Send($"Exception in GetSpotBalance: {ex.Message}");
                 return new Dictionary<string, string>();
+            }
+        }
+        public Dictionary<string, string> GetSpotBalance(bool log = false, bool toJson = false )
+        {
+            try
+            {
+                string timestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds().ToString();
+                string message = $"timestamp={timestamp}";
+                string signature = CalculateHmacSha256Signature(message);
+                string queryString = $"timestamp={timestamp}&signature={signature}";
+
+                string response = MexcGet("/api/v3/account", queryString);
+        
+                var accountData = JsonConvert.DeserializeObject<Dictionary<string, object>>(response);
+                
+                if (accountData.ContainsKey("code"))
+                {
+                    string code = accountData["code"].ToString();
+                    if (code != "200")
+                    {
+                        string errorMsg = accountData.ContainsKey("msg") ? accountData["msg"].ToString() : "Unknown error";
+                        throw new Exception($"MEXC API Error [{code}]: {errorMsg}");
+                    }
+                }
+                
+                var balances = new Dictionary<string, string>();
+                var toLog = new StringBuilder();
+                if (accountData.ContainsKey("balances"))
+                {
+                    var balancesList = JsonConvert.DeserializeObject<List<Dictionary<string, object>>>(accountData["balances"].ToString());
+            
+                    foreach (var item in balancesList)
+                    {
+                        string asset = item.ContainsKey("asset") ? item["asset"].ToString() : "";
+                        string free = item.ContainsKey("free") ? item["free"].ToString() : "";
+
+                        if (!string.IsNullOrEmpty(free) && decimal.Parse(free, CultureInfo.InvariantCulture) > 0)
+                        {
+                            balances.Add(asset, free);
+                            toLog.AppendLine($"{asset} = {free}");
+                            _logger.Send($"Balance: {asset} = {free}");
+                        }
+                    }
+                }
+                if (toJson) _project.Json.FromString(response);
+                if (log) _logger.Send(toLog.ToString());
+                return balances;
+            }
+            catch (Exception ex)
+            {
+                _logger.Send($"Exception in GetSpotBalance: {ex.Message}");
+                throw;
             }
         }
 

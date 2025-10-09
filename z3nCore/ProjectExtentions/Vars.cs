@@ -436,22 +436,7 @@ namespace z3nCore
     }
     
     
-    public static partial class ProjectExtensions
-    {
-        public static string RndFromList(this IZennoPosterProjectModel project, string listName)
-        {
-            var list = project.Lists[listName];
-            if (list.Count > 0)
-                return list[new Random().Next(0, list.Count - 1)];
-            return string.Empty;
-        }
-        public static void ListSync(this IZennoPosterProjectModel project, string listName, List<string> localList)
-        {
-            var listToSync = project.Lists[listName];
-            listToSync.Clear();
-            foreach (var item in localList) listToSync.Add(item); 
-        }
-    }
+    
     
     
     
