@@ -41,7 +41,7 @@ namespace z3nCore
 
             var signer = new EthereumMessageSigner();
             string key = _key;
-            string wallet = _key.ToPubEvm();
+            string wallet = _key.ToEvmAddress();
             string time = string.Format("{0:yyyy-MM-dd HH:mm:ss}", DateTime.Now);
 
             // 1. GET nonce

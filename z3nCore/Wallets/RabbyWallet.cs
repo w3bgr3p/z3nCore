@@ -50,7 +50,7 @@ namespace z3nCore
             }
             if (string.IsNullOrEmpty(key)) throw new Exception("keyIsEmpy").Throw();
 
-            _expectedAddress = key.ToPubEvm();
+            _expectedAddress = key.ToEvmAddress();
             return key;
         }
 

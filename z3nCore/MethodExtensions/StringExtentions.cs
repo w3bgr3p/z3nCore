@@ -59,7 +59,7 @@ namespace z3nCore
 
             return null;
         }
-        public static string ToPubEvm(this string key)
+        public static string ToAdrEvm(this string key)
         {
             return ToEvmAddress(key);
         }

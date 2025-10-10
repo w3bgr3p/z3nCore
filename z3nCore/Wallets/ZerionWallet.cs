@@ -61,7 +61,7 @@ namespace z3nCore
             }
             if (string.IsNullOrEmpty(key)) throw new Exception("keyIsEmpy").Throw();
 
-            _expectedAddress = key.ToPubEvm();
+            _expectedAddress = key.ToEvmAddress();
             return key;
         }
 
@@ -279,8 +279,8 @@ namespace z3nCore
 
             _project.Deadline();
 
-            if (addressToUse == "key") addressToUse = _project.DbKey("evm").ToPubEvm();
-            else if (addressToUse == "seed") addressToUse = _project.DbKey("seed").ToPubEvm();
+            if (addressToUse == "key") addressToUse = _project.DbKey("evm").ToEvmAddress();
+            else if (addressToUse == "seed") addressToUse = _project.DbKey("seed").ToEvmAddress();
             else throw new Exception("supports \"key\" | \"seed\" only");
             _expectedAddress = addressToUse;
 

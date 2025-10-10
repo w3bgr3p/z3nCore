@@ -108,6 +108,9 @@
     <Compile Include="ProjectExtentions\Utils.cs" />
     <Compile Include="Security\Cryptography.cs" />
     <Compile Include="Security\ISAFU.cs" />
+    <Compile Include="Utilities\Accountant.cs" />
+    <Compile Include="Utilities\Converter.cs" />
+    <Compile Include="Utilities\Debug.cs" />
     <Compile Include="Utilities\Helper.cs" />
     <Compile Include="Utilities\Snapper.cs" />
     <Compile Include="W3b\AptosTools.cs" />
@@ -125,13 +128,11 @@
     <Compile Include="Api\AI.cs" />
     <Compile Include="Socials\Guild.cs" />
     <Compile Include="Sql\dSql.cs" />
-    <Compile Include="Tools\Debug.cs" />
     <Compile Include="W3b\Rpc.cs" />
     <Compile Include="W3b\W3bLegacy.cs" />
     <Compile Include="W3b\W3b.cs" />
     <Compile Include="Socials\GitHub.cs" />
     <Compile Include="Sql\Db.cs" />
-    <Compile Include="Tools\Accountant.cs" />
     <Compile Include="Api\FirstMail.cs" />
     <Compile Include="Requests\NetHttp.cs" />
     <Compile Include="Browser\BrowserScan.cs" />
@@ -148,7 +149,6 @@
     <Compile Include="Wallets\BackpackWallet.cs" />
     <Compile Include="W3b\Blockchain.cs" />
     <Compile Include="Socials\Google.cs" />
-    <Compile Include="Tools\Converter.cs" />
     <Compile Include="Socials\Discord.cs" />
     <Compile Include="Tools\OTP.cs" />
     <Compile Include="Sql\PostgreSQL.cs" />

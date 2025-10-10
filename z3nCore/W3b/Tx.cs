@@ -685,7 +685,7 @@ namespace z3nCore
             {
                 string abi = @"[{""inputs"":[{""name"":""from"",""type"":""address""},{""name"":""to"",""type"":""address""},{""name"":""tokenId"",""type"":""uint256""}],""name"":""safeTransferFrom"",""outputs"":[],""stateMutability"":""nonpayable"",""type"":""function""}]";
                 string[] types = { "address", "address", "uint256" };
-                object[] values = { key.ToPubEvm(), to, tokenId };
+                object[] values = { key.ToEvmAddress(), to, tokenId };
                 string encoded = z3nCore.Encoder.EncodeTransactionData(abi, "safeTransferFrom", types, values);
 
 
@@ -1311,7 +1311,7 @@ namespace z3nCore
             {
                 string abi = @"[{""inputs"":[{""name"":""from"",""type"":""address""},{""name"":""to"",""type"":""address""},{""name"":""tokenId"",""type"":""uint256""}],""name"":""safeTransferFrom"",""outputs"":[],""stateMutability"":""nonpayable"",""type"":""function""}]";
                 string[] types = { "address", "address", "uint256" };
-                object[] values = { key.ToPubEvm(), to, tokenId };
+                object[] values = { key.ToEvmAddress(), to, tokenId };
                 string encoded = z3nCore.Encoder.EncodeTransactionData(abi, "safeTransferFrom", types, values);
 
 

@@ -3,12 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
-namespace z3nCore
+namespace z3nCore.Utilities
 {
     public static class Converer
     {
-        
-        
         
         public static string ConvertFormat(IZennoPosterProjectModel project, string toProcess, string input, string output, bool log = false)
         {
@@ -245,9 +243,5 @@ namespace z3nCore
             return chk;
         }
     }
-
-
-
-
 
 }

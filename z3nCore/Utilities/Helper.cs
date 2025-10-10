@@ -1,11 +1,12 @@
 ﻿using System.IO;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 using System;
-namespace z3nCore
+
+
+namespace z3nCore.Utilities
 {
     public static class Helper
     {
-        
         private static readonly System.Drawing.Font defaultFont = new System.Drawing.Font("Cascadia Mono", 9F);
         private static string ShowInputDialog(string prompt = "Enter text:", string title = "Input", string defaultValue = "")
 {
@@ -203,7 +204,6 @@ namespace z3nCore
             // Показываем форму
             form.ShowDialog();
         }
-        
         public static void Help(this IZennoPosterProjectModel project, string toSearch = null)
         {
 

@@ -49,7 +49,7 @@ namespace z3nCore
         {
             decimal fee = 0.0002m;
             string key = _project.DbKey("evm");
-            var accountAddress = key.ToPubEvm(); 
+            var accountAddress = key.ToEvmAddress(); 
             var native = W3bTools.EvmNative(rpc, accountAddress);
             
             if (native < value + fee)
@@ -67,7 +67,7 @@ namespace z3nCore
             Random rnd = new Random();
             
             string key = _project.DbKey("evm");
-            var accountAddress = key.ToPubEvm(); 
+            var accountAddress = key.ToEvmAddress(); 
             PreCheck (rpc, value);
             
             string[] types = { };
@@ -90,7 +90,7 @@ namespace z3nCore
         {
             string rpc = "";
             string key = _project.DbKey("evm");
-            var accountAddress = key.ToPubEvm(); 
+            var accountAddress = key.ToEvmAddress(); 
             bool found = false;
             foreach (string RPC in ChainsFrom)
             {
