@@ -687,6 +687,14 @@ namespace z3nCore
     {
         public static string DbQ(this IZennoPosterProjectModel project, string query, bool log = false, string sqLitePath = null, string pgHost = null, string pgPort = null, string pgDbName = null, string pgUser = null, string pgPass = null, bool thrw = false, bool unSafe = false)
         {
+            
+            if (string.IsNullOrEmpty(sqLitePath)) sqLitePath = project.Var("DBsqltPath");
+            if (string.IsNullOrEmpty(pgHost)) pgHost = project.GVar("sqlPgHost");
+            if (string.IsNullOrEmpty(pgPort)) pgPort = project.GVar("sqlPgPort");
+            if (string.IsNullOrEmpty(pgDbName)) project.GVar("sqlPgName");
+            if (string.IsNullOrEmpty(pgUser)) project.GVar("sqlPgUser");
+            if (string.IsNullOrEmpty(pgPass)) pgPass = project.Var("DBpstgrPass");
+            
             string dbMode = project.Var("DBmode");
 
             if (string.IsNullOrEmpty(sqLitePath)) sqLitePath = project.Var("DBsqltPath");

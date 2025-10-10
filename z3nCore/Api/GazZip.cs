@@ -20,13 +20,15 @@ namespace z3nCore
         }
         private string Target(string destination, bool log = false)
         {
-            // 0x010066 Sepolia | 0x01019e Soneum | 0x01000e BNB | 0x0100f0 Gravity | 0x010169 Zero
+            // 0x010066 Sepolia | 0x01019e Soneum | 0x01000e BNB | 0x0100f0 Gravity | 0x010169 Zero | 0x0100ff
             
             if (destination.StartsWith("0x")) return destination;
             
             destination = destination.ToLower();
             switch (destination)
             {
+                case "ethereum":
+                    return "0x0100ff";
                 case "sepolia":
                     return "0x010066";
                 case "soneum":
@@ -117,6 +119,8 @@ namespace z3nCore
         }
 
     }
+
+
 
     public static partial class ProjectExtensions
     {
