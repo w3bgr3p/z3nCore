@@ -77,7 +77,7 @@ namespace z3nCore
         {
             return project.SqlGet(toGet, tableName, log, thrw, key, acc, where);
         }
-        public static Dictionary<string, string> DbGetColumns(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
+        public static Dictionary<string, string> DbGetColumns(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "", bool set = false)
         {
             string result = project.SqlGet(toGet, tableName, log, thrw, key, id, where);
     
@@ -94,6 +94,7 @@ namespace z3nCore
             {
                 dictionary[columns[i]] = values[i];
             }
+            if (set) project.VarsFromDict(dictionary);
             return dictionary;
         }
         public static string[] DbGetLine(this IZennoPosterProjectModel project, string toGet, string tableName = null,  bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")

@@ -99,6 +99,13 @@ namespace z3nCore
             return result;
         }
 
+        public static void VarsFromDict(this IZennoPosterProjectModel project, Dictionary<string, string> dict)
+        {
+            foreach (var pair in dict)
+            {
+                project.Var(pair.Key, pair.Value);
+            }
+        }
 
     }
 
