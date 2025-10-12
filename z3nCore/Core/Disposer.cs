@@ -1,27 +1,4 @@
-﻿// ============================================
-// РЕФАКТОРИНГ: Reporter
-// Совместимость: .NET 4.6
-// ============================================
-// 
-// ПРОБЛЕМЫ:
-// - ~40% дублирования кода между GetErrorData() и ErrorReport()
-// - Дублирование Telegram credentials в ToTelegram() и SuccessToTelegram()
-// - Размытый API: 8 публичных методов для 2 основных сценариев
-// - Смешанная ответственность в методах
-//
-// РЕШЕНИЯ:
-// - Объединены методы сбора данных об ошибке в один приватный метод
-// - Создан единый механизм работы с Telegram
-// - API упрощен до 3 основных методов: ErrorReport(), SuccessReport(), FinishSession()
-// - Весь флоу виден в основных методах через regions
-//
-// КАК ИСПОЛЬЗОВАТЬ:
-// var reporter = new Reporter(project, instance);
-// reporter.ErrorReport(toTg: true, toDb: true, screenshot: true);
-// reporter.SuccessReport(log: true, toTg: true);
-// reporter.FinishSession();
-// ============================================
-
+﻿
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 using System.Text; 
@@ -42,19 +19,20 @@ namespace z3nCore
         private readonly Instance _instance;
         private readonly string _projectScript;
         private readonly object _lockObject = new object();
+        private readonly Logger _logger;
         
         public Disposer(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
             _project = project;
             _instance = instance;
             _projectScript = project.Var("projectScript");
+            _logger = new Logger(_project, false, "♻️", true);
         }
         #endregion
 
-        #region Public API
+        #region PUBLIC
         public string ErrorReport(bool toTg = false, bool toDb = false, bool screenshot = false)
         {
-            // Основной флоу обработки ошибки
             var errorData = ExtractErrorData();
             if (errorData == null) 
             {
@@ -75,16 +53,15 @@ namespace z3nCore
             {
                 CreateScreenshot(errorData.Url, basicReport);
             }
-
-            if (toDb) 
+            if (toDb)
             {
-                _project.DbUpd($"status = '! dropped: {basicReport}'", log: true);
+                string upd = $"- {DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")}\n{basicReport}";
+                _project.DbUpd($"status = 'dropped', last = '{upd}'", log: true);
             }
 
             return basicReport;
         }
-
-        public string SuccessReport(bool log = false, bool toTg = false, string customMessage = null)
+        public string SuccessReport(bool log = false, bool toTg = false, bool toDb = false, string customMessage = null)
         {
             var successData = new SuccessData
             {
@@ -92,7 +69,8 @@ namespace z3nCore
                 Account = _project.Var("acc0") ?? "",
                 LastQuery = GetSafeVar("lastQuery"),
                 ElapsedTime = _project.TimeElapsed(),
-                CustomMessage = customMessage
+                CustomMessage = customMessage,
+                Timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
             };
 
             string reportText = FormatSuccessReport(successData);
@@ -108,21 +86,27 @@ namespace z3nCore
                 _project.SendToLog(logText, LogType.Info, true, LogColor.LightBlue);
             }
 
+            if (toDb)
+            {
+                _project.DbUpd($"status = 'relaxing', last = '+ {successData.Timestamp} '");
+            }
+
             return reportText;
         }
-
         public void FinishSession()
         {
             string acc0 = _project.Var("acc0");
             string accRnd = _project.Var("accRnd");
             bool isSuccess = (!GetSafeVar("lastQuery").Contains("dropped"));
+            
             try
             {
                 if (!string.IsNullOrEmpty(acc0))
                 {
                     if (isSuccess)
                     {
-                        SuccessReport(log: true, toTg: true);
+                        _logger.Send("success reporting...");
+                        SuccessReport(log: true, toTg: true, true);
                     }
                     else
                     {
@@ -135,16 +119,51 @@ namespace z3nCore
                 _project.log(ex.Message);
             }
             
-            if (ShouldSaveCookies(_instance, acc0, accRnd))
+            if (_instance.BrowserType == BrowserType.Chromium && !string.IsNullOrEmpty(acc0) && string.IsNullOrEmpty(accRnd))
+            {
+                _logger.Send("saving cookies...");
+                new Cookies(_project, _instance).Save("all", _project.PathCookies());
+            }
+            
+            LogSessionComplete();
+            
+            ClearAccountState(acc0);
+            _instance.Stop();
+        }
+        
+        public void FinishSession_()
+        {
+            string acc0 = _project.Var("acc0");
+            string accRnd = _project.Var("accRnd");
+            
+            try
+            {
+                if (!string.IsNullOrEmpty(acc0))
+                {
+                    new Reporter(_project, _instance).SuccessReport(true, true);
+                }
+            }
+            catch (Exception ex)
+            {
+                _project.log(ex.Message);
+            }
+            
+            if (_instance.BrowserType == BrowserType.Chromium && !string.IsNullOrEmpty(acc0) && string.IsNullOrEmpty(accRnd))
             {
                 new Cookies(_project, _instance).Save("all", _project.Var("pathCookies"));
             }
-            LogSessionComplete();
-            ClearAccountState(acc0);
+            
+            if (!string.IsNullOrEmpty(acc0))
+            {
+                _project.GVar($"acc{acc0}", "");
+            }
+            _project.Var("acc0", "");
         }
+        
         #endregion
 
-        #region Error Data Processing
+        
+        #region ERROR
         private ErrorData ExtractErrorData()
         {
             var error = _project.GetLastError();
@@ -225,7 +244,7 @@ namespace z3nCore
         }
         #endregion
 
-        #region Success Data Processing
+        #region SUCCSESS
         private string FormatSuccessReport(SuccessData data)
         {
             var sb = new StringBuilder();
@@ -255,7 +274,7 @@ namespace z3nCore
         }
         #endregion
 
-        #region Telegram Integration
+        #region TELEGRAM
         private void SendToTelegram(string message)
         {
             var credentials = GetTelegramCredentials();
@@ -274,8 +293,8 @@ namespace z3nCore
         {
             try
             {
-                var creds = _project.DbGet("apikey, extra", "_api", where: "id = 'tg_logger'");
-                var credsParts = creds.Split('|');
+                var creds = _project.SqlGet("apikey, extra", "_api", where: "id = 'tg_logger'");
+                var credsParts = creds.Split('¦');
 
                 string token = credsParts[0].Trim();
                 var extraParts = credsParts[1].Trim().Split('/');
@@ -426,19 +445,6 @@ namespace z3nCore
         #endregion
 
         #region Session Management
-        private static bool ShouldSaveCookies(Instance instance, string acc0, string accRnd)
-        {
-            try
-            {
-                return instance.BrowserType == BrowserType.Chromium && 
-                       !string.IsNullOrEmpty(acc0) && 
-                       string.IsNullOrEmpty(accRnd);
-            }
-            catch
-            {
-                return false;
-            }
-        }
 
         private void ClearAccountState(string acc0)
         {
@@ -494,6 +500,7 @@ namespace z3nCore
             public string LastQuery { get; set; } = "";
             public double ElapsedTime { get; set; }
             public string CustomMessage { get; set; }
+            public string Timestamp { get; set; }
         }
 
         private class TelegramCredentials
@@ -530,5 +537,13 @@ namespace z3nCore
         [Obsolete("Используйте SuccessReport(toTg: true)")]
         public void SuccessToTelegram(string message = null) => SuccessReport(toTg: true, customMessage: message);
         #endregion
+    }
+
+    public static partial class ProjectExtensions
+    {
+        public static void Finish(this IZennoPosterProjectModel project, Instance instance)
+        {
+            new Disposer(project,instance).FinishSession();
+        }
     }
 }

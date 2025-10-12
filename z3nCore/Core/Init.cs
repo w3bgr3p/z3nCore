@@ -630,7 +630,7 @@ namespace z3nCore
                     var accsByQuery = _project.DbQ(query, log: _log).Trim();
                     if (!string.IsNullOrWhiteSpace(accsByQuery))
                     {
-                        var accounts = accsByQuery.Split('\n').Select(x => x.Trim().TrimStart(','));
+                        var accounts = accsByQuery.Split('·').Select(x => x.Trim().TrimStart(','));
                         allAccounts.UnionWith(accounts);
                     }
                 }
@@ -663,7 +663,7 @@ namespace z3nCore
                 {
                     string tableName = $"projects_{social.Trim().ToLower()}";
                     var notOK = _project.SqlGet($"id", tableName, log: _log, where: "status LIKE '%suspended%' OR status LIKE '%restricted%' OR status LIKE '%ban%' OR status LIKE '%CAPTCHA%' OR status LIKE '%applyed%' OR status LIKE '%Verify%'")
-                        .Split('\n')
+                        .Split('·')
                         .Select(x => x.Trim())
                         .Where(x => !string.IsNullOrEmpty(x));
                     allAccounts.ExceptWith(notOK);
@@ -724,7 +724,7 @@ namespace z3nCore
                     break;
                 case "NewRandom":
                     string toSet = _project.DbGetRandom("proxy, webgl", "_instance", log: false, acc: true);
-                    string acc0 = toSet.Split('|')[0];
+                    string acc0 = toSet.Split('¦')[0];
                     _project.Var("accRnd", Rnd.RndHexString(64));
                     _project.Var("acc0", acc0);
                     _project.Var("pathProfileFolder", Path.Combine(_project.Var("profiles_folder"), "accounts", "profilesFolder", _project.Var("accRnd")));
@@ -768,7 +768,7 @@ namespace z3nCore
             {
                 decimal minNativeInUsd = decimal.Parse(_project.Var("gateOnchainMinNative"));
                 string tiker;
-                string address = _project.DbGet("evm_pk", "_addresses", log: false);
+                string address = _project.SqlGet("evm_pk", "_addresses", log: false);
 
                 decimal native = 0;
                 foreach (string chain in chains)
@@ -782,7 +782,7 @@ namespace z3nCore
                             tiker = "BNB";
                             break;
                         case "solana":
-                            address = _project.DbGet("sol", "public_blockchain", log: false);
+                            address = _project.SqlGet("sol", "public_blockchain", log: false);
                             native = W3bTools.SolNative(Rpc.Get(chain), address);
                             tiker = "SOL";
                             break;
@@ -821,7 +821,7 @@ namespace z3nCore
             foreach (var social in requiredSocials)
             {
                 var tableName = "_" + social.ToLower().Trim();
-                var status = _project.DbGet("status", tableName, log: true);
+                var status = _project.SqlGet("status", tableName, log: true);
                 foreach (string word in badList)
                 {
                     if (status.Contains(word))
@@ -1052,69 +1052,7 @@ namespace z3nCore
         #endregion
     }
 
-    #region Main Class - Session Management
     
-    public class Main
-    {
-        private readonly IZennoPosterProjectModel _project;
-        private readonly Instance _instance;
-
-        public Main(IZennoPosterProjectModel project, Instance instance, bool log = false)
-        {
-            _project = project;
-            _instance = instance;
-        }
-
-        public void FinishSession()
-        {
-            string acc0 = _project.Var("acc0");
-            string accRnd = _project.Var("accRnd");
-            
-            try
-            {
-                if (!string.IsNullOrEmpty(acc0))
-                {
-                    new Reporter(_project, _instance).SuccessReport(true, true);
-                }
-            }
-            catch (Exception ex)
-            {
-                _project.log(ex.Message);
-            }
-            
-            if (ShouldSaveCookies(_instance, acc0, accRnd))
-            {
-                new Cookies(_project, _instance).Save("all", _project.Var("pathCookies"));
-            }
-            
-            ClearAccountState(_project, acc0);
-        }
-
-        private static bool ShouldSaveCookies(Instance instance, string acc0, string accRnd)
-        {
-            try
-            {
-                return instance.BrowserType == BrowserType.Chromium && 
-                       !string.IsNullOrEmpty(acc0) && 
-                       string.IsNullOrEmpty(accRnd);
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static void ClearAccountState(IZennoPosterProjectModel project, string acc0)
-        {
-            if (!string.IsNullOrEmpty(acc0))
-            {
-                project.GVar($"acc{acc0}", "");
-            }
-            project.Var("acc0", "");
-        }
-    }
-    
-    #endregion
     
     public static partial class ProjectExtensions
     {

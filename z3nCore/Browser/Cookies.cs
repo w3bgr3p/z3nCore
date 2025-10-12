@@ -91,6 +91,7 @@ namespace z3nCore
         }
         public void Save(string source = null, string jsonPath = null)
         {
+            DateTime called = DateTime.UtcNow;
             if (string.IsNullOrEmpty(source))
                 source = "project";
 

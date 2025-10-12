@@ -35,10 +35,7 @@ namespace z3nCore
         }
         
         
-        public static void Finish(this IZennoPosterProjectModel project, Instance instance)
-        {
-            new Main(project,instance).FinishSession();
-        }
+       
         
 
         

@@ -94,7 +94,7 @@ namespace z3nCore
     
         private static string DbRpc(this IZennoPosterProjectModel project, string rpc)
         {
-            return project.DbGet("rpc","_rpc", where: $"id = '{rpc}'");
+            return project.SqlGet("rpc","_rpc", where: $"id = '{rpc}'");
         }
         
     }

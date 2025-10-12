@@ -242,8 +242,8 @@ namespace z3nCore
 
         public void ToTelegram(string reportString)
         {
-            var creds = _project.DbGet("apikey, extra", "_api", where: "id = 'tg_logger'");
-            var credsParts = creds.Split('|');
+            var creds = _project.SqlGet("apikey, extra", "_api", where: "id = 'tg_logger'");
+            var credsParts = creds.Split('¦');
 
             string token = credsParts[0].Trim();
             var extraParts = credsParts[1].Trim().Split('/');
@@ -299,8 +299,8 @@ namespace z3nCore
         
         public void SuccessToTelegram(string message = null)
         {
-            var creds = _project.DbGet("apikey, extra", "_api", where: "id = 'tg_logger'");
-            var credsParts = creds.Split('|');
+            var creds = _project.SqlGet("apikey, extra", "_api", where: "id = 'tg_logger'");
+            var credsParts = creds.Split('¦');
             
             string token = credsParts[0].Trim();
             var extraParts = credsParts[1].Trim().Split('/');

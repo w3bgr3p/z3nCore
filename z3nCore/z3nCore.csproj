@@ -112,6 +112,7 @@
     <Compile Include="Utilities\Converter.cs" />
     <Compile Include="Utilities\Debug.cs" />
     <Compile Include="Utilities\Helper.cs" />
+    <Compile Include="Utilities\DailyReport.cs" />
     <Compile Include="Utilities\Snapper.cs" />
     <Compile Include="W3b\AptosTools.cs" />
     <Compile Include="W3b\CosmosTools.cs" />

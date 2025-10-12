@@ -10,8 +10,14 @@ namespace z3nCore
 {
     public static class Db
     {
+        #region PRIVATE 
+
         private static string _schemaName = "public";
 
+        private const char _rawSeparator = '·';
+        private const char _columnSeparator = '¦';
+        
+        
         private static string UnQuote( string name)
         {
             return name.Replace("\"","");
@@ -64,47 +70,65 @@ namespace z3nCore
             if (string.IsNullOrEmpty(range)) return false;
             return Regex.IsMatch(range, @"^[\d\s,\-]+$");
         }
-
+        #endregion
+        
+        #region GET 
         public static string DbGet(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", string acc = null, string where = "")
         {
             return project.SqlGet(toGet, tableName, log, thrw, key, acc, where);
         }
-        public static void DbUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, bool last = false, string key = "id", object acc = null, string where = "")
+        public static Dictionary<string, string> DbGetColumns(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
+        {
+            string result = project.SqlGet(toGet, tableName, log, thrw, key, id, where);
+    
+            if (string.IsNullOrWhiteSpace(result))
+                return new Dictionary<string, string>();
+           
+            var columns = toGet.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(c => c.Trim().Trim('`', '"', '[', ']'))
+                .ToList();
+            var values = result.Split(_columnSeparator);
+            var dictionary = new Dictionary<string, string>();
+    
+            for (int i = 0; i < columns.Count && i < values.Length; i++)
+            {
+                dictionary[columns[i]] = values[i];
+            }
+            return dictionary;
+        }
+        public static string[] DbGetLine(this IZennoPosterProjectModel project, string toGet, string tableName = null,  bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
+        {
+            return project.SqlGet(toGet, tableName, log, thrw, key, id, where).Split(_columnSeparator);
+        }
+        public static List<string> DbGetLines(this IZennoPosterProjectModel project, string toGet, string tableName = null,  bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
+        {
+            return project.SqlGet(toGet, tableName, log, thrw, key, id, where).Split(_rawSeparator).ToList();
+        }
+        
+        #endregion
+        
+
+        public static void DbUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, string key = "id", object acc = null, string where = "")
         {
             if (toUpd.Contains("relax")) log = true;
             try { project.Var("lastQuery", toUpd); } catch (Exception Ex){ project.SendWarningToLog(Ex.Message, true); }
-            project.SqlUpd(toUpd, tableName, log, thrw, last, key, acc, where);
+            project.SqlUpd(toUpd, tableName, log, thrw, key, acc, where);
 
         }
 
-        public static void DbStatus(this IZennoPosterProjectModel project, string status, string tableName = null)
-        {
-             project.DbUpd($"status = '{status}'", tableName);
-             return;
-        }
-        public static string Ref(this IZennoPosterProjectModel project, string refCode = null, bool log = false, string limit = null)
-        {
-            project.ObsoleteCode("project.RndInvite");
-            return project.RndInvite(limit, log);
-        }
-        public static string Invite(this IZennoPosterProjectModel project,  object limit = null, bool log = false)
-        {
-            project.ObsoleteCode("project.RndInvite");
-            return project.RndInvite(limit, log);
-        }
         public static void DbSettings(this IZennoPosterProjectModel project, bool set = true, bool log = false)
         {
             var dbConfig = new Dictionary<string, string>();
             var resp = project.DbQ($"SELECT {Quote("id")}, {Quote("value")} FROM {Quote("_settings")}", log);
-            foreach (string varData in resp.Split('\n'))
+            foreach (string varData in resp.Split(_rawSeparator))
             {
                 if (string.IsNullOrEmpty(varData)) continue;
 
-                var parts = varData.Split('|');
+                var parts = varData.Split(_columnSeparator);
                 if (parts.Length >= 2)
                 {
                     string varName = parts[0];
-                    string varValue = string.Join("|", parts.Skip(1)).Trim(); 
+                    string varValue = string.Join($"{_columnSeparator}", parts.Skip(1)).Trim(); 
 
                     dbConfig.Add(varName, varValue);
                     if (set)
@@ -167,13 +191,14 @@ namespace z3nCore
                     throw new Exception("unexpected input. Use (evm|sol|seed|pkFromSeed)");
             }
 
-            var resp = project.DbGet(chainType, "_wallets");
+            var resp = project.SqlGet(chainType, "_wallets");
             string decoded = !string.IsNullOrEmpty(project.Var("cfgPin")) ? SAFU.Decode(project, resp) : resp;
-            //if (!string.IsNullOrEmpty(project.Var("cfgPin")))
-            //return SAFU.Decode(project, resp);
             return decoded;
 
         }
+
+
+        #region INTERNAL
         public static string SqlGet(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
         {
 
@@ -200,37 +225,6 @@ namespace z3nCore
 
             return project.DbQ(query, log: log, thrw: thrw);
         }
-        private static string SqlUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, bool last = false, string key = "id", object id = null, string where = "")
-        {          
-            var parameters = new DynamicParameters();
-            if (string.IsNullOrEmpty(tableName)) tableName = project.Var("projectTable");
-            if (string.IsNullOrEmpty(tableName)) throw new Exception("TableName is null");
-            
-            toUpd = QuoteColumns(toUpd);
-            tableName = Quote(tableName);
-
-            if (last)
-            { 
-                if (last) toUpd = toUpd + $", last = '{DateTime.UtcNow.ToString("MM-ddTHH:mm")}'";
-            }
-
-            if (id is null)
-                id = project.Variables["acc0"].Value;
-            
-            string query;
-            if (string.IsNullOrEmpty(where))
-            {
-                if (string.IsNullOrEmpty(id.ToString()))
-                    throw new ArgumentException("variable \"acc0\" is null or empty", nameof(id));
-                query = $"UPDATE {tableName} SET {toUpd} WHERE {Quote(key)} = {id}";
-            }
-            else
-            {
-                query = $"UPDATE {tableName} SET {toUpd} WHERE {where}";
-            }
-            return project.DbQ(query, log:log);
-        }
-        
         private static string SqlUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
         {          
             var parameters = new DynamicParameters();
@@ -256,7 +250,10 @@ namespace z3nCore
             }
             return project.DbQ(query, log:log, thrw: thrw);
         }
-
+        
+        #endregion
+        
+        
 
         //Tables
         public static void TblAdd(this IZennoPosterProjectModel project,  Dictionary<string, string> tableStructure, string tblName, bool log = false)
@@ -301,18 +298,16 @@ namespace z3nCore
                 : $"SELECT name FROM pragma_table_info('{UnQuote(tblName)}');";
 
             result = project.DbQ(query, log: log)
-                .Split('\n')
+                .Split(_rawSeparator)
                 .Select(s => s.Trim())
                 .ToList();
             return result;
         }
-
         public static Dictionary<string, string> TblForProject(this IZennoPosterProjectModel project, string[] projectColumns , string defaultType = "TEXT DEFAULT ''")
         {
             var projectColumnsList = projectColumns.ToList();
             return TblForProject(project, projectColumnsList, defaultType);
         }
-
         public static Dictionary<string, string> TblForProject(this IZennoPosterProjectModel project, List<string> projectColumns = null,  string defaultType = "TEXT DEFAULT ''")
         {
             string cfgToDo = project.Variables["cfgToDo"].Value;
@@ -359,7 +354,10 @@ namespace z3nCore
             project.ClmnAdd(tableStructure, tblName, log: log);
             project.AddRange(tblName,log:log);
         }
-        //Columns
+        
+        
+
+        #region  COLUMNS
         public static bool ClmnExist(this IZennoPosterProjectModel project, string clmnName, string tblName, bool log = false)
         {
 
@@ -413,7 +411,7 @@ namespace z3nCore
             string Q = (dbMode == "PostgreSQL") ?
                 $@"SELECT column_name FROM information_schema.columns WHERE table_schema = '{_schemaName}' AND table_name = '{tableName}'" :
                 $@"SELECT name FROM pragma_table_info('{tableName}')";
-            return project.DbQ(Q, log: log).Split('\n').ToList();
+            return project.DbQ(Q, log: log).Split(_rawSeparator).ToList();
         }
         public static void ClmnDrop(this IZennoPosterProjectModel project, string clmnName, string tblName,  bool log = false)
         {
@@ -594,7 +592,7 @@ namespace z3nCore
                 throw new Exception($"Failed to rearrange table {tblName}: {ex.Message}", ex);
             }
         }
-        
+        #endregion
         
         //Range
         public static void AddRange(this IZennoPosterProjectModel project, string tblName, int range = 0, bool log = false)
@@ -713,12 +711,10 @@ namespace z3nCore
                     : new dSql(sqLitePath, null))
                     
                 {
-
-                    if (!unSafe && (Regex.IsMatch(query, @"^\s*(DROP|DELETE)\b", RegexOptions.IgnoreCase) && !query.Contains("WHERE")))
-                        throw new InvalidOperationException("Unsafe query detected: DROP/DELETE without WHERE");
+                    
                     
                     if (Regex.IsMatch(query.TrimStart(), @"^\s*SELECT\b", RegexOptions.IgnoreCase))
-                        result = db.DbReadAsync(query).GetAwaiter().GetResult();
+                        result = db.DbReadAsync(query, "¦","·").GetAwaiter().GetResult();
                     else
                         result = db.DbWriteAsync(query).GetAwaiter().GetResult().ToString();
                 }

@@ -28,7 +28,7 @@ namespace z3nCore
         }
         private void LoadKeys()
         {
-            var creds = _project.DbGet("apikey, apisecret, passphrase", "_api", where: "id = 'okx'").Split('|');
+            var creds = _project.SqlGet("apikey, apisecret, passphrase", "_api", where: "id = 'okx'").Split('¦');
             _apiKey = creds[0];
             _secretKey = creds[1];
             _passphrase = creds[2];

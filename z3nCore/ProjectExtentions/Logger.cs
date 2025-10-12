@@ -16,12 +16,16 @@ namespace z3nCore
         protected readonly IZennoPosterProjectModel _project;
         protected bool _logShow = false;
         private string _emoji = null;
+        private readonly bool _persistent;
+        private readonly long _t0;
 
-        public Logger(IZennoPosterProjectModel project, bool log = false, string classEmoji = null)
+        public Logger(IZennoPosterProjectModel project, bool log = false, string classEmoji = null, bool persistent = false)
         {
             _project = project;
             _logShow = log || _project.Var("debug") == "True";
             _emoji = classEmoji;
+            _persistent = persistent;
+            _t0 = Time.Elapsed();
         }
 
         private (bool acc, bool port, bool time, bool memory, bool caller, bool wrap, bool force) GetConfigFlags()
@@ -115,6 +119,15 @@ namespace z3nCore
                 {
                     string totalAge = _project.Age<string>();
                     if (!string.IsNullOrEmpty(totalAge)) sb.Append($"  ⏱️ [{totalAge}]");
+        
+                    if (_persistent) 
+                    {
+                        long elapsedSeconds = Time.Elapsed(_t0);  
+                        string elapsedStr = elapsedSeconds >= 3600 ? $"{elapsedSeconds / 3600}h" :
+                            elapsedSeconds >= 60 ? $"{elapsedSeconds / 60}m {elapsedSeconds % 60}s" :
+                            $"{elapsedSeconds}s";
+                        sb.Append($"  🕐 [{elapsedStr}]");
+                    }
                 }
                 catch { }
                 
@@ -164,7 +177,6 @@ namespace z3nCore
             }
         }
         
-        
         private string LogBody(string toLog, int cut)
         {
             if (!string.IsNullOrEmpty(toLog))
@@ -208,7 +220,6 @@ namespace z3nCore
             _project.SendToLog(toSend, type, toZp, color);
             if (thrw) throw new Exception($"{toSend}");
         }
-
         
     }
 }
@@ -226,6 +237,9 @@ public static partial class ProjectExtensions
     {
         new Logger(project).Warn(toLog, callerName, show: show, thrw: thrw, toZp: toZp);
     }
+
+
+    
     public static void L0g(this IZennoPosterProjectModel project, string toLog, [CallerMemberName] string callerName = "", bool show = true, bool thr0w = false, bool toZp = true)
     {
        project.ObsoleteCode("project.log");
