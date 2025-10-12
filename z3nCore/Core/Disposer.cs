@@ -1,549 +1,230 @@
-﻿
-using ZennoLab.CommandCenter;
+﻿using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
-using System.Text; 
 using System;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Collections.Generic;
 using ZennoLab.InterfacesLibrary.Enums.Log;
 using ZennoLab.InterfacesLibrary.Enums.Browser;
 
 namespace z3nCore
 {
+    /// <summary>
+    /// Отвечает за управление завершением сессии и координацию процесса отчетности
+    /// </summary>
     public class Disposer
     {
-        #region Fields and Constructor
+        #region Fields
+
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
-        private readonly string _projectScript;
-        private readonly object _lockObject = new object();
+        private readonly Reporter _reporter;
         private readonly Logger _logger;
-        
-        public Disposer(IZennoPosterProjectModel project, Instance instance, bool log = false)
-        {
-            _project = project;
-            _instance = instance;
-            _projectScript = project.Var("projectScript");
-            _logger = new Logger(_project, false, "♻️", true);
-        }
+
         #endregion
 
-        #region PUBLIC
-        public string ErrorReport(bool toTg = false, bool toDb = false, bool screenshot = false)
+        #region Constructor
+
+        public Disposer(IZennoPosterProjectModel project, Instance instance, bool enableLogging = false)
         {
-            var errorData = ExtractErrorData();
-            if (errorData == null) 
-            {
-                _project.SendInfoToLog("noErrorData");
-                return "";
-            }
-
-            string basicReport = FormatBasicErrorReport(errorData);
-            _project.SendToLog(basicReport, LogType.Warning, true, LogColor.Orange);
-
-            if (toTg)
-            {
-                string tgReport = FormatTelegramErrorReport(errorData);
-                SendToTelegram(tgReport);
-            }
-
-            if (screenshot)
-            {
-                CreateScreenshot(errorData.Url, basicReport);
-            }
-            if (toDb)
-            {
-                string upd = $"- {DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")}\n{basicReport}";
-                _project.DbUpd($"status = 'dropped', last = '{upd}'", log: true);
-            }
-
-            return basicReport;
+            _project = project ?? throw new ArgumentNullException(nameof(project));
+            _instance = instance ?? throw new ArgumentNullException(nameof(instance));
+            
+            _reporter = new Reporter(project, instance);
+            _logger = new Logger(project, false, "♻️", true);
         }
-        public string SuccessReport(bool log = false, bool toTg = false, bool toDb = false, string customMessage = null)
-        {
-            var successData = new SuccessData
-            {
-                Script = Path.GetFileName(_projectScript),
-                Account = _project.Var("acc0") ?? "",
-                LastQuery = GetSafeVar("lastQuery"),
-                ElapsedTime = _project.TimeElapsed(),
-                CustomMessage = customMessage,
-                Timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-            };
 
-            string reportText = FormatSuccessReport(successData);
+        #endregion
 
-            if (toTg) 
-            {
-                SendToTelegram(reportText);
-            }
+        #region Public API
 
-            if (log) 
-            {
-                string logText = reportText.Replace(@"\", "");
-                _project.SendToLog(logText, LogType.Info, true, LogColor.LightBlue);
-            }
-
-            if (toDb)
-            {
-                _project.DbUpd($"status = 'relaxing', last = '+ {successData.Timestamp} '");
-            }
-
-            return reportText;
-        }
+        /// <summary>
+        /// Основной метод завершения сессии
+        /// Координирует отчетность, сохранение cookies и cleanup
+        /// </summary>
         public void FinishSession()
         {
             string acc0 = _project.Var("acc0");
             string accRnd = _project.Var("accRnd");
-            bool isSuccess = (!GetSafeVar("lastQuery").Contains("dropped"));
-            
-            try
-            {
-                if (!string.IsNullOrEmpty(acc0))
-                {
-                    if (isSuccess)
-                    {
-                        _logger.Send("success reporting...");
-                        SuccessReport(log: true, toTg: true, true);
-                    }
-                    else
-                    {
-                        //ErrorReport(toTg: true, toDb: true, screenshot: true);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _project.log(ex.Message);
-            }
-            
-            if (_instance.BrowserType == BrowserType.Chromium && !string.IsNullOrEmpty(acc0) && string.IsNullOrEmpty(accRnd))
-            {
-                _logger.Send("saving cookies...");
-                new Cookies(_project, _instance).Save("all", _project.PathCookies());
-            }
-            
-            LogSessionComplete();
-            
-            ClearAccountState(acc0);
-            _instance.Stop();
-        }
-        
-        public void FinishSession_()
-        {
-            string acc0 = _project.Var("acc0");
-            string accRnd = _project.Var("accRnd");
-            
-            try
-            {
-                if (!string.IsNullOrEmpty(acc0))
-                {
-                    new Reporter(_project, _instance).SuccessReport(true, true);
-                }
-            }
-            catch (Exception ex)
-            {
-                _project.log(ex.Message);
-            }
-            
-            if (_instance.BrowserType == BrowserType.Chromium && !string.IsNullOrEmpty(acc0) && string.IsNullOrEmpty(accRnd))
-            {
-                new Cookies(_project, _instance).Save("all", _project.Var("pathCookies"));
-            }
-            
+            bool isSuccess = IsSessionSuccessful();
+
+            // Генерируем отчеты если есть аккаунт
             if (!string.IsNullOrEmpty(acc0))
             {
-                _project.GVar($"acc{acc0}", "");
+                GenerateReports(isSuccess);
             }
-            _project.Var("acc0", "");
+
+            // Сохраняем cookies если нужно
+            SaveCookiesIfNeeded(acc0, accRnd);
+
+            // Логируем завершение сессии
+            LogSessionComplete(isSuccess);
+
+            // Очищаем переменные и останавливаем инстанс
+            CleanupAndStop(acc0);
         }
-        
+
+        /// <summary>
+        /// Быстрое создание отчета об ошибке (для ручного вызова)
+        /// </summary>
+        public string ErrorReport(bool toLog = true, bool toTelegram = false, bool toDb = false, bool screenshot = false)
+        {
+            return _reporter.ReportError(toLog, toTelegram, toDb, screenshot);
+        }
+
+        /// <summary>
+        /// Быстрое создание отчета об успехе (для ручного вызова)
+        /// </summary>
+        public string SuccessReport(bool toLog = true, bool toTelegram = false, bool toDb = false, string customMessage = null)
+        {
+            return _reporter.ReportSuccess(toLog, toTelegram, toDb, customMessage);
+        }
+
         #endregion
 
-        
-        #region ERROR
-        private ErrorData ExtractErrorData()
+        #region Private Methods - Session Management
+
+        private bool IsSessionSuccessful()
         {
-            var error = _project.GetLastError();
-            if (error == null) return null;
-
-            var errorData = new ErrorData
-            {
-                ActionId = error.ActionId.ToString() ?? "",
-                ActionComment = error.ActionComment ?? "",
-                ActionGroupId = error.ActionGroupId ?? "",
-                Account = _project.Var("acc0") ?? ""
-            };
-
-            // Извлекаем данные исключения
-            Exception ex = error.Exception;
-            if (ex != null) 
-            {
-                try 
-                {
-                    errorData.Type = ex.GetType()?.Name ?? "noType";
-                    errorData.Message = ex.Message ?? "noMessage";
-                    errorData.StackTrace = ProcessStackTrace(ex.StackTrace);
-                    errorData.InnerMessage = ex.InnerException?.Message ?? "";
-                }
-                catch (Exception exp)
-                {
-                    _project.SendWarningToLog(exp.Message);
-                }
-            }
-            
-            // Получаем URL безопасно
-            try { errorData.Url = _instance.ActiveTab.URL; } catch { }
-
-            return errorData;
+            string lastQuery = _project.Var("lastQuery") ?? string.Empty;
+            return !lastQuery.Contains("dropped");
         }
 
-        private string ProcessStackTrace(string stackTrace)
-        {
-            if (string.IsNullOrEmpty(stackTrace)) return string.Empty;
-            return stackTrace.Split(new[] { 'в' }, StringSplitOptions.None)
-                            .Skip(1)
-                            .FirstOrDefault()?.Trim() ?? string.Empty;
-        }
-
-        private string FormatBasicErrorReport(ErrorData data)
-        {
-            var sb = new StringBuilder();
-            
-            if (!string.IsNullOrEmpty(data.Account)) sb.AppendLine($"acc: {data.Account}");
-            if (!string.IsNullOrEmpty(data.ActionId)) sb.AppendLine($"id: {data.ActionId}");
-            if (!string.IsNullOrEmpty(data.ActionComment)) sb.AppendLine($"actionComment: {data.ActionComment}");
-            if (!string.IsNullOrEmpty(data.Type)) sb.AppendLine($"type: {data.Type}");
-            if (!string.IsNullOrEmpty(data.Message)) sb.AppendLine($"msg: {data.Message}");
-            if (!string.IsNullOrEmpty(data.InnerMessage)) sb.AppendLine($"innerMsg: {data.InnerMessage}");
-            if (!string.IsNullOrEmpty(data.StackTrace)) sb.AppendLine($"stackTrace: {data.StackTrace}");
-            if (!string.IsNullOrEmpty(data.Url)) sb.AppendLine($"url: {data.Url}");
-            
-            return sb.ToString().Replace("\\", "");
-        }
-
-        private string FormatTelegramErrorReport(ErrorData data)
-        {
-            var sb = new StringBuilder();
-            string script = Path.GetFileName(_projectScript).EscapeMarkdown();
-
-            sb.AppendLine($"⛔️\\#fail  \\#acc{data.Account}  \\#{script}");
-            if (!string.IsNullOrEmpty(data.ActionId)) sb.AppendLine($"ActionId: `{data.ActionId.EscapeMarkdown()}`");
-            if (!string.IsNullOrEmpty(data.ActionComment)) sb.AppendLine($"actionComment: `{data.ActionComment.EscapeMarkdown()}`");
-            if (!string.IsNullOrEmpty(data.Type)) sb.AppendLine($"type: `{data.Type.EscapeMarkdown()}`");
-            if (!string.IsNullOrEmpty(data.Message)) sb.AppendLine($"msg: `{data.Message.EscapeMarkdown()}`");
-            if (!string.IsNullOrEmpty(data.StackTrace)) sb.AppendLine($"stackTrace: `{data.StackTrace.EscapeMarkdown()}`");
-            if (!string.IsNullOrEmpty(data.InnerMessage)) sb.AppendLine($"innerMsg: `{data.InnerMessage.EscapeMarkdown()}`");
-            if (!string.IsNullOrEmpty(data.Url)) sb.AppendLine($"url: `{data.Url.EscapeMarkdown()}`");
-            
-            string failReport = sb.ToString();
-            _project.Var("failReport", failReport);
-            return failReport;
-        }
-        #endregion
-
-        #region SUCCSESS
-        private string FormatSuccessReport(SuccessData data)
-        {
-            var sb = new StringBuilder();
-            string script = data.Script.EscapeMarkdown();
-            
-            sb.AppendLine($"✅️\\#success  \\#acc{data.Account}  \\#{script}");
-            
-            if (!string.IsNullOrEmpty(data.LastQuery))
-            {
-                sb.Append("LastUpd: `")
-                  .Append(data.LastQuery.EscapeMarkdown())
-                  .AppendLine("` ");
-            }
-
-            if (!string.IsNullOrEmpty(data.CustomMessage))
-            {
-                sb.Append("Message: `")
-                  .Append(data.CustomMessage.EscapeMarkdown())
-                  .AppendLine("` ");
-            }
-
-            sb.Append("TookTime: ")
-              .Append(data.ElapsedTime)
-              .AppendLine("s ");
-
-            return sb.ToString();
-        }
-        #endregion
-
-        #region TELEGRAM
-        private void SendToTelegram(string message)
-        {
-            var credentials = GetTelegramCredentials();
-            if (credentials == null) return;
-
-            string encodedMessage = Uri.EscapeDataString(message);
-            string url = string.Format(
-                "https://api.telegram.org/bot{0}/sendMessage?chat_id={1}&text={2}&reply_to_message_id={3}&parse_mode=MarkdownV2",
-                credentials.Token, credentials.ChatId, encodedMessage, credentials.TopicId
-            );
-
-            _project.GET(url);
-        }
-
-        private TelegramCredentials GetTelegramCredentials()
+        private void GenerateReports(bool isSuccess)
         {
             try
             {
-                var creds = _project.SqlGet("apikey, extra", "_api", where: "id = 'tg_logger'");
-                var credsParts = creds.Split('¦');
-
-                string token = credsParts[0].Trim();
-                var extraParts = credsParts[1].Trim().Split('/');
-                string chatId = extraParts[0].Trim();
-                string topicId = extraParts[1].Trim();
-
-                return new TelegramCredentials { Token = token, ChatId = chatId, TopicId = topicId };
+                if (isSuccess)
+                {
+                    _logger.Send("Generating success report...");
+                    _reporter.ReportSuccess(
+                        toLog: true,
+                        toTelegram: true,
+                        toDb: true
+                    );
+                }
+                else
+                {
+                    _logger.Send("Generating error report...");
+                    _reporter.ReportError(
+                        toLog: true,
+                        toTelegram: true,
+                        toDb: true,
+                        screenshot: true
+                    );
+                }
             }
             catch (Exception ex)
             {
-                _project.SendWarningToLog($"Failed to get Telegram credentials: {ex.Message}");
-                return null;
+                _project.SendWarningToLog($"Report generation failed: {ex.Message}");
             }
         }
-        #endregion
 
-        #region Screenshot Processing
-        private void CreateScreenshot(string url, string watermark = null)
+        private void SaveCookiesIfNeeded(string acc0, string accRnd)
         {
-            if (string.IsNullOrEmpty(url)) return;
-
             try
             {
-                string screenshotPath = GenerateScreenshotPath();
-                EnsureDirectoryExists(screenshotPath);
+                bool shouldSave = _instance.BrowserType == BrowserType.Chromium &&
+                                !string.IsNullOrEmpty(acc0) &&
+                                string.IsNullOrEmpty(accRnd);
 
-                lock (_lockObject)
+                if (shouldSave)
                 {
-                    if (!string.IsNullOrEmpty(watermark))
-                    {
-                        CreateScreenshotWithWatermark(screenshotPath, watermark);
-                    }
-                    else
-                    {
-                        CreateBasicScreenshot(screenshotPath);
-                    }
+                    string cookiesPath = _project.PathCookies();
+                    new Cookies(_project, _instance).Save("all", cookiesPath);
+                    _logger.Send($"Cookies saved to: {cookiesPath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _project.SendWarningToLog($"Cookie saving failed: {ex.Message}");
+            }
+        }
 
-                    Thread.Sleep(500);
-                    ResizeScreenshot(screenshotPath);
+        private void LogSessionComplete(bool isSuccess)
+        {
+            try
+            {
+                double elapsed = _project.TimeElapsed();
+                string statusText = isSuccess ? "SUCCESS" : "FAILED";
+                
+                string message = $"Session {statusText}. Elapsed: {elapsed}s\n" +
+                               "███ ██ ██  ██ █  █  █  ▓▓▓ ▓▓ ▓▓  ▓  ▓  ▓  ▒▒▒ ▒▒ ▒▒ ▒  ▒  ░░░ ░░  ░░ ░ ░ ░ ░ ░ ░  ░  ░  ░   ░   ░   ░    ░    ░    ░     ░        ░";
+
+                LogColor color = isSuccess ? LogColor.Green : LogColor.Orange;
+                _project.SendToLog(message.Trim(), LogType.Info, true, color);
+            }
+            catch (Exception ex)
+            {
+                _project.SendWarningToLog($"Session logging failed: {ex.Message}");
+            }
+        }
+
+        private void CleanupAndStop(string acc0)
+        {
+            try
+            {
+                // Очищаем глобальную переменную аккаунта
+                if (!string.IsNullOrEmpty(acc0))
+                {
+                    _project.GVar($"acc{acc0}", string.Empty);
                 }
 
-                _project?.SendInfoToLog($"Screenshot created successfully: {screenshotPath}");
+                // Очищаем локальную переменную аккаунта
+                _project.Var("acc0", string.Empty);
+
+                // Останавливаем инстанс
+                _instance.Stop();
+                
+                _logger.Send("Session cleanup completed");
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                _project.SendWarningToLog($"Error during screenshot processing: {e.Message}");
+                _project.SendWarningToLog($"Cleanup failed: {ex.Message}");
+                
+                // Всё равно пытаемся остановить инстанс
+                try
+                {
+                    _instance.Stop();
+                }
+                catch
+                {
+                    // Игнорируем ошибки при остановке
+                }
             }
         }
 
-        private string GenerateScreenshotPath()
-        {
-            var sb = new StringBuilder();
-            sb.Append($"[{_project.Name}]")
-              .Append($"[{Time.Now()}]")
-              .Append(_project.LastExecutedActionId)
-              .Append(".jpg");
-
-            return Path.Combine(_project.Path, ".failed", _project.Variables["projectName"].Value, sb.ToString());
-        }
-
-        private void EnsureDirectoryExists(string filePath)
-        {
-            string directory = Path.GetDirectoryName(filePath);
-            if (!Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-        }
-
-        private void CreateScreenshotWithWatermark(string path, string watermark)
-        {
-            watermark = WrapWM(watermark, 200);
-            ZennoPoster.ImageProcessingWaterMarkTextFromScreenshot(
-                _instance.Port, path, "horizontally", "lefttop", watermark,
-                0, "Iosevka, 15pt, condensed, [255;255;0;0]", 5, 5, 100, ""
-            );
-        }
-
-        private void CreateBasicScreenshot(string path)
-        {
-            ZennoPoster.ImageProcessingCropFromScreenshot(_instance.Port, path, 0, 0, 1280, 720, "pixels");
-        }
-
-        private void ResizeScreenshot(string path)
-        {
-            if (File.Exists(path))
-            {
-                ZennoPoster.ImageProcessingResizeFromFile(path, path, 50, 50, "percent", true, false);
-                Thread.Sleep(300);
-            }
-        }
-
-        private string WrapWM(string input, int limit)
-        {
-            if (string.IsNullOrEmpty(input) || limit <= 0) return input;
-
-            // Split the input into lines
-            var lines = input.Split(new[] { '\n' }, StringSplitOptions.None);
-            var processedLines = new List<string>();
-
-            foreach (var line in lines)
-            {
-                //if (line.Trim().StartsWith("http", StringComparison.OrdinalIgnoreCase))
-               // {
-                    var sb = new StringBuilder();
-                    char[] delims = new[] { '/', '?', '&', '=' };
-                    int len = line.Length;
-                    int pos = 0;
-
-                    while (pos < len)
-                    {
-                        int nextPos = Math.Min(pos + limit, len);
-                        int searchLen = nextPos - pos;
-                        int breakPos = -1;
-
-                        if (searchLen > 0)
-                            breakPos = line.LastIndexOfAny(delims, nextPos - 1, searchLen);
-
-                        if (breakPos <= pos)
-                        {
-                            int takeLen = nextPos - pos;
-                            sb.AppendLine(line.Substring(pos, takeLen));
-                            pos = nextPos;
-                        }
-                        else
-                        {
-                            int takeLen = breakPos - pos + 1;
-
-                            if (takeLen == 1)
-                            {
-                                takeLen = Math.Min(limit, len - pos);
-                            }
-
-                            sb.AppendLine(line.Substring(pos, takeLen));
-                            pos += takeLen;
-                        }
-                    }
-                    processedLines.Add(sb.ToString().TrimEnd('\n'));
-              //  }
-              //  else
-              //  {
-              //      processedLines.Add(line);
-              //  }
-            }
-            return string.Join("\n", processedLines);
-        }
-
-        #endregion
-
-        #region Session Management
-
-        private void ClearAccountState(string acc0)
-        {
-            if (!string.IsNullOrEmpty(acc0))
-            {
-                _project.GVar($"acc{acc0}", "");
-            }
-            _project.Var("acc0", "");
-        }
-
-        private void LogSessionComplete()
-        {
-            string lastQuery = GetSafeVar("lastQuery");
-            bool isSuccess = (!lastQuery.Contains("dropped"));
-            string toLog = $"All jobs done. Elapsed: {_project.TimeElapsed()}s \n███ ██ ██  ██ █  █  █  ▓▓▓ ▓▓ ▓▓  ▓  ▓  ▓  ▒▒▒ ▒▒ ▒▒ ▒  ▒  ░░░ ░░  ░░ ░ ░ ░ ░ ░ ░  ░  ░  ░   ░   ░   ░    ░    ░    ░     ░        ░";
-            LogColor logColor = !isSuccess ? LogColor.Orange : LogColor.Green;
-            _project.SendToLog(toLog.Trim(), LogType.Info, true, logColor);
-        }
-        #endregion
-
-        #region Helper Methods
-        private string GetSafeVar(string varName)
-        {
-            try 
-            { 
-                return _project.Var(varName) ?? string.Empty; 
-            }
-            catch 
-            { 
-                return string.Empty; 
-            }
-        }
-        #endregion
-
-        #region Data Transfer Objects
-        private class ErrorData
-        {
-            public string ActionId { get; set; } = "";
-            public string ActionComment { get; set; } = "";
-            public string ActionGroupId { get; set; } = "";
-            public string Account { get; set; } = "";
-            public string Type { get; set; } = "";
-            public string Message { get; set; } = "";
-            public string StackTrace { get; set; } = "";
-            public string InnerMessage { get; set; } = "";
-            public string Url { get; set; } = "";
-        }
-
-        private class SuccessData
-        {
-            public string Script { get; set; } = "";
-            public string Account { get; set; } = "";
-            public string LastQuery { get; set; } = "";
-            public double ElapsedTime { get; set; }
-            public string CustomMessage { get; set; }
-            public string Timestamp { get; set; }
-        }
-
-        private class TelegramCredentials
-        {
-            public string Token { get; set; }
-            public string ChatId { get; set; }
-            public string TopicId { get; set; }
-        }
-        #endregion
-
-        #region Legacy Methods - For Backward Compatibility
-        [Obsolete("Используйте ErrorReport() напрямую")]
-        public string GetErrorData() => ErrorReport();
-
-        [Obsolete("Используйте ErrorReport(toTg: true)")]
-        public string MkTgReport(string acc, string actionId, string actionComment, string type, string msg, string stackTrace, string innerMsg, string url)
-        {
-            // Для совместимости создаем ErrorData и форматируем
-            var errorData = new ErrorData
-            {
-                Account = acc, ActionId = actionId, ActionComment = actionComment,
-                Type = type, Message = msg, StackTrace = stackTrace, 
-                InnerMessage = innerMsg, Url = url
-            };
-            return FormatTelegramErrorReport(errorData);
-        }
-
-        [Obsolete("Используйте CreateScreenshot() через ErrorReport(screenshot: true)")]
-        public void MkScreenshot(string url, string watermark = null) => CreateScreenshot(url, watermark);
-
-        [Obsolete("Используйте SendToTelegram() или SuccessReport(toTg: true)")]
-        public void ToTelegram(string reportString) => SendToTelegram(reportString);
-
-        [Obsolete("Используйте SuccessReport(toTg: true)")]
-        public void SuccessToTelegram(string message = null) => SuccessReport(toTg: true, customMessage: message);
         #endregion
     }
 
+    /// <summary>
+    /// Extension методы для удобного использования
+    /// </summary>
     public static partial class ProjectExtensions
     {
+        /// <summary>
+        /// Быстрый вызов завершения сессии
+        /// </summary>
         public static void Finish(this IZennoPosterProjectModel project, Instance instance)
         {
-            new Disposer(project,instance).FinishSession();
+            new Disposer(project, instance).FinishSession();
+        }
+
+        /// <summary>
+        /// Быстрый вызов отчета об ошибке
+        /// </summary>
+        public static string ReportError(this IZennoPosterProjectModel project, Instance instance, 
+            bool toLog = true, bool toTelegram = false, bool toDb = false, bool screenshot = false)
+        {
+            return new Disposer(project, instance).ErrorReport(toLog, toTelegram, toDb, screenshot);
+        }
+
+        /// <summary>
+        /// Быстрый вызов отчета об успехе
+        /// </summary>
+        public static string ReportSuccess(this IZennoPosterProjectModel project, Instance instance,
+            bool toLog = true, bool toTelegram = false, bool toDb = false, string customMessage = null)
+        {
+            return new Disposer(project, instance).SuccessReport(toLog, toTelegram, toDb, customMessage);
         }
     }
+
+   
 }

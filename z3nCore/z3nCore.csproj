@@ -98,7 +98,6 @@
     <Compile Include="Browser\Traffic.cs" />
     <Compile Include="Core\Disposer.cs" />
     <Compile Include="Core\Init.cs" />
-    <Compile Include="Core\Reporter.cs" />
     <Compile Include="MethodExtensions\ListExtentions.cs" />
     <Compile Include="MethodExtensions\StringExtentions.cs" />
     <Compile Include="ProjectExtentions\Exceptions.cs" />
@@ -106,6 +105,7 @@
     <Compile Include="ProjectExtentions\Logger.cs" />
     <Compile Include="ProjectExtentions\Time.cs" />
     <Compile Include="ProjectExtentions\Utils.cs" />
+    <Compile Include="Reports\Reporter.cs" />
     <Compile Include="Security\Cryptography.cs" />
     <Compile Include="Security\ISAFU.cs" />
     <Compile Include="Utilities\Accountant.cs" />

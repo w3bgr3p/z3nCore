@@ -77,10 +77,7 @@ namespace z3nCore
             if (resetSessionId) project.Var("varSessionId",(DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString());
         }
         
-        public static string ErrorReport(this IZennoPosterProjectModel project, Instance instance, bool log = false, bool toTg = false, bool toDb = false, bool screensot = false)
-        {
-            return new Reporter(project,instance,log).ErrorReport(toTg, toDb, screensot);
-        }
+       
     }
 
 }
