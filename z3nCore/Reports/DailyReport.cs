@@ -881,7 +881,7 @@ public class DailyReport
 
     public static partial class ProjectExtensions
     {
-        public static void DalilyReport(this IZennoPosterProjectModel project, bool call = false)
+        public static void ReportDailyHtml(this IZennoPosterProjectModel project, bool call = false)
         {
             string user = project.ExecuteMacro("{-Environment.CurrentUser-}");
             
