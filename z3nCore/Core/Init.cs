@@ -711,7 +711,6 @@ namespace z3nCore
                     {
                         _project.Var("acc0", string.Empty);
                         _project.Var("TimeToChill", "True");
-                        //throw new Exception($"TimeToChill");
                     }
                     break;
                 case "Oldest":
@@ -719,7 +718,6 @@ namespace z3nCore
                     {
                         _project.Var("acc0", string.Empty);
                         _project.Var("TimeToChill", "True");
-                        //throw new Exception($"TimeToChill");
                     }
                     break;
                 case "NewRandom":

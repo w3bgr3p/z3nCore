@@ -83,7 +83,7 @@ namespace z3nCore
 
         private bool IsSessionSuccessful()
         {
-            string lastQuery = _project.Var("lastQuery") ?? string.Empty;
+            string lastQuery = _project.Var("lastQuery");
             return !lastQuery.Contains("dropped");
         }
 

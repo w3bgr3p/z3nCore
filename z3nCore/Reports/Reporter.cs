@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Collections.Generic;
+using System.Windows.Input;
 using ZennoLab.InterfacesLibrary.Enums.Log;
 
 namespace z3nCore
@@ -21,7 +22,8 @@ namespace z3nCore
         private readonly Instance _instance;
         private readonly string _projectScript;
         private readonly object _lockObject = new object();
-
+        private readonly string _ts;
+        private readonly int _completionTime;
         #endregion
 
         #region Constructor
@@ -31,6 +33,8 @@ namespace z3nCore
             _project = project ?? throw new ArgumentNullException(nameof(project));
             _instance = instance ?? throw new ArgumentNullException(nameof(instance));
             _projectScript = project.Var("projectScript");
+            _ts = $"{DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffZ}";
+            _completionTime = _project.TimeElapsed();
         }
 
         #endregion
@@ -40,7 +44,7 @@ namespace z3nCore
         /// <summary>
         /// Создает и отправляет отчет об ошибке
         /// </summary>
-        public string ReportError(bool toLog = true, bool toTelegram = false, bool toDb = false, bool screenshot = false)
+        public string ReportError(bool toLog = true, bool toTelegram = false, bool toDb = true, bool screenshot = false)
         {
             var errorData = ExtractErrorData();
             if (errorData == null)
@@ -98,7 +102,8 @@ namespace z3nCore
 
             if (toDb)
             {
-                _project.DbUpd($"status = 'relaxing', last = '+ {successData.Timestamp}'", log: true);
+                string dbUpdate = FormatSuccessForDb(successData);
+                _project.DbUpd($"status = 'relaxing', last = '{dbUpdate}'", log: true);
             }
 
             return logReport;
@@ -147,8 +152,8 @@ namespace z3nCore
             return new SuccessData
             {
                 Script = Path.GetFileName(_projectScript),
-                Account = _project.Var("acc0") ?? string.Empty,
-                LastQuery = _project.Var("lastQuery") ?? string.Empty,
+                Account = _project.Var("acc0"),
+                LastQuery = _project.Var("lastQuery"),
                 ElapsedTime = _project.TimeElapsed(),
                 CustomMessage = customMessage,
                 Timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
@@ -221,7 +226,29 @@ namespace z3nCore
 
         private string FormatErrorForDb(ErrorData data)
         {
-            return $"- {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffZ}\n{FormatErrorForLog(data)}";
+            var sb = new StringBuilder();
+            
+            sb.AppendLine($"- {_ts} {_completionTime}");
+            if (!string.IsNullOrEmpty(data.Account)) 
+                sb.AppendLine($"acc: {data.Account}");
+            if (!string.IsNullOrEmpty(data.ActionId)) 
+                sb.AppendLine($"id: {data.ActionId}");
+            if (!string.IsNullOrEmpty(data.ActionComment)) 
+                sb.AppendLine($"actionComment: {data.ActionComment}");
+            if (!string.IsNullOrEmpty(data.Type)) 
+                sb.AppendLine($"type: {data.Type}");
+            if (!string.IsNullOrEmpty(data.Message)) 
+                sb.AppendLine($"msg: {data.Message}");
+            if (!string.IsNullOrEmpty(data.InnerMessage)) 
+                sb.AppendLine($"innerMsg: {data.InnerMessage}");
+            if (!string.IsNullOrEmpty(data.StackTrace)) 
+                sb.AppendLine($"stackTrace: {data.StackTrace}");
+            if (!string.IsNullOrEmpty(data.Url)) 
+                sb.AppendLine($"url: {data.Url}");
+            if (!string.IsNullOrEmpty(data.Screenshot)) 
+                sb.AppendLine($"screenshot: {data.Screenshot}");
+            return sb.ToString().Replace("\\", "");
+            
         }
 
         #endregion
@@ -255,7 +282,6 @@ namespace z3nCore
 
             return sb.ToString().Replace(@"\", "");
         }
-
         private string FormatSuccessForTelegram(SuccessData data)
         {
             var sb = new StringBuilder();
@@ -282,6 +308,17 @@ namespace z3nCore
                 .AppendLine("s ");
 
             return sb.ToString();
+        }
+        private string FormatSuccessForDb(SuccessData data)
+        {
+            
+            var sb = new StringBuilder();
+            sb.AppendLine($"+ {_ts} {_completionTime}");
+            if (!string.IsNullOrEmpty(data.Account)) 
+                sb.AppendLine($"acc: {data.Account}");
+            if (!string.IsNullOrEmpty(data.LastQuery)) 
+                sb.AppendLine($"lastQuery: {data.LastQuery.Replace("'", "''")}");
+            return sb.ToString().Replace("\\", "");
         }
 
         #endregion
@@ -485,6 +522,8 @@ namespace z3nCore
             public string StackTrace { get; set; } = string.Empty;
             public string InnerMessage { get; set; } = string.Empty;
             public string Url { get; set; } = string.Empty;
+            
+            public string Screenshot { get; set; } = string.Empty;
         }
 
         private class SuccessData

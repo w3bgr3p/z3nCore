@@ -105,14 +105,14 @@
     <Compile Include="ProjectExtentions\Logger.cs" />
     <Compile Include="ProjectExtentions\Time.cs" />
     <Compile Include="ProjectExtentions\Utils.cs" />
+    <Compile Include="Reports\Accountant.cs" />
+    <Compile Include="Reports\DailyReport.cs" />
     <Compile Include="Reports\Reporter.cs" />
     <Compile Include="Security\Cryptography.cs" />
     <Compile Include="Security\ISAFU.cs" />
-    <Compile Include="Utilities\Accountant.cs" />
     <Compile Include="Utilities\Converter.cs" />
     <Compile Include="Utilities\Debug.cs" />
     <Compile Include="Utilities\Helper.cs" />
-    <Compile Include="Utilities\DailyReport.cs" />
     <Compile Include="Utilities\Snapper.cs" />
     <Compile Include="W3b\AptosTools.cs" />
     <Compile Include="W3b\CosmosTools.cs" />
@@ -121,7 +121,6 @@
     <Compile Include="W3b\SuiTools.cs" />
     <Compile Include="Wallets\Keplr.cs" />
     <Compile Include="Wallets\Zerion.cs" />
-    <None Include="cmnc0de.cs" />
     <Compile Include="Browser\InstanceExtensions.cs" />
     <Compile Include="ProjectExtentions\Rnd.cs" />
     <Compile Include="ProjectExtentions\Vars.cs" />
