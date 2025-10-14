@@ -13,8 +13,8 @@ namespace z3nCore
 {
     public class Logger
     {
-        protected readonly IZennoPosterProjectModel _project;
-        protected bool _logShow = false;
+        private readonly IZennoPosterProjectModel _project;
+        private bool _logShow = false;
         private string _emoji = null;
         private readonly bool _persistent;
         private readonly long _t0;
@@ -25,7 +25,7 @@ namespace z3nCore
             _logShow = log || _project.Var("debug") == "True";
             _emoji = classEmoji;
             _persistent = persistent;
-            _t0 = Time.Elapsed();
+            _t0 = Time.Elapsed(useMs:true);
         }
 
         private (bool acc, bool port, bool time, bool memory, bool caller, bool wrap, bool force) GetConfigFlags()
@@ -122,11 +122,11 @@ namespace z3nCore
         
                     if (_persistent) 
                     {
-                        long elapsedSeconds = Time.Elapsed(_t0);  
-                        string elapsedStr = elapsedSeconds >= 3600 ? $"{elapsedSeconds / 3600}h" :
-                            elapsedSeconds >= 60 ? $"{elapsedSeconds / 60}m {elapsedSeconds % 60}s" :
-                            $"{elapsedSeconds}s";
-                        sb.Append($"  🕐 [{elapsedStr}]");
+                        long elapsedMs = Time.Elapsed(_t0,useMs:true);  
+                        //string elapsedStr = elapsedSeconds >= 3600 ? $"{elapsedSeconds / 3600}h" :
+                        //    elapsedSeconds >= 60 ? $"{elapsedSeconds / 60}m {elapsedSeconds % 60}s" :
+                        //    $"{elapsedSeconds}s";
+                        sb.Append($"  🕐 [{elapsedMs}]");
                     }
                 }
                 catch { }

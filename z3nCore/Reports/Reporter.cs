@@ -16,7 +16,7 @@ namespace z3nCore
     /// </summary>
     public class Reporter
     {
-        #region Fields
+        #region Fields & Constructor
 
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
@@ -24,9 +24,7 @@ namespace z3nCore
         private readonly object _lockObject = new object();
         private readonly string _ts;
         private readonly int _completionTime;
-        #endregion
 
-        #region Constructor
 
         public Reporter(IZennoPosterProjectModel project, Instance instance)
         {
@@ -83,7 +81,7 @@ namespace z3nCore
         /// <summary>
         /// Создает и отправляет отчет об успехе
         /// </summary>
-        public string ReportSuccess(bool toLog = true, bool toTelegram = false, bool toDb = false, string customMessage = null)
+        public string ReportSuccess(bool toLog = true, bool toTelegram = false, bool toDb = true, string customMessage = null)
         {
             var successData = ExtractSuccessData(customMessage);
             
@@ -103,7 +101,7 @@ namespace z3nCore
             if (toDb)
             {
                 string dbUpdate = FormatSuccessForDb(successData);
-                _project.DbUpd($"status = 'relaxing', last = '{dbUpdate}'", log: true);
+                _project.DbUpd($"status = 'relaxing', last = '{dbUpdate}'");
             }
 
             return logReport;

@@ -45,7 +45,7 @@ namespace z3nCore
             string accRnd = _project.Var("accRnd");
             bool isSuccess = IsSessionSuccessful();
 
-            // Генерируем отчеты если есть аккаунт
+
             if (!string.IsNullOrEmpty(acc0))
             {
                 GenerateReports(isSuccess);

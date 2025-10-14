@@ -50,16 +50,20 @@ namespace z3nCore
                 throw new ArgumentException($"unexpected format {o}");
         }
         
-        public static long Elapsed(long startTime = 0)
+        public static long Elapsed(long startTime = 0, bool useMs = false)
         {
             if (startTime != 0)
             {
-                long currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long currentTime = useMs 
+                    ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    : DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                 return (currentTime - startTime);
             }
             else
             {
-                return DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                return useMs 
+                    ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    : DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             }
         }
         
@@ -158,23 +162,28 @@ namespace z3nCore
                 Thread.Sleep(new Random().Next(min, max) * 1000);
         }
         
-        public static long Elapsed(this IZennoPosterProjectModel project, long startTime = 0, bool log = true)
+        public static long Elapsed(this IZennoPosterProjectModel project, long startTime = 0L, bool log = true, bool useMs = false)
         {
-            long result = Time.Elapsed(startTime);  
-            if (log && startTime != 0)  
+            long result = Time.Elapsed(startTime, useMs:useMs);
+    
+            if (log && startTime != 0)
             {
-                project.log($"{result}s");
+                string unit = useMs ? "ms" : "s";
+                project.log($"{result}{unit}");
             }
             return result;
         }
-        public static int Elapsed(this IZennoPosterProjectModel project, string varName = "varSessionId")
+
+        public static long Elapsed(this IZennoPosterProjectModel project, string varName = "varSessionId", bool useMs = false)
         {
             var start = project.Variables[varName].Value;
-            long currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             long startTime = long.Parse(start);
-            int difference = (int)(currentTime - startTime);
-
-            return difference;
+    
+            long currentTime = useMs 
+                ? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                : DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    
+            return currentTime - startTime;
         }
 
         public static void StartSession(this IZennoPosterProjectModel project) 

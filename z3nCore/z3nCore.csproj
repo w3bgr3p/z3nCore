@@ -114,6 +114,7 @@
     <Compile Include="Utilities\Debug.cs" />
     <Compile Include="Utilities\Helper.cs" />
     <Compile Include="Utilities\Snapper.cs" />
+    <Compile Include="Utilities\Sys.cs" />
     <Compile Include="W3b\AptosTools.cs" />
     <Compile Include="W3b\CosmosTools.cs" />
     <Compile Include="W3b\EvmTools.cs" />

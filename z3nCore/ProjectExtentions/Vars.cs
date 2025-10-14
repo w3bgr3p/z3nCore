@@ -44,6 +44,32 @@ namespace z3nCore
             }
             return string.Empty;
         }
+        
+        public static int Int(this IZennoPosterProjectModel project, string var)
+        {
+            int value = 0;
+            try
+            {
+                value = int.Parse(project.Var(var));
+            }
+            catch
+            {
+            }
+            return value;
+        }
+        public static decimal Decimal(this IZennoPosterProjectModel project, string var)
+        {
+            decimal value = 0;
+            try
+            {
+                value = decimal.Parse(project.Var(var));
+            }
+            catch
+            {
+            }
+            return value;
+        }
+
 
         public static string VarRnd(this IZennoPosterProjectModel project, string var)
         {
@@ -107,6 +133,8 @@ namespace z3nCore
             }
         }
 
+        
+        
     }
 
     public static class Constantes
@@ -243,6 +271,9 @@ namespace z3nCore
         }
         
         
+        
+        
+        
     }
 
 
@@ -255,8 +286,6 @@ namespace z3nCore
         public static string GVar(this IZennoPosterProjectModel project, string var)
         {
             string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
-            //string globalVar = $"{project.ProjectName()}_" + var;
-            
             string value = string.Empty;
             lock (LockObject)
             {
@@ -264,17 +293,13 @@ namespace z3nCore
                 {
                     value = project.GlobalVariables[nameSpase, var].Value;
                 }
-                catch //(Exception e)
-                {
-                    //project.SendInfoToLog(e.Message);
-                }
-            }
+                catch { }
+            } 
             return value;
         }
         public static string GVar(this IZennoPosterProjectModel project, string var, object value)
         {
             string nameSpase = project.ExecuteMacro("{-Environment.CurrentUser-}");
-            //string globalVar = $"{project.ProjectName()}_" + var;
             lock (LockObject)
             {
                 try
@@ -287,10 +312,7 @@ namespace z3nCore
                     {
                         project.GlobalVariables.SetVariable(nameSpase, var, value.ToString());
                     }
-                    catch //(Exception e)
-                    {
-                        //project.SendWarningToLog(e.Message);
-                    }
+                    catch { }
 
                 }
             }

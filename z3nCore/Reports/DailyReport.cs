@@ -7,7 +7,7 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore.Utilities
 {
-public class DailyReport
+    public class DailyReport
     {
         public class ProjectData
         {
@@ -91,7 +91,8 @@ public class DailyReport
 
         public class FarmReportGenerator
         {
-            public static string GenerateHtmlReport(List<ProjectData> projects, DateTime reportDate, string userId = null)
+            public static string GenerateHtmlReport(List<ProjectData> projects, DateTime reportDate,
+                string userId = null)
             {
                 var html = new StringBuilder();
 
@@ -503,11 +504,16 @@ public class DailyReport
 
                 html.AppendLine("                    <div class='heatmap-legend'>");
                 html.AppendLine("                        <span>Legend:</span>");
-                html.AppendLine("                        <div class='legend-item'><div class='legend-box success'></div> Today's Success</div>");
-                html.AppendLine("                        <div class='legend-item'><div class='legend-box error'></div> Today's Error</div>");
-                html.AppendLine("                        <div class='legend-item'><div class='legend-box success-old'></div> Old Success</div>");
-                html.AppendLine("                        <div class='legend-item'><div class='legend-box error-old'></div> Old Error</div>");
-                html.AppendLine("                        <div class='legend-item'><div class='legend-box notdone'></div> Not touched</div>");
+                html.AppendLine(
+                    "                        <div class='legend-item'><div class='legend-box success'></div> Today's Success</div>");
+                html.AppendLine(
+                    "                        <div class='legend-item'><div class='legend-box error'></div> Today's Error</div>");
+                html.AppendLine(
+                    "                        <div class='legend-item'><div class='legend-box success-old'></div> Old Success</div>");
+                html.AppendLine(
+                    "                        <div class='legend-item'><div class='legend-box error-old'></div> Old Error</div>");
+                html.AppendLine(
+                    "                        <div class='legend-item'><div class='legend-box notdone'></div> Not touched</div>");
                 html.AppendLine("                    </div>");
 
                 html.AppendLine("                    <div class='heatmap-grid'>");
@@ -582,14 +588,14 @@ public class DailyReport
                                     errorRate.ToString("F1") + "%; background: #da3633;'></div>");
                     html.AppendLine("                                        </div>");
                     html.AppendLine("                                    </div>");
-                    
+
                     html.AppendLine("                                    <div class='project-stats'>");
                     html.AppendLine("                                        <div class='stat-row'>");
                     html.AppendLine("                                            <span>✔️ Successful: </span>");
                     html.AppendLine("                                            <span class='stat-good'>" +
                                     successCount + "</span>");
                     html.AppendLine("                                        </div>");
-                    
+
                     if (successWithTime > 0)
                     {
                         html.AppendLine("                                        <div class='stat-row'>");
@@ -600,13 +606,13 @@ public class DailyReport
                                         avgSuccessTime.ToString("F1") + "s</span>");
                         html.AppendLine("                                        </div>");
                     }
-                    
+
                     html.AppendLine("                                        <div class='stat-row'>");
                     html.AppendLine("                                            <span>❌ Failed:  </span>");
                     html.AppendLine("                                            <span class='stat-bad'>" + errorCount +
                                     "</span>");
                     html.AppendLine("                                        </div>");
-                    
+
                     //time err
                     if (errorWithTime > 0)
                     {
@@ -618,14 +624,14 @@ public class DailyReport
                                         avgErrorTime.ToString("F1") + "s</span>");
                         html.AppendLine("                                        </div>");
                     }
-                    
+
                     //succsess rate
                     html.AppendLine("                                        <div class='stat-row'>");
                     html.AppendLine("                                            <span>[✔️/❌] Rate: </span>");
                     html.AppendLine("                                            <span class='" + statusClass + "'>" +
                                     successRate.ToString("F1") + "%</span>");
                     html.AppendLine("                                        </div>");
-                    
+
 
 
 
@@ -653,9 +659,13 @@ public class DailyReport
 
                             // START === Изменения для бледных цветов ===
                             bool isOld = false;
-                            if (DateTime.TryParse(ts, null, System.Globalization.DateTimeStyles.RoundtripKind, out DateTime timestamp))
+                            if (DateTime.TryParse(ts, null, System.Globalization.DateTimeStyles.RoundtripKind,
+                                    out DateTime timestamp))
                             {
-                                isOld = timestamp.Date < reportDate.Date;
+
+                                //isOld = timestamp.ToUniversalTime().Date < DateTime.UtcNow.Date;
+                                isOld = timestamp.Date < DateTime.UtcNow.Date;
+
                             }
 
                             if (status == "+")
@@ -668,7 +678,7 @@ public class DailyReport
                             }
                             // END ===== Изменения для бледных цветов =====
 
-                            tooltipData = "Аккаунт #" + accStr + "||" +
+                            tooltipData = "account #" + accStr + "||" +
                                           proj.ProjectName + "||" +
                                           ts + "||" +
                                           completionTime + "||" +
@@ -677,7 +687,7 @@ public class DailyReport
                         }
                         else
                         {
-                            tooltipData = "Аккаунт #" + accStr + "||" +
+                            tooltipData = "account #" + accStr + "||" +
                                           proj.ProjectName + "||" +
                                           "—||" +
                                           "||" +
@@ -740,7 +750,7 @@ public class DailyReport
                 if (emptyProjects.Count > 0)
                 {
                     html.AppendLine("        <div class='section'>");
-                    html.AppendLine("            <h2>📁 Проекты без активности</h2>");
+                    html.AppendLine("            <h2>💤 idle Projects</h2>");
                     html.AppendLine("            <div class='project-grid'>");
 
                     foreach (var project in emptyProjects)
@@ -749,7 +759,7 @@ public class DailyReport
                         html.AppendLine("                    <div class='project-name'>" + project.ProjectName +
                                         "</div>");
                         html.AppendLine(
-                            "                    <div style='color: #8b949e; font-size: 12px;'>Нет данных за сегодня</div>");
+                            "                    <div style='color: #8b949e; font-size: 12px;'>no data</div>");
                         html.AppendLine("                </div>");
                     }
 
@@ -789,11 +799,11 @@ public class DailyReport
                         }
                         
                         if (status === 'success') {
-                            content += '<div class=""tooltip-status success"">✓ Успешно</div>';
+                            content += '<div class=""tooltip-status success"">✓ Success</div>';
                         } else if (status === 'error') {
-                            content += '<div class=""tooltip-status error"">✗ Ошибка</div>';
+                            content += '<div class=""tooltip-status error"">✗ Failed</div>';
                         } else {
-                            content += '<div style=""color: #8b949e; font-size: 11px;"">Не выполнено</div>';
+                            content += '<div style=""color: #8b949e; font-size: 11px;"">notTouched</div>';
                         }
                         
                         if (report && report.trim() !== '') {
@@ -847,14 +857,14 @@ public class DailyReport
                         }
                         
                         if (status === 'success') {
-                            copyText += '\nСтатус: Успешно';
+                            copyText += '\nStatus: Success';
                         } else if (status === 'error') {
-                            copyText += '\nСтатус: Ошибка';
+                            copyText += '\nStatus: Failed';
                             if (report && report.trim() !== '') {
-                                copyText += '\n\nОшибка:\n' + report;
+                                copyText += '\n\nFailed:\n' + report;
                             }
                         } else {
-                            copyText += '\nСтатус: Не выполнено';
+                            copyText += '\nStatus: notTouched';
                         }
                         
                         navigator.clipboard.writeText(copyText).then(function() {
@@ -864,7 +874,7 @@ public class DailyReport
                                 cell.style.border = originalBorder;
                             }, 300);
                         }).catch(function(err) {
-                            console.error('Ошибка копирования:', err);
+                            console.error('Copy err:', err);
                         });
                     });
                 });
@@ -877,8 +887,10 @@ public class DailyReport
             }
         }
     }
-
-
+}
+namespace z3nCore
+{
+    using z3nCore.Utilities;
     public static partial class ProjectExtensions
     {
         public static void ReportDailyHtml(this IZennoPosterProjectModel project, bool call = false)
@@ -908,5 +920,4 @@ public class DailyReport
             if (call) System.Diagnostics.Process.Start(tempPath);
         }
     }
-
 }

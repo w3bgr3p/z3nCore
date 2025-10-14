@@ -111,7 +111,6 @@ namespace z3nCore
 
         public static void DbUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, string key = "id", object acc = null, string where = "")
         {
-            if (toUpd.Contains("relax")) log = true;
             try { project.Var("lastQuery", toUpd); } catch (Exception Ex){ project.SendWarningToLog(Ex.Message, true); }
             project.SqlUpd(toUpd, tableName, log, thrw, key, acc, where);
 

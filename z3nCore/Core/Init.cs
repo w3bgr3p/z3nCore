@@ -473,8 +473,8 @@ namespace z3nCore
             string acc0 = _project.Var("acc0");
             if (string.IsNullOrEmpty(acc0)) throw new ArgumentException("acc0 can't be null or empty");
             
-            _project.Variables["instancePort"].Value = _instance.Port.ToString();
-            _logger.Send($"init browser in port: {_instance.Port}");
+            _project.Variables["instancePort"].Value = _instance.FormTitle.Replace("Instance ","");;
+            _logger.Send($"init {_instance.FormTitle}");
 
             string webGlData = _project.SqlGet("webgl", "_instance");
             SetDisplay(webGlData);
@@ -798,8 +798,10 @@ namespace z3nCore
                     }
                     _logger.Warn($"no balance required: [{required}${tiker}] in  {chain}. native is [{native}] for {address}");
                 }
-                _project.DbUpd($"status = '! noBalance', daily = '{Time.Cd(60)}'");
-                throw new Exception($"!W no balance required: [{minNativeInUsd}] in chains {_project.Var("gateOnchainChain")}");
+                var toDb = $"- {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffZ} 0\n";
+                toDb += $"no balance required: [{minNativeInUsd}] in chains {_project.Var("gateOnchainChain")}";
+                _project.DbUpd($"status = 'lowBalance', last = '{toDb}' daily = '{Time.Cd(60)}'");
+                throw new Exception(toDb);
             }
         }
 

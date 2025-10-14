@@ -144,19 +144,6 @@ namespace z3nCore
     
             return restrictedHeaders.Contains(headerName);
         }
-
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         
         public string GET(
             string url,
