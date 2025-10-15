@@ -225,7 +225,6 @@ namespace z3nCore
 
             string acc0 = _project.Var("acc0");
             string accRnd = _project.Var("accRnd");
-            _logger.Send($"Session context: acc0='{acc0}', accRnd='{accRnd}', browserType={_instance.BrowserType}");
 
             bool isSuccess = IsSessionSuccessful();
             _logger.Send($"Session status determined: {(isSuccess ? "SUCCESS" : "FAILED")}");
@@ -325,7 +324,6 @@ namespace z3nCore
 
                 if (!shouldSave)
                 {
-                    _logger.Send($"Cookies save skipped: browserType={_instance.BrowserType}, acc0Present={!string.IsNullOrEmpty(acc0)}, accRndEmpty={string.IsNullOrEmpty(accRnd)}");
                     return;
                 }
 
