@@ -426,26 +426,25 @@ namespace z3nCore
 
         #region Browser & Instance Management
 
-        private void LaunchBrowser(string cfgBrowser = null)
+        private string LaunchBrowser(string cfgBrowser = null)
         {
             string acc0 = _project.Var("acc0");
             if (string.IsNullOrEmpty(acc0)) 
                 throw new ArgumentException("acc0 can't be null or empty");
             var pathProfile = _project.PathProfileFolder();
-            //string pathProfile = Path.Combine(_project.Var("profiles_folder"), "accounts", "profilesFolder", acc0);
             _project.Var("pathProfileFolder", pathProfile);
             
             if (string.IsNullOrEmpty(cfgBrowser))
                 cfgBrowser = _project.Var("cfgBrowser");
-            var browser = ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium;
+            var browser = BrowserType.Chromium;
 
             switch (cfgBrowser)
             {
                 case "WithoutBrowser":
-                    browser = ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.WithoutBrowser;
+                    browser = BrowserType.WithoutBrowser;
                     break;
                 case "ZennoBrowser":
-                    browser = ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.ChromiumFromZB;	
+                    browser = BrowserType.ChromiumFromZB;	
                     break;
                 case "Chromium":
                     break;	
@@ -455,7 +454,7 @@ namespace z3nCore
             }
             
             if (cfgBrowser == "WithoutBrowser")
-                _instance.Launch(ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.WithoutBrowser, false);
+                _instance.Launch(BrowserType.WithoutBrowser, false);
             else
             {
                 ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings settings = 
@@ -466,6 +465,10 @@ namespace z3nCore
                 settings.UseProfile = true;
                 _instance.Launch(settings);
             }
+            var started = _instance.FormTitle.Replace("Instance ","").Trim('(',')');
+            _project.Variables["instancePort"].Value = started;
+            _logger.Send($"started {cfgBrowser} in  {started}");
+            return started;
         }
 
         private void SetBrowser(bool strictProxy = true, string cookies = null, bool log = false)
@@ -482,7 +485,6 @@ namespace z3nCore
             bool goodProxy = new NetHttp(_project, log).ProxySet(_instance);
             if (strictProxy && !goodProxy) throw new Exception($"!E bad proxy");
             var cookiePath = _project.PathCookies();
-            //string cookiePath = Path.Combine(_project.Var("profiles_folder"), "accounts", "cookies", acc0 + ".json");
             _project.Var("pathCookies", cookiePath);
 
             if (cookies != null) 

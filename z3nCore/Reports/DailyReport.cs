@@ -48,7 +48,7 @@ namespace z3nCore.Utilities
 
                     if (!All.ContainsKey(acc))
                     {
-                        All.Add(acc, new string[] { completionStatus, ts, completionSec, report });
+                        All.Add(acc, new [] { completionStatus, ts, completionSec, report });
                     }
                 }
 
@@ -91,8 +91,7 @@ namespace z3nCore.Utilities
 
         public class FarmReportGenerator
         {
-            public static string GenerateHtmlReport(List<ProjectData> projects, DateTime reportDate,
-                string userId = null)
+            public static string GenerateHtmlReport(List<ProjectData> projects, string userId = null)
             {
                 var html = new StringBuilder();
 
@@ -100,7 +99,7 @@ namespace z3nCore.Utilities
                 List<string[]> zennoProcesses = new List<string[]>();
                 try
                 {
-                    var zp = Utilities.Debugger.ZennoProcesses();
+                    var zp = Debugger.ZennoProcesses();
                     foreach (string[] arr in zp)
                     {
                         zennoProcesses.Add(arr);
@@ -141,7 +140,7 @@ namespace z3nCore.Utilities
                     }
                 }
 
-                var title = $"Report {userId} {reportDate.ToString("dd.MM.yyyy [HH:mm:ss]")}";
+                var title = $"Report {DateTime.Now.ToString("dd.MM.yyyy [HH:mm:ss]") } id: {userId}";
                 html.AppendLine("<!DOCTYPE html>");
                 html.AppendLine("<html lang='ru'>");
                 html.AppendLine("<head>");
@@ -235,8 +234,12 @@ namespace z3nCore.Utilities
                 }
                 .legend-box.success { background: #238636; }
                 .legend-box.error { background: #da3633; }
-                .legend-box.success-old { background: #1a4221; }
-                .legend-box.error-old { background: #5e2322; }
+                .legend-box.success-yesterday { background: #1f5a2e; }
+                .legend-box.error-yesterday { background: #8b2c29; }
+                .legend-box.success-2days { background: #1a4221; }
+                .legend-box.error-2days { background: #5e2322; }
+                .legend-box.success-old { background: #0d1f12; }
+                .legend-box.error-old { background: #3d1716; }
                 .legend-box.notdone { background: transparent; }
                 
                 .heatmap-grid {
@@ -337,8 +340,12 @@ namespace z3nCore.Utilities
                 }
                 .heatmap-cell.success { background: #238636; border-color: #2ea043; }
                 .heatmap-cell.error { background: #da3633; border-color: #f85149; }
-                .heatmap-cell.success-old { background: #1a4221; border-color: #2c5832; }
-                .heatmap-cell.error-old { background: #5e2322; border-color: #723332; }
+                .heatmap-cell.success-yesterday { background: #1f5a2e; border-color: #2a6f3c; }
+                .heatmap-cell.error-yesterday { background: #8b2c29; border-color: #a33a37; }
+                .heatmap-cell.success-2days { background: #1a4221; border-color: #2c5832; }
+                .heatmap-cell.error-2days { background: #5e2322; border-color: #723332; }
+                .heatmap-cell.success-old { background: #0d1f12; border-color: #1a3320; }
+                .heatmap-cell.error-old { background: #3d1716; border-color: #522020; }
                 .heatmap-cell:hover {
                     transform: scale(1.3);
                     z-index: 10;
@@ -504,16 +511,18 @@ namespace z3nCore.Utilities
 
                 html.AppendLine("                    <div class='heatmap-legend'>");
                 html.AppendLine("                        <span>Legend:</span>");
-                html.AppendLine(
-                    "                        <div class='legend-item'><div class='legend-box success'></div> Today's Success</div>");
-                html.AppendLine(
-                    "                        <div class='legend-item'><div class='legend-box error'></div> Today's Error</div>");
-                html.AppendLine(
-                    "                        <div class='legend-item'><div class='legend-box success-old'></div> Old Success</div>");
-                html.AppendLine(
-                    "                        <div class='legend-item'><div class='legend-box error-old'></div> Old Error</div>");
-                html.AppendLine(
-                    "                        <div class='legend-item'><div class='legend-box notdone'></div> Not touched</div>");
+                
+                //html.AppendLine("                        <div class='legend-item'><div class='legend-box success'></div> Today ✓</div>");
+                //html.AppendLine("                        <div class='legend-item'><div class='legend-box error'></div> Today ✗</div>");
+                html.AppendLine("                        <div class='legend-item'><div class='legend-box success'></div><div class='legend-box error'></div> Today</div>");
+                //html.AppendLine("                        <div class='legend-item'> Yesterday ✓</div>");
+                html.AppendLine("                        <div class='legend-item'><div class='legend-box success-yesterday'></div><div class='legend-box error-yesterday'></div> Yesterday</div>");
+                //html.AppendLine("                        <div class='legend-item'> 2 days ago ✓</div>");
+                html.AppendLine("                        <div class='legend-item'><div class='legend-box success-2days'></div><div class='legend-box error-2days'></div> 2 days ago</div>");
+                //html.AppendLine("                        <div class='legend-item'> 3+ days ✓</div>");
+                html.AppendLine("                        <div class='legend-item'><div class='legend-box success-old'></div><div class='legend-box error-old'></div> 3+ days</div>");
+                html.AppendLine("                        <div class='legend-item'><div class='legend-box notdone'></div> Not touched</div>");
+                
                 html.AppendLine("                    </div>");
 
                 html.AppendLine("                    <div class='heatmap-grid'>");
@@ -658,23 +667,31 @@ namespace z3nCore.Utilities
                             var report = data[3];
 
                             // START === Изменения для бледных цветов ===
-                            bool isOld = false;
+                            string ageClass = "";
                             if (DateTime.TryParse(ts, null, System.Globalization.DateTimeStyles.RoundtripKind,
                                     out DateTime timestamp))
                             {
-
-                                //isOld = timestamp.ToUniversalTime().Date < DateTime.UtcNow.Date;
-                                isOld = timestamp.Date < DateTime.UtcNow.Date;
-
+                                var today = DateTime.UtcNow.Date;
+                                var recordDate = timestamp.Date;
+                                var daysDiff = (today - recordDate).Days;
+    
+                                if (daysDiff == 0)
+                                    ageClass = ""; // сегодня - без суффикса
+                                else if (daysDiff == 1)
+                                    ageClass = "-yesterday";
+                                else if (daysDiff == 2)
+                                    ageClass = "-2days";
+                                else
+                                    ageClass = "-old"; // 3+ дня
                             }
 
                             if (status == "+")
                             {
-                                cellClass += isOld ? " success-old" : " success";
+                                cellClass += " success" + ageClass;
                             }
                             else if (status == "-")
                             {
-                                cellClass += isOld ? " error-old" : " error";
+                                cellClass += " error" + ageClass;
                             }
                             // END ===== Изменения для бледных цветов =====
 
@@ -890,7 +907,7 @@ namespace z3nCore.Utilities
 }
 namespace z3nCore
 {
-    using z3nCore.Utilities;
+    using Utilities;
     public static partial class ProjectExtensions
     {
         public static void ReportDailyHtml(this IZennoPosterProjectModel project, bool call = false)
@@ -913,9 +930,9 @@ namespace z3nCore
                 projects.Add(projectData);
             }
 
-            var html = DailyReport.FarmReportGenerator.GenerateHtmlReport(projects, DateTime.Now, user);
+            var html = DailyReport.FarmReportGenerator.GenerateHtmlReport(projects, user);
             string tempPath = System.IO.Path.Combine(project.Path, ".data", "dailyReport.html");
-            System.IO.File.WriteAllText(tempPath, html, System.Text.Encoding.UTF8);
+            System.IO.File.WriteAllText(tempPath, html, Encoding.UTF8);
             project.SendInfoToLog($"Report saved to: {tempPath}", false);
             if (call) System.Diagnostics.Process.Start(tempPath);
         }

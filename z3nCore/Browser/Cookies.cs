@@ -5,6 +5,7 @@ using System.Linq;
 using Newtonsoft.Json.Linq;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 using ZennoLab.CommandCenter;
+using Newtonsoft.Json;
 
 namespace z3nCore
 {
@@ -53,10 +54,10 @@ namespace z3nCore
                     }));
                 }
             }
-            string cookiesJson = Global.ZennoLab.Json.JsonConvert.SerializeObject(cookieList, Global.ZennoLab.Json.Formatting.Indented);
+            //string cookiesJson = Global.ZennoLab.Json.JsonConvert.SerializeObject(cookieList, Global.ZennoLab.Json.Formatting.Indented);
+            string cookiesJson = JsonConvert.SerializeObject(cookieList, Formatting.None);
 
             cookiesJson = cookiesJson.Replace("\r\n", "").Replace("\n", "").Replace("\r", "").Replace(" ", "");
-            _project.Json.FromString(cookiesJson);
             return cookiesJson;
         }
         public void Set(string cookieSourse = null, string jsonPath = null )
