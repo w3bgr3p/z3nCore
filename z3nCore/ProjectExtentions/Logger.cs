@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -19,7 +18,7 @@ namespace z3nCore
         private readonly bool _persistent;
         private readonly long _t0;
 
-        public Logger(IZennoPosterProjectModel project, bool log = false, string classEmoji = null, bool persistent = false)
+        public Logger(IZennoPosterProjectModel project, bool log = false, string classEmoji = null, bool persistent = true)
         {
             _project = project;
             _logShow = log || _project.Var("debug") == "True";
@@ -229,19 +228,11 @@ public static partial class ProjectExtensions
     public static void log(this IZennoPosterProjectModel project, string toLog, [CallerMemberName] string callerName = "", bool show = true, bool thrw = false, bool toZp = true)
     {
         if (System.Text.RegularExpressions.Regex.IsMatch(callerName, @"^M[a-f0-9]{32}$")) callerName = project.Name;
-        new Logger(project).Send(toLog, callerName, show: show, thrw: thrw, toZp: toZp);
+        new Logger(project,persistent:false).Send(toLog, callerName, show: show, thrw: thrw, toZp: toZp);
     }
     public static void warn(this IZennoPosterProjectModel project, string toLog, [CallerMemberName] string callerName = "", bool show = true, bool thrw = false, bool toZp = true)
     {
         new Logger(project).Warn(toLog, callerName, show: show, thrw: thrw, toZp: toZp);
-    }
-
-
-    
-    public static void L0g(this IZennoPosterProjectModel project, string toLog, [CallerMemberName] string callerName = "", bool show = true, bool thr0w = false, bool toZp = true)
-    {
-       project.ObsoleteCode("project.log");
-       project.log(toLog, callerName, show: show, thrw: thr0w, toZp: toZp);
     }
     internal static void ObsoleteCode(this IZennoPosterProjectModel project, string newName = "unknown")
     {
