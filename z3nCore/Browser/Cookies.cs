@@ -2,10 +2,11 @@
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using Global.ZennoLab.Json;
 using Newtonsoft.Json.Linq;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 using ZennoLab.CommandCenter;
-using Newtonsoft.Json;
+
 
 namespace z3nCore
 {
@@ -26,40 +27,6 @@ namespace z3nCore
 
         }
 
-        public string Get( string domainFilter = "")
-        {
-            if (domainFilter == ".") domainFilter = _instance.ActiveTab.MainDomain;
-            var cookieContainer = _project.Profile.CookieContainer;
-            var cookieList = new List<object>();
-
-            foreach (var domain in cookieContainer.Domains)
-            {
-                if (string.IsNullOrEmpty(domainFilter) || domain.Contains(domainFilter))
-                {
-                    var cookies = cookieContainer.Get(domain);
-                    cookieList.AddRange(cookies.Select(cookie => new
-                    {
-                        domain = cookie.Host,
-                        expirationDate = cookie.Expiry == DateTime.MinValue ? (double?)null : new DateTimeOffset(cookie.Expiry).ToUnixTimeSeconds(),
-                        hostOnly = !cookie.IsDomain,
-                        httpOnly = cookie.IsHttpOnly,
-                        name = cookie.Name,
-                        path = cookie.Path,
-                        sameSite = cookie.SameSite.ToString(),
-                        secure = cookie.IsSecure,
-                        session = cookie.IsSession,
-                        storeId = (string)null,
-                        value = cookie.Value,
-                        id = cookie.GetHashCode()
-                    }));
-                }
-            }
-            //string cookiesJson = Global.ZennoLab.Json.JsonConvert.SerializeObject(cookieList, Global.ZennoLab.Json.Formatting.Indented);
-            string cookiesJson = JsonConvert.SerializeObject(cookieList, Formatting.None);
-
-            cookiesJson = cookiesJson.Replace("\r\n", "").Replace("\n", "").Replace("\r", "").Replace(" ", "");
-            return cookiesJson;
-        }
         public void Set(string cookieSourse = null, string jsonPath = null )
         {
             if (string.IsNullOrEmpty(jsonPath)) 
@@ -90,32 +57,140 @@ namespace z3nCore
             _instance.SetCookie(cookieSourse);
 
         }
+        public string Get(string domainFilter = "")
+        {
+            _logger.Send($"Get() called with filter: '{domainFilter}'");
+            
+            if (domainFilter == ".") 
+            {
+                domainFilter = _instance.ActiveTab.MainDomain;
+                _logger.Send($"Filter '.' resolved to main domain: '{domainFilter}'");
+            }
+            
+            var cookieContainer = _project.Profile.CookieContainer;
+            _logger.Send($"Cookie container accessed, total domains: {cookieContainer.Domains.Count()}");
+            
+            var cookieList = new List<object>();
+            int domainCount = 0;
+            int totalCookies = 0;
+            int filteredDomains = 0;
+
+            foreach (var domain in cookieContainer.Domains)
+            {
+                domainCount++;
+                
+                if (string.IsNullOrEmpty(domainFilter) || domain.Contains(domainFilter))
+                {
+                    filteredDomains++;
+                    _logger.Send($"Processing domain #{filteredDomains}: '{domain}'");
+                    
+                    var cookies = cookieContainer.Get(domain);
+                    int cookiesInDomain = cookies.Count();
+                    totalCookies += cookiesInDomain;
+                    
+                    _logger.Send($"Domain '{domain}' has {cookiesInDomain} cookies");
+                    
+                    cookieList.AddRange(cookies.Select(cookie => new
+                    {
+                        domain = cookie.Host,
+                        expirationDate = cookie.Expiry == DateTime.MinValue ? (double?)null : new DateTimeOffset(cookie.Expiry).ToUnixTimeSeconds(),
+                        hostOnly = !cookie.IsDomain,
+                        httpOnly = cookie.IsHttpOnly,
+                        name = cookie.Name,
+                        path = cookie.Path,
+                        sameSite = cookie.SameSite.ToString(),
+                        secure = cookie.IsSecure,
+                        session = cookie.IsSession,
+                        storeId = (string)null,
+                        value = cookie.Value,
+                        id = cookie.GetHashCode()
+                    }));
+                    
+                    _logger.Send($"Added {cookiesInDomain} cookies to list (total now: {cookieList.Count})");
+                }
+            }
+            
+            _logger.Send($"Filtering complete: {filteredDomains} domains matched out of {domainCount} total, {totalCookies} cookies collected");
+            _logger.Send($"Starting JSON serialization of {cookieList.Count} cookie objects...");
+            
+            string cookiesJson = Global.ZennoLab.Json.JsonConvert.SerializeObject(cookieList, formatting: Formatting.None);
+            
+            _logger.Send($"Serialization complete: {cookiesJson.Length} characters, {cookiesJson.Length / 1024.0:F2} KB");
+            
+            return cookiesJson;
+        }
         public void Save(string source = null, string jsonPath = null)
         {
+            _logger.Send($"Save() called with source: '{source ?? "null"}', jsonPath: '{jsonPath ?? "null"}'");
+            
             DateTime called = DateTime.UtcNow;
+            
             if (string.IsNullOrEmpty(source))
+            {
                 source = "project";
+                _logger.Send($"Source was empty, defaulted to: '{source}'");
+            }
 
             string cookies = null;
+            
             switch (source)
             {
                 case "project":
-                    cookies = Get(".").Replace("'", "''").Trim(); ;
+                    _logger.Send("Mode: project - getting cookies for current domain only");
+                    
+                    cookies = Get(".");
+                    _logger.Send($"Get() returned {cookies.Length} characters");
+                    
+                    _logger.Send("Escaping single quotes for SQL...");
+                    cookies = cookies.Replace("'", "''").Trim();
+                    _logger.Send($"After escaping: {cookies.Length} characters");
+                    
+                    _logger.Send("Updating project database...");
                     _project.DbUpd($"cookies = '{cookies}'");
+                    _logger.Send("Project database updated successfully");
+                    
                     return;
+                    
                 case "all":
-                    cookies = Get().Replace("'", "''").Trim();
+                    _logger.Send("Mode: all - getting ALL cookies from profile");
+                    
+                    cookies = Get();
+                    _logger.Send($"Get() returned {cookies.Length} characters, {cookies.Length / 1024.0:F2} KB");
+                    
+                    _logger.Send("Escaping single quotes for SQL...");
+                    cookies = cookies.Replace("'", "''").Trim();
+                    _logger.Send($"After escaping: {cookies.Length} characters");
+                    
+                    _logger.Send("Updating instance database...");
                     _project.DbUpd($"cookies = '{cookies}'", "_instance");
-                    if (!string.IsNullOrEmpty(jsonPath)) 
-                        lock (LockObject) { File.WriteAllText(jsonPath, cookies); }
+                    _logger.Send("Instance database updated successfully");
+                    
+                    if (!string.IsNullOrEmpty(jsonPath))
+                    {
+                        _logger.Send($"Writing cookies to file: '{jsonPath}'");
+                        
+                        lock (LockObject) 
+                        { 
+                            File.WriteAllText(jsonPath, cookies); 
+                        }
+                        
+                        var fileInfo = new FileInfo(jsonPath);
+                        _logger.Send($"File written successfully: {fileInfo.Length} bytes, {fileInfo.Length / 1024.0:F2} KB");
+                    }
+                    else
+                    {
+                        _logger.Send("No jsonPath provided, skipping file write");
+                    }
+                    
                     return;
+                    
                 default:
+                    _logger.Send($"ERROR: Unsupported source '{source}'");
                     throw new Exception($"unsupported input {source}. Use [null|project|all]");
-
             }
-
         }
-
+        
+        
         public string GetByJs(string domainFilter = "", bool log = false)
         {
             string jsCode = @"

@@ -123,11 +123,8 @@ namespace z3nCore
                     if (_persistent) 
                     {
                         long elapsedMs = Time.Elapsed(_t0,useMs:true); 
-                        float inSeconds = elapsedMs / 1000;
-                        //string elapsedStr = elapsedSeconds >= 3600 ? $"{elapsedSeconds / 3600}h" :
-                        //    elapsedSeconds >= 60 ? $"{elapsedSeconds / 60}m {elapsedSeconds % 60}s" :
-                        //    $"{elapsedSeconds}s";
-                        sb.Append($"[{inSeconds}]");
+                        double inSeconds = elapsedMs / 1000.0; 
+                        sb.Append($"[{inSeconds:G}s]");
                     }
                 }
                 catch { }

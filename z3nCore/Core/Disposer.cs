@@ -199,15 +199,16 @@ namespace z3nCore
         private readonly Instance _instance;
         private readonly Reporter _reporter;
         private readonly Logger _logger;
+        private readonly bool _showLog;
         
 
         public Disposer(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
             _project = project ?? throw new ArgumentNullException(nameof(project));
             _instance = instance ?? throw new ArgumentNullException(nameof(instance));
-            
+            _showLog = log;
             _reporter = new Reporter(project, instance);
-            _logger = new Logger(project, log, "♻️", true);
+            _logger = new Logger(project, _showLog, "♻️", true);
         }
 
         #endregion
@@ -314,10 +315,10 @@ namespace z3nCore
 
         private void SaveCookiesIfNeeded(string acc0, string accRnd)
         {
-            _logger.Send($"Checking if cookies should be saved: browserType={_instance.BrowserType}, hasAcc0={!string.IsNullOrEmpty(acc0)}, hasAccRnd={!string.IsNullOrEmpty(accRnd)}");
-            
+
             try
             {
+                
                 bool shouldSave = _instance.BrowserType == BrowserType.Chromium &&
                                 !string.IsNullOrEmpty(acc0) &&
                                 string.IsNullOrEmpty(accRnd);
@@ -331,7 +332,7 @@ namespace z3nCore
                 string cookiesPath = _project.PathCookies();
                 _logger.Send($"Saving cookies to: '{cookiesPath}'");
                 
-                var cookieManager = new Cookies(_project, _instance);
+                var cookieManager = new Cookies(_project, _instance, log:_showLog);
                 cookieManager.Save("all", cookiesPath);
                 
                 _logger.Send($"Cookies saved successfully to: '{cookiesPath}'");
