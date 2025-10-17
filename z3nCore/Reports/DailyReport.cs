@@ -94,7 +94,7 @@ namespace z3nCore.Utilities
             public static string GenerateHtmlReport(List<ProjectData> projects, string userId = null)
             {
                 var html = new StringBuilder();
-
+                var today = DateTime.UtcNow.Date;
                 // Собираем информацию о процессах
                 List<string[]> zennoProcesses = new List<string[]>();
                 try
@@ -234,12 +234,12 @@ namespace z3nCore.Utilities
                 }
                 .legend-box.success { background: #238636; }
                 .legend-box.error { background: #da3633; }
-                .legend-box.success-yesterday { background: #1f5a2e; }
-                .legend-box.error-yesterday { background: #8b2c29; }
-                .legend-box.success-2days { background: #1a4221; }
-                .legend-box.error-2days { background: #5e2322; }
-                .legend-box.success-old { background: #0d1f12; }
-                .legend-box.error-old { background: #3d1716; }
+                .legend-box.success-yesterday { background: #1a5c28; }
+                .legend-box.error-yesterday { background: #a32a27; }
+                .legend-box.success-2days { background: #123819; }
+                .legend-box.error-2days { background: #6b1e1d; }
+                .legend-box.success-old { background: #0a1a0d; }
+                .legend-box.error-old { background: #3a1210; }
                 .legend-box.notdone { background: transparent; }
                 
                 .heatmap-grid {
@@ -340,12 +340,12 @@ namespace z3nCore.Utilities
                 }
                 .heatmap-cell.success { background: #238636; border-color: #2ea043; }
                 .heatmap-cell.error { background: #da3633; border-color: #f85149; }
-                .heatmap-cell.success-yesterday { background: #1f5a2e; border-color: #2a6f3c; }
-                .heatmap-cell.error-yesterday { background: #8b2c29; border-color: #a33a37; }
-                .heatmap-cell.success-2days { background: #1a4221; border-color: #2c5832; }
-                .heatmap-cell.error-2days { background: #5e2322; border-color: #723332; }
-                .heatmap-cell.success-old { background: #0d1f12; border-color: #1a3320; }
-                .heatmap-cell.error-old { background: #3d1716; border-color: #522020; }
+                .heatmap-cell.success-yesterday { background: #1a5c28; border-color: #247a35; }
+                .heatmap-cell.error-yesterday { background: #a32a27; border-color: #c93a36; }
+                .heatmap-cell.success-2days { background: #123819; border-color: #1a5024; }
+                .heatmap-cell.error-2days { background: #6b1e1d; border-color: #8d2826; }
+                .heatmap-cell.success-old { background: #0a1a0d; border-color: #112b15; }
+                .heatmap-cell.error-old { background: #3a1210; border-color: #5a1a18; }
                 .heatmap-cell:hover {
                     transform: scale(1.3);
                     z-index: 10;
@@ -546,6 +546,48 @@ namespace z3nCore.Utilities
                     foreach (var data in proj.All.Values)
                     {
                         var status = data[0].Trim();
+                        var ts = data[1];
+                        var timeStr = data[2].Trim();
+    
+                        // Проверяем, сегодняшняя ли запись
+                        bool isToday = false;
+                        if (DateTime.TryParse(ts, null, System.Globalization.DateTimeStyles.RoundtripKind, out DateTime timestamp))
+                        {
+                            isToday = timestamp.Date == today;
+                        }
+
+                        if (status == "+")
+                        {
+                            if (isToday) successCount++;  // ← добавили проверку
+                            if (!string.IsNullOrEmpty(timeStr) && double.TryParse(timeStr,
+                                    System.Globalization.NumberStyles.Any,
+                                    System.Globalization.CultureInfo.InvariantCulture, out double time) && time > 0)
+                            {
+                                totalSuccessTime += time;
+                                successWithTime++;
+                                if (time < minSuccessTime) minSuccessTime = time;
+                                if (time > maxSuccessTime) maxSuccessTime = time;
+                            }
+                        }
+                        else if (status == "-")
+                        {
+                            if (isToday) errorCount++;  // ← добавили проверку
+                            if (!string.IsNullOrEmpty(timeStr) && double.TryParse(timeStr,
+                                    System.Globalization.NumberStyles.Any,
+                                    System.Globalization.CultureInfo.InvariantCulture, out double time) && time > 0)
+                            {
+                                totalErrorTime += time;
+                                errorWithTime++;
+                                if (time < minErrorTime) minErrorTime = time;
+                                if (time > maxErrorTime) maxErrorTime = time;
+                            }
+                        }
+                    }
+                    
+                    /*
+                    foreach (var data in proj.All.Values)
+                    {
+                        var status = data[0].Trim();
                         var timeStr = data[2].Trim();
 
                         if (status == "+")
@@ -575,6 +617,7 @@ namespace z3nCore.Utilities
                             }
                         }
                     }
+                    */
 
                     var successRate = maxAccountIndex > 0 ? (double)successCount / maxAccountIndex * 100 : 0;
                     var errorRate = maxAccountIndex > 0 ? (double)errorCount / maxAccountIndex * 100 : 0;
@@ -671,7 +714,6 @@ namespace z3nCore.Utilities
                             if (DateTime.TryParse(ts, null, System.Globalization.DateTimeStyles.RoundtripKind,
                                     out DateTime timestamp))
                             {
-                                var today = DateTime.UtcNow.Date;
                                 var recordDate = timestamp.Date;
                                 var daysDiff = (today - recordDate).Days;
     
@@ -913,13 +955,10 @@ namespace z3nCore
         public static void ReportDailyHtml(this IZennoPosterProjectModel project, bool call = false)
         {
             string user = project.ExecuteMacro("{-Environment.CurrentUser-}");
-            
-            var projectTables = project.DbQ(@"SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
-            ORDER BY table_name;").Split('·').ToList();
 
-
+            var projectTables = project.TblList();
+               // project.DbQ(@"SELECT table_name            FROM information_schema.tables            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'            ORDER BY table_name;").Split('·').ToList();
+               
             var projects = new List<DailyReport.ProjectData>();
 
             foreach (var pj in projectTables)

@@ -115,7 +115,6 @@ namespace z3nCore
             project.SqlUpd(toUpd, tableName, log, thrw, key, acc, where);
 
         }
-
         public static void DbSettings(this IZennoPosterProjectModel project, bool set = true, bool log = false)
         {
             var dbConfig = new Dictionary<string, string>();
@@ -288,6 +287,20 @@ namespace z3nCore
 
             if (resp == "0" || resp == string.Empty) return false;
             else return true;
+        }
+
+        public static List<string> TblList(this IZennoPosterProjectModel project, bool log = false)
+        {
+            //var result = new List<string>();
+            string query = project.Var("DBmode") == "PostgreSQL"
+                ? @"SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name;"
+                : @"SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name;";
+            
+            var result = project.DbQ(query, log: log)
+                .Split(_rawSeparator)
+                .Select(s => s.Trim())
+                .ToList();
+            return result;
         }
 
         public static List<string> TblColumns(this IZennoPosterProjectModel project, string tblName, bool log = false)

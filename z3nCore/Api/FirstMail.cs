@@ -29,12 +29,12 @@ namespace z3nCore
 
         private void LoadKeys()
         {
-            var creds = _project.SqlGet("apikey, apisecret, passphrase, proxy", "_api", where: "id = 'firstmail'").Split('|');
+            var creds = _project.DbGetColumns("apikey, apisecret, passphrase, proxy", "_api", where: "id = 'firstmail'");
 
-            _key = creds[0];
-            _login = Uri.EscapeDataString(creds[1]);
-            _pass = Uri.EscapeDataString(creds[2]);
-            _proxy = creds[3];
+            _key = creds["apikey"];
+            _login = Uri.EscapeDataString(creds["apisecret"]);
+            _pass = Uri.EscapeDataString(creds["passphrase"]);
+            _proxy = creds["proxy"];
 
         }
         public async Task<string> Request(string url)

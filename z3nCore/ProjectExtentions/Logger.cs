@@ -65,7 +65,7 @@ namespace z3nCore
             return (acc, port, time, memory, caller, wrap, force);
         }
 
-        public void Send(string toLog,
+        public void Send(object toLog,
             [CallerMemberName] string callerName = "",
             bool show = false, bool thrw = false, bool toZp = true,
             int cut = 0, bool wrap = true,
@@ -82,13 +82,13 @@ namespace z3nCore
             if (!show && !_logShow) return;
             
             string header = string.Empty;
-            string body = toLog;
+            string body = toLog?.ToString() ?? "null";
 
             if (wrapFlag)
             {
                 var stackFrame = new System.Diagnostics.StackFrame(1);
                 header = LogHeader(stackFrame, callerName, acc, port, time, memory, caller);
-                body = LogBody(toLog, cut);
+                body = LogBody(body, cut);
             }
             
             string toSend = header + body;
@@ -96,7 +96,7 @@ namespace z3nCore
             if (toSend.Contains("!E")) type = LogType.Error;
             Execute(toSend, type, color, toZp, thrw);
         }
-        public void Warn(string toLog, [CallerMemberName] string callerName = "", bool show = false, bool thrw = false, bool toZp = true, int cut = 0, bool wrap = true, LogColor color = LogColor.Default)
+        public void Warn(object toLog, [CallerMemberName] string callerName = "", bool show = false, bool thrw = false, bool toZp = true, int cut = 0, bool wrap = true, LogColor color = LogColor.Default)
         {
             Send (toLog, callerName, show, thrw, toZp, cut, wrap, type:LogType.Warning, color: color);
         }
@@ -147,7 +147,12 @@ namespace z3nCore
                 try
                 {
                     var callingMethod = stackFrame.GetMethod();
-                    if (callingMethod == null || callingMethod.DeclaringType == null || callingMethod.DeclaringType.FullName.Contains("Zenno") || callingMethod.Name == "L0g" || System.Text.RegularExpressions.Regex.IsMatch(callingMethod.DeclaringType.Name, @"^M[a-f0-9]{32}$"))   
+                    if (callingMethod == null || 
+                        callingMethod.DeclaringType == null || 
+                        callingMethod.DeclaringType.FullName.Contains("Zenno") || 
+                        callingMethod.Name == "log" || 
+                        System.Text.RegularExpressions.Regex.IsMatch(callingMethod.DeclaringType.Name, @"^M[a-f0-9]{32}$") ||
+                        System.Text.RegularExpressions.Regex.IsMatch(callingMethod.Name, @"^M[a-f0-9]{32}$"))   
                         sb.Append($"  🔳 [{_project.Name.Replace(".zp", "")}]");
                     else
                         sb.Append($"  🔲 [{callingMethod.DeclaringType.Name}.{callerName}]");
@@ -224,8 +229,7 @@ namespace z3nCore
 
 public static partial class ProjectExtensions
 {
-            
-    public static void log(this IZennoPosterProjectModel project, string toLog, [CallerMemberName] string callerName = "", bool show = true, bool thrw = false, bool toZp = true)
+    public static void log(this IZennoPosterProjectModel project, object toLog, [CallerMemberName] string callerName = "", bool show = true, bool thrw = false, bool toZp = true)
     {
         if (System.Text.RegularExpressions.Regex.IsMatch(callerName, @"^M[a-f0-9]{32}$")) callerName = project.Name;
         new Logger(project,persistent:false).Send(toLog, callerName, show: show, thrw: thrw, toZp: toZp);

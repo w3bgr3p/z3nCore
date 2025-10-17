@@ -13,7 +13,7 @@ using ZennoLab.InterfacesLibrary.Enums.Log;
 namespace z3nCore
 {
     
-    public class Init
+public class Init
     {
         #region Fields & Constructor
         
@@ -22,6 +22,8 @@ namespace z3nCore
         private readonly Logger _logger;
         private readonly bool _log;
         private static readonly object _disableLogsLock = new object();
+        private static readonly object _randomLock = new object();
+        private static readonly Random _random = new Random();
 
         public Init(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
@@ -86,10 +88,12 @@ namespace z3nCore
                     return;
                 }
                 var currentState = _project.GVar($"acc{acc}");
-                _logger.Send($"trying to set [{currentState} => check]");
+                _logger.Send($"trying to set [{currentState}] => [check]");
                 if (currentState == "")
                 {
+                    
                     _project.GVar($"acc{acc}", "check");
+                    _logger.Send($"accin G = {_project.GVar($"acc{acc}")}");
                 }
                 else
                 {
@@ -102,36 +106,41 @@ namespace z3nCore
                 _project.SendWarningToLog(ex.Message, true); 
                 throw; 
             }
-    
             try 
             { 
+                
                 BlockchainFilter(); 
                 SocialFilter(); 
             } 
             catch (Exception ex)
             { 
-                _project.SendWarningToLog(ex.Message);
                 _project.GVar($"acc{acc}", "");
-                if (log) _project.SendWarningToLog($"acc{acc} Filter failed, resetting account and retrying");
+                _logger.Warn($"acc{acc} Filter failed: {ex.Message}");
                 goto getAcc; 
             }
-    
+            _logger.Send($"running...");
             run: 
             try { 
-                if (log) _logger.Send("Preparing instance");
+                _logger.Send("Preparing instance");
                 PrepareInstance(); 
-                if (log) _logger.Send("Instance prepared successfully");
+                _logger.Send("Instance prepared successfully");
             } catch (Exception ex) 
             { 
-                _project.GVar($"acc{acc}");
-                _project.SendWarningToLog(ex.Message); 
-                if (log) _project.SendWarningToLog("Instance preparation failed, resetting account and retrying");
+                _project.GVar($"acc{acc}", "");
+                _logger.Warn($"acc{acc} Instance preparation: {ex.Message}");
                 goto getAcc; 
             }
 
             var pn = _project.ProjectName();
             _project.GVar($"acc{acc}", pn);
-            _logger.Send($"running {pn} with acc{acc}.  [{_project.Lists["accs"].Count}] accounts left in que", show: true);
+
+            var listAccounts = _project.Lists["accs"];
+            int accountsLeft;
+            lock (listAccounts)
+            {
+                accountsLeft = listAccounts.Count;
+            }
+            _logger.Send($"running {pn} with acc{acc}.  [{accountsLeft}] accounts left in que", show: true);
         }
         
         public void PrepareInstance(string browserToLaunch = null)
@@ -141,8 +150,17 @@ namespace z3nCore
                 _instance.Launch(ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.WithoutBrowser, false);
                 return;
             }
+            _logger.Send($"Launching {browserToLaunch}");
+            try
+            {
+                LaunchBrowser(browserToLaunch);
+            }
+            catch (Exception e)
+            {
+                _logger.Warn(e.Message);
+                throw;
+            }
             
-            LaunchBrowser(browserToLaunch);
             int exCnt = 0;
             string browserType = _instance.BrowserType.ToString();
             bool browser = browserType == "Chromium";
@@ -425,7 +443,6 @@ namespace z3nCore
         #endregion
 
         #region Browser & Instance Management
-
         private string LaunchBrowser(string cfgBrowser = null)
         {
             string acc0 = _project.Var("acc0");
@@ -465,10 +482,14 @@ namespace z3nCore
                 settings.UseProfile = true;
                 _instance.Launch(settings);
             }
-            var started = _instance.FormTitle.Replace("Instance ","").Trim('(',')');
-            _project.Variables["instancePort"].Value = started;
-            _logger.Send($"started {cfgBrowser} in  {started}");
-            return started;
+
+            int pid = //GetPid();
+            Utilities.ProcAcc.GetNewest(acc0);
+            int port = _instance.Port;
+            _project.Variables["instancePort"].Value = $"port: {port}, pid: {pid}";
+            _logger.Send($"started {cfgBrowser} in  {_project.Variables["instancePort"].Value}");
+            BindPid(pid,port);
+            return pid.ToString();
         }
 
         private void SetBrowser(bool strictProxy = true, string cookies = null, bool log = false)
@@ -476,8 +497,6 @@ namespace z3nCore
             string acc0 = _project.Var("acc0");
             if (string.IsNullOrEmpty(acc0)) throw new ArgumentException("acc0 can't be null or empty");
             
-            _project.Variables["instancePort"].Value = _instance.FormTitle.Replace("Instance ","");;
-            _logger.Send($"init {_instance.FormTitle}");
 
             string webGlData = _project.SqlGet("webgl", "_instance");
             SetDisplay(webGlData);
@@ -561,6 +580,72 @@ namespace z3nCore
                 _logger.Send(ex.Message, thrw: true);
             }
         }
+
+        private int GetPid()
+        {
+            Process[] allProcs = null;
+            try
+            {
+                allProcs = Process.GetProcessesByName("zbe1");
+                foreach (var proc in allProcs)
+                {
+                    try
+                    {
+                        var pid = proc.Id;
+                        using (System.Management.ManagementObjectSearcher searcher = 
+                               new System.Management.ManagementObjectSearcher(
+                                   "SELECT CommandLine FROM Win32_Process WHERE ProcessId = " + pid))
+                        using (System.Management.ManagementObjectCollection collection = searcher.Get())
+                        {
+                            string commandLine = "";
+                            foreach (System.Management.ManagementObject obj in collection)
+                            {
+                                using (obj)
+                                {
+                                    commandLine = obj["CommandLine"].ToString();
+                                    break;
+                                }
+                            }
+                            if (commandLine.Contains(_project.PathProfileFolder()))
+                                return pid;
+                        }
+                    }
+                    catch { }
+                }
+            }
+            finally
+            {
+                if (allProcs != null)
+                {
+                    foreach (var proc in allProcs)
+                    {
+                        proc?.Dispose();
+                    }
+                }
+            }
+            return 0;
+        }
+
+        private void BindPid(int pid, int port)
+        {
+            if (pid == 0) return;
+            try
+            {
+                string acc0 = _project.Var("acc0");
+                using (var proc = Process.GetProcessById(pid))
+                {
+                    var memoryMb = proc.WorkingSet64 / (1024 * 1024);
+                    var runtimeMinutes = (int)(DateTime.Now - proc.StartTime).TotalMinutes;
+                    var name = _project.ProjectName();
+                    Running.Add(pid, new List<object> { memoryMb, runtimeMinutes, port, name, acc0 });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warn(ex.Message);
+            }
+        }
+        
         
         #endregion
 
@@ -618,8 +703,12 @@ namespace z3nCore
             if (!string.IsNullOrEmpty(_project.Variables["acc0Forced"].Value))
             {
                 var forced = _project.Variables["acc0Forced"].Value;
-                _project.Lists["accs"].Clear();
-                _project.Lists["accs"].Add(forced);
+                var listAccounts = _project.Lists["accs"];
+                lock (listAccounts)
+                {
+                    listAccounts.Clear();
+                    listAccounts.Add(forced);
+                }
                 _logger.Send($@"manual mode on with {forced}");
                 return;
             }
@@ -672,35 +761,60 @@ namespace z3nCore
                     _logger.Send($"After {social} filter: [{string.Join("|", allAccounts)}]");
                 }
             }
-            _project.Lists["accs"].Clear();
-            _project.Lists["accs"].AddRange(allAccounts);
+            var listAccounts = _project.Lists["accs"];
+            lock (listAccounts)
+            {
+                listAccounts.Clear();
+                listAccounts.AddRange(allAccounts);
+            }
             _logger.Send($"final list [{string.Join("|", allAccounts)}]");
         }
 
         private bool ChooseSingleAcc(bool oldest = false)
         {
             var listAccounts = _project.Lists["accs"];
-            if (listAccounts.Count == 0)
-            {
-                _project.Variables["noAccsToDo"].Value = "True";
-                var busy = _project.GGetBusyList();
-                _logger.Warn($"♻ noAccountsAvailable for work\nBusyList: {string.Join(" | ", busy)}",show:true, color: LogColor.Turquoise);
-                return false;
-            }
 
-            int randomAccount = oldest ? 0 : new Random().Next(0, listAccounts.Count);
-            string acc0 = listAccounts[randomAccount];
-            _project.Var("acc0", acc0);
-            listAccounts.RemoveAt(randomAccount);
-            _logger.Send($"chosen: [acc{acc0}] left: [{listAccounts.Count}]");
-            return true;
+            lock (listAccounts)
+            {
+                if (listAccounts.Count == 0)
+                {
+                    _project.Variables["noAccsToDo"].Value = "True";
+                    var busy = _project.GGetBusyList();
+                    _logger.Warn($"♻ noAccountsAvailable for work\nBusyList: {string.Join(" | ", busy)}", show: true,
+                        color: LogColor.Turquoise);
+                    return false;
+                }
+                int randomAccount;
+                if (oldest)
+                {
+                    randomAccount = 0;
+                }
+                else
+                {
+                    lock (_randomLock)
+                    {
+                        randomAccount = _random.Next(0, listAccounts.Count);
+                    }
+                }
+                string acc0 = listAccounts[randomAccount];
+                _project.Var("acc0", acc0);
+                listAccounts.RemoveAt(randomAccount);
+                _logger.Send($"chosen: [acc{acc0}] left: [{listAccounts.Count}]");
+                return true;
+            }
         }
 
         private string GetAccByMode()
         {
             string mode = _project.Var("wkMode");
             
-            _logger.Send($"Mode: {mode}. Choosing new acc from: " + string.Join(", ", _project.Lists["accs"]));
+            var listAccounts = _project.Lists["accs"];
+            string accountsSnapshot;
+            lock (listAccounts)
+            {
+                accountsSnapshot = string.Join(", ", listAccounts);
+            }
+            _logger.Send($"Mode: {mode}. Choosing new acc from: {accountsSnapshot}");
             
             switch (mode)
             {
@@ -868,7 +982,6 @@ namespace z3nCore
         {
             return $"\"{name.Replace("\"", "\"\"")}\"";
         }
-        
         
         private void DisableLogs(bool aggressive = false)
         {
@@ -1054,15 +1167,14 @@ namespace z3nCore
         #endregion
     }
 
-    
-    
+
     public static partial class ProjectExtensions
     {
         public static void LaunchBrowser(this IZennoPosterProjectModel project, Instance instance, string browserToLaunch)
         {
             new  Init(project, instance).PrepareInstance(browserToLaunch);
         }
-
+        
     }
 
 }

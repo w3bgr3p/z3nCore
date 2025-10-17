@@ -167,25 +167,6 @@ namespace z3nCore
         }
         private string Get(string url)
         {
-            /*
-            string result = ZennoPoster.HttpGet(
-                            url,
-                            _proxy,
-                            "UTF-8",
-                            ResponceType.BodyOnly,
-                            30000,
-                            "",
-                            "Mozilla/4.0",
-                            true,
-                            5,
-                            new string[] {
-                            "X-MBX-APIKEY: "+_apiKey,
-                            "Content-Type: application/x-www-form-urlencoded; charset=utf-8"
-                            },
-                            "",
-                            true
-                        );
-            */
             string result = ZennoPoster.HTTP.Request(
                 ZennoLab.InterfacesLibrary.Enums.Http.HttpMethod.GET,
                 url,

@@ -98,8 +98,12 @@
     <Compile Include="Browser\Traffic.cs" />
     <Compile Include="Core\Disposer.cs" />
     <Compile Include="Core\Init.cs" />
+    <Compile Include="Core\RunningExplained.cs" />
     <Compile Include="MethodExtensions\ListExtentions.cs" />
     <Compile Include="MethodExtensions\StringExtentions.cs" />
+    <Compile Include="Processess\ProcAcc.cs" />
+    <Compile Include="Processess\Running.cs" />
+    <Compile Include="Processess\Sys.cs" />
     <Compile Include="ProjectExtentions\Exceptions.cs" />
     <Compile Include="ProjectExtentions\FS.cs" />
     <Compile Include="ProjectExtentions\Logger.cs" />
@@ -114,7 +118,6 @@
     <Compile Include="Utilities\Debug.cs" />
     <Compile Include="Utilities\Helper.cs" />
     <Compile Include="Utilities\Snapper.cs" />
-    <Compile Include="Utilities\Sys.cs" />
     <Compile Include="W3b\AptosTools.cs" />
     <Compile Include="W3b\CosmosTools.cs" />
     <Compile Include="W3b\EvmTools.cs" />
