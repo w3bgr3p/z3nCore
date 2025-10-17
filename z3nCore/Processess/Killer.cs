@@ -249,7 +249,7 @@ namespace z3nCore.Utilities
             #region Step 1: Collect and Analyze Browser Processes (with Account info)
             
             var browserProcesses = new List<ProcInfo>();
-            var pidToAcc = ProcAcc.GetAll(); // Получаем все связи PID → ACC
+            var pidToAcc = ProcAcc.GetAllPidAcc(); // Получаем все связи PID → ACC
             
             Process[] allProcs = null;
             try
@@ -536,7 +536,7 @@ namespace z3nCore.Utilities
         {
             var log = new Logger(project, showLog, "K!11", true);
             
-            var all = ProcAcc.GetAll();
+            var all = ProcAcc.GetAllPidAcc();
             var duplicates = all.GroupBy(x => x.Value)
                                 .Where(g => g.Count() > 1)
                                 .Select(g => g.Key);
@@ -564,7 +564,7 @@ namespace z3nCore.Utilities
         {
             var log = new Logger(project, showLog, "📊", true);
             
-            var all = ProcAcc.GetAll();
+            var all = ProcAcc.GetAllPidAcc();
             var grouped = all.GroupBy(x => x.Value);
             
             log.Send($"=== PROCESS MONITOR ===", show: true);

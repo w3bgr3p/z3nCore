@@ -69,6 +69,11 @@ namespace z3nCore
             }
             return value;
         }
+        public static bool Bool(this IZennoPosterProjectModel project, string var)
+        {
+            bool value = project.Var(var) == "True";
+            return value;
+        }
 
 
         public static string VarRnd(this IZennoPosterProjectModel project, string var)

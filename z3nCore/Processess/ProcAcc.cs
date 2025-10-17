@@ -1,6 +1,7 @@
 ﻿
 using System;
 using System.Collections.Generic;
+using ZennoLab.InterfacesLibrary.ProjectModel;
 
 
 using System.Diagnostics;
@@ -30,18 +31,16 @@ namespace z3nCore.Utilities
         /// <summary>
         /// Получить все связи PID → ACC (с кешированием)
         /// </summary>
-        public static Dictionary<int, string> GetAll(bool forceRefresh = false)
+        public static Dictionary<int, string> GetAllPidAcc(bool forceRefresh = false)
         {
             lock (_cacheLock)
             {
-                // Если кеш свежий и не требуется принудительное обновление
                 if (!forceRefresh && _cache != null && 
                     (DateTime.Now - _cacheTime).TotalMilliseconds < _cacheLifetimeMs)
                 {
                     return new Dictionary<int, string>(_cache);
                 }
                 
-                // Обновляем кеш
                 _cache = ScanAll();
                 _cacheTime = DateTime.Now;
                 
@@ -57,7 +56,7 @@ namespace z3nCore.Utilities
             if (string.IsNullOrEmpty(acc)) return new List<int>();
             
             acc = Normalize(acc);
-            var all = GetAll();
+            var all = GetAllPidAcc();
             
             return all.Where(x => Normalize(x.Value) == acc)
                       .Select(x => x.Key)
@@ -69,7 +68,7 @@ namespace z3nCore.Utilities
         /// </summary>
         public static string GetAcc(int pid)
         {
-            var all = GetAll();
+            var all = GetAllPidAcc();
             return all.ContainsKey(pid) ? all[pid] : null;
         }
         
@@ -230,6 +229,54 @@ namespace z3nCore.Utilities
             
             return result;
         }
+        public static Dictionary<int,List<object>> PidReport()
+        {
+            var binded = new List<string>();
+            var unbinded = new List<string>();
+            var all = new List<string>();
+            var allDic = new Dictionary<int,List<object>>();
+            var allWithPids = ProcAcc.GetAllPidAcc();
+            foreach(var item in allWithPids)
+            {
+                var pid = item.Key;
+                if (!Running.ContainsKey(pid))
+                {
+                    var acc = item.Value;
+                    var mem = 0;
+                    var age = 0;
+                    var port =0;
+                    var proj = "unknown";
+                    Running.Add(pid, new List<object> { mem, age, port, proj, acc });
+                }
+	                
+            }
+            Running.PruneAndUpdate();
+                
+            var r = Running.ToLocal();
+
+            foreach (var p in r) 
+            {
+                var pid = p.Key;
+                int mem = Convert.ToInt32(p.Value[0]);
+                int age = Convert.ToInt32(p.Value[1]);
+                int port = Convert.ToInt32(p.Value[2]);
+                var proj = p.Value[3];
+                var acc = p.Value[4]?.ToString() ?? "zbe1";
+                    
+                if (acc == "Browser" || acc == "zbe1")
+                {
+                    unbinded.Add($"pid: {pid}, age: {age}Min, mem: {mem}Mb");
+                    all.Add($"pid: {pid}, acc: {acc}, proj: {proj}, age: {age}Min, mem: {mem}Mb");
+                    continue;
+                }
+                allDic.Add(pid, new List<object> { mem, age, proj, acc });
+                string info = $"pid: {pid}, acc: {acc}, proj: {proj}, age: {age}Min, mem: {mem}Mb";
+                all.Add(info);
+                if (acc == "unknown") unbinded.Add(info);
+                else binded.Add(info);
+            }
+            return allDic;
+        }
         
         // ============== СЛУЖЕБНЫЕ МЕТОДЫ ==============
         
@@ -247,8 +294,7 @@ namespace z3nCore.Utilities
                 try
                 {
                     var acc = GetAccFromPid(pid);
-                    if (!string.IsNullOrEmpty(acc))
-                        result[pid] = acc;
+                    result[pid] = acc;
                 }
                 catch { }
             }
@@ -356,5 +402,12 @@ namespace z3nCore.Utilities
             return acc.Replace("acc", "").Replace("ACC", "").Trim();
         }
     }
-}
     
+
+        public static partial class ProjectExtensions
+        {
+            
+        }
+
+}
+

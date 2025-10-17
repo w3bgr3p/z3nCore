@@ -470,8 +470,12 @@ public class Init
                     throw new Exception($"unknown browser config {cfgBrowser}");
             }
             
+            int pid = 0;
+            int port = 0;
+            
             if (cfgBrowser == "WithoutBrowser")
                 _instance.Launch(BrowserType.WithoutBrowser, false);
+            
             else
             {
                 ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings settings = 
@@ -481,11 +485,10 @@ public class Init
                 settings.ConvertProfileFolder = true;
                 settings.UseProfile = true;
                 _instance.Launch(settings);
+                pid = Utilities.ProcAcc.GetNewest(acc0);
+                port = _instance.Port;
             }
-
-            int pid = //GetPid();
-            Utilities.ProcAcc.GetNewest(acc0);
-            int port = _instance.Port;
+            
             _project.Variables["instancePort"].Value = $"port: {port}, pid: {pid}";
             _logger.Send($"started {cfgBrowser} in  {_project.Variables["instancePort"].Value}");
             BindPid(pid,port);
@@ -580,52 +583,7 @@ public class Init
                 _logger.Send(ex.Message, thrw: true);
             }
         }
-
-        private int GetPid()
-        {
-            Process[] allProcs = null;
-            try
-            {
-                allProcs = Process.GetProcessesByName("zbe1");
-                foreach (var proc in allProcs)
-                {
-                    try
-                    {
-                        var pid = proc.Id;
-                        using (System.Management.ManagementObjectSearcher searcher = 
-                               new System.Management.ManagementObjectSearcher(
-                                   "SELECT CommandLine FROM Win32_Process WHERE ProcessId = " + pid))
-                        using (System.Management.ManagementObjectCollection collection = searcher.Get())
-                        {
-                            string commandLine = "";
-                            foreach (System.Management.ManagementObject obj in collection)
-                            {
-                                using (obj)
-                                {
-                                    commandLine = obj["CommandLine"].ToString();
-                                    break;
-                                }
-                            }
-                            if (commandLine.Contains(_project.PathProfileFolder()))
-                                return pid;
-                        }
-                    }
-                    catch { }
-                }
-            }
-            finally
-            {
-                if (allProcs != null)
-                {
-                    foreach (var proc in allProcs)
-                    {
-                        proc?.Dispose();
-                    }
-                }
-            }
-            return 0;
-        }
-
+        
         private void BindPid(int pid, int port)
         {
             if (pid == 0) return;

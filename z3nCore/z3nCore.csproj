@@ -98,12 +98,11 @@
     <Compile Include="Browser\Traffic.cs" />
     <Compile Include="Core\Disposer.cs" />
     <Compile Include="Core\Init.cs" />
-    <Compile Include="Core\RunningExplained.cs" />
     <Compile Include="MethodExtensions\ListExtentions.cs" />
     <Compile Include="MethodExtensions\StringExtentions.cs" />
     <Compile Include="Processess\ProcAcc.cs" />
     <Compile Include="Processess\Running.cs" />
-    <Compile Include="Processess\Sys.cs" />
+    <Compile Include="Processess\Killer.cs" />
     <Compile Include="ProjectExtentions\Exceptions.cs" />
     <Compile Include="ProjectExtentions\FS.cs" />
     <Compile Include="ProjectExtentions\Logger.cs" />
@@ -116,7 +115,9 @@
     <Compile Include="Security\ISAFU.cs" />
     <Compile Include="Utilities\Converter.cs" />
     <Compile Include="Utilities\Debug.cs" />
+    <Compile Include="Utilities\F0rms.cs" />
     <Compile Include="Utilities\Helper.cs" />
+    <Compile Include="Utilities\OTP.cs" />
     <Compile Include="Utilities\Snapper.cs" />
     <Compile Include="W3b\AptosTools.cs" />
     <Compile Include="W3b\CosmosTools.cs" />
@@ -143,7 +144,6 @@
     <Compile Include="Browser\ChromeExt.cs" />
     <Compile Include="W3b\Tx.cs" />
     <Compile Include="Api\GazZip.cs" />
-    <Compile Include="Tools\F0rms.cs" />
     <Compile Include="Api\DMail.cs" />
     <Compile Include="Api\Galxe.cs" />
     <Compile Include="Socials\Telegram.cs" />
@@ -154,7 +154,6 @@
     <Compile Include="W3b\Blockchain.cs" />
     <Compile Include="Socials\Google.cs" />
     <Compile Include="Socials\Discord.cs" />
-    <Compile Include="Tools\OTP.cs" />
     <Compile Include="Sql\PostgreSQL.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Sql\Sql.cs" />

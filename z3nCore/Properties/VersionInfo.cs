@@ -1,1 +1,1 @@
-﻿namespace z3nCore { public static class VersionInfo { public const string Version = "1.2.1.75"; } }
+﻿namespace z3nCore { public static class VersionInfo { public const string Version = "1.2.1.77"; } }
