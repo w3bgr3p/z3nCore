@@ -6,11 +6,14 @@ using Global.ZennoLab.Json;
 using Newtonsoft.Json.Linq;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 using ZennoLab.CommandCenter;
+using System.Text;
+using System.Threading.Tasks;
+using System.Globalization;
 
 
 namespace z3nCore
 {
-    public class Cookies
+    public class Cookies_
     {
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
@@ -18,43 +21,12 @@ namespace z3nCore
         
         private readonly object LockObject = new object();
 
-        public Cookies(IZennoPosterProjectModel project, Instance instance, bool log = false)
+        public Cookies_(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
 
             _project = project;
             _instance = instance;
             _logger = new Logger(project, log: log, classEmoji: "🍪");
-
-        }
-
-        public void Set(string cookieSourse = null, string jsonPath = null )
-        {
-            if (string.IsNullOrEmpty(jsonPath)) 
-                cookieSourse = "fromFile";
-
-            if (cookieSourse == null)
-                cookieSourse = "dbMain";
-            
-            switch (cookieSourse) 
-            {
-                case "dbMain":
-                    cookieSourse = _project.SqlGet("cookies", "_instance");
-                    break;
-
-                case "dbProject":
-                    cookieSourse = _project.SqlGet("cookies");
-                    break;
-
-                case "fromFile":
-                    if(string.IsNullOrEmpty(jsonPath)) 
-                        jsonPath = _project.PathCookies();
-                    cookieSourse = File.ReadAllText(jsonPath);
-                    break;
-                
-                default:                   
-                    break;
-            }
-            _instance.SetCookie(cookieSourse);
 
         }
         public string Get(string domainFilter = "")
@@ -136,32 +108,23 @@ namespace z3nCore
             switch (source)
             {
                 case "project":
-                    _logger.Send("Mode: project - getting cookies for current domain only");
                     
                     cookies = Get(".");
-                    _logger.Send($"Get() returned {cookies.Length} characters");
                     
-                    _logger.Send("Escaping single quotes for SQL...");
                     cookies = cookies.Replace("'", "''").Trim();
-                    _logger.Send($"After escaping: {cookies.Length} characters");
                     
-                    _logger.Send("Updating project database...");
                     _project.DbUpd($"cookies = '{cookies}'");
-                    _logger.Send("Project database updated successfully");
                     
                     return;
                     
                 case "all":
-                    _logger.Send("Mode: all - getting ALL cookies from profile");
                     
                     cookies = Get();
                     _logger.Send($"Get() returned {cookies.Length} characters, {cookies.Length / 1024.0:F2} KB");
                     
-                    _logger.Send("Escaping single quotes for SQL...");
                     cookies = cookies.Replace("'", "''").Trim();
                     _logger.Send($"After escaping: {cookies.Length} characters");
                     
-                    _logger.Send("Updating instance database...");
                     _project.DbUpd($"cookies = '{cookies}'", "_instance");
                     _logger.Send("Instance database updated successfully");
                     
@@ -190,7 +153,37 @@ namespace z3nCore
             }
         }
         
-        
+        public void Set(string cookieSourse = null, string jsonPath = null )
+        {
+            if (string.IsNullOrEmpty(jsonPath)) 
+                cookieSourse = "fromFile";
+
+            if (cookieSourse == null)
+                cookieSourse = "dbMain";
+            
+            switch (cookieSourse) 
+            {
+                case "dbMain":
+                    cookieSourse = _project.SqlGet("cookies", "_instance");
+                    break;
+
+                case "dbProject":
+                    cookieSourse = _project.SqlGet("cookies");
+                    break;
+
+                case "fromFile":
+                    if(string.IsNullOrEmpty(jsonPath)) 
+                        jsonPath = _project.PathCookies();
+                    cookieSourse = File.ReadAllText(jsonPath);
+                    break;
+                
+                default:                   
+                    break;
+            }
+            _instance.SetCookie(cookieSourse);
+
+        }
+
         public string GetByJs(string domainFilter = "", bool log = false)
         {
             string jsCode = @"
@@ -280,4 +273,398 @@ namespace z3nCore
         }
 
     }
+    
+    public class Cookies
+    {
+        private readonly IZennoPosterProjectModel _project;
+        private readonly Instance _instance;
+        private readonly Logger _logger;
+
+        public Cookies(IZennoPosterProjectModel project, Instance instance, bool log = false)
+        {
+            _project = project;
+            _instance = instance;
+            _logger = new Logger(project, log: log, classEmoji: "⚡");
+        }
+
+       public void Save(string source = null, string jsonPath = null)
+        {
+
+            switch (source)
+            {
+                case "project":
+                    SaveProjectFast();
+                    return;
+                    
+                case "all":
+                    SaveAllFast(jsonPath);
+                    return;
+                    
+                default:
+                    _logger.Send($"ERROR: Unsupported source '{source}'");
+                    throw new Exception($"unsupported input {source}. Use [null|project|all]");
+            }
+        }
+
+        public void SaveAllFast(string jsonPath = null)
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
+            // 1. Используем встроенный метод ZennoPoster (моментально!)
+            string tempFile = Path.Combine(Path.GetTempPath(), $"cookies_{Guid.NewGuid()}.txt");
+            _instance.SaveCookie(tempFile);
+            var saveTime = sw.ElapsedMilliseconds;
+            _logger.Send($"Native SaveCookie: {saveTime}ms");
+
+            try
+            {
+                // 2. Читаем файл
+                sw.Restart();
+                string cookieContent = File.ReadAllText(tempFile);
+                var readTime = sw.ElapsedMilliseconds;
+                _logger.Send($"File read: {readTime}ms, size: {cookieContent.Length / 1024.0:F2} KB");
+
+                // 3. Конвертируем в JSON
+                sw.Restart();
+                string jsonCookies = ConvertToJson(cookieContent);
+                var convertTime = sw.ElapsedMilliseconds;
+                _logger.Send($"Conversion to JSON: {convertTime}ms, {jsonCookies.Length / 1024.0:F2} KB");
+
+                // 4. Сохраняем в БД
+                sw.Restart();
+                string escaped = jsonCookies.Replace("'", "''");
+                _project.DbUpd($"cookies = '{escaped}'", "_instance");
+                var dbTime = sw.ElapsedMilliseconds;
+                _logger.Send($"DB save: {dbTime}ms");
+
+                // 5. Сохраняем в файл если нужно
+                if (!string.IsNullOrEmpty(jsonPath))
+                {
+                    sw.Restart();
+                    File.WriteAllText(jsonPath, jsonCookies);
+                    _logger.Send($"JSON file saved to {jsonPath}: {sw.ElapsedMilliseconds}ms");
+                }
+
+                var totalTime = saveTime + readTime + convertTime + dbTime;
+                _logger.Send($"✅ TOTAL TIME: {totalTime}ms ({totalTime / 1000.0:F1}s)");
+            }
+            finally
+            {
+                // Удаляем временный файл
+                try
+                {
+                    File.Delete(tempFile);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        public void SaveProjectFast()
+        {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            string currentDomain = _instance.ActiveTab.MainDomain;
+
+            string tempFile = Path.Combine(Path.GetTempPath(), $"cookies_{Guid.NewGuid()}.txt");
+            _instance.SaveCookie(tempFile);
+
+            try
+            {
+                string cookieContent = File.ReadAllText(tempFile);
+                string jsonCookies = ConvertToJson(cookieContent, domainFilter: currentDomain);
+
+                string escaped = jsonCookies.Replace("'", "''");
+                _project.DbUpd($"cookies = '{escaped}'");
+
+                _logger.Send($"✅ Project cookies saved in {sw.ElapsedMilliseconds}ms");
+            }
+            finally
+            {
+                try
+                {
+                    File.Delete(tempFile);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        private string ConvertToJson(string content, string domainFilter = null)
+        {
+            var cookies = new List<object>();
+            var lines = content.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var line in lines)
+            {
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+
+                var parts = line.Split('\t');
+
+                // Формат (по вашему примеру):
+                // 0: domain (www.google.com)
+                // 1: includeSubdomains (TRUE/FALSE) 
+                // 2: path (/recaptcha)
+                // 3: isSecure (TRUE/FALSE)
+                // 4: expiry (04/17/2026 00:43:42 или пусто)
+                // 5: name (_GRECAPTCHA)
+                // 6: value (09AG7bz...)
+                // 7: httpOnly (TRUE/FALSE)
+                // 8: секундный httpOnly? (FALSE)
+                // 9: sameSite (None/Lax/Strict)
+                // 10: priority (High/Medium/Low)
+                // 11: пусто
+                // 12: port (443/80)
+                // 13: схема (Secure/NonSecure)
+                // 14: пусто
+                // 15: еще что-то (FALSE)
+
+                if (parts.Length < 7) continue;
+
+                try
+                {
+                    var domain = parts[0];
+
+                    // Фильтруем по домену если нужно
+                    if (!string.IsNullOrEmpty(domainFilter) && !domain.Contains(domainFilter))
+                        continue;
+
+                    var includeSubdomains = parts[1].Equals("TRUE", StringComparison.OrdinalIgnoreCase);
+                    var path = parts[2];
+                    var secure = parts[3].Equals("TRUE", StringComparison.OrdinalIgnoreCase);
+                    var expiryStr = parts[4];
+                    var name = parts[5];
+                    var value = parts.Length > 6 ? parts[6] : "";
+
+                    // Дополнительные поля
+                    var httpOnly = false;
+                    var sameSite = "Unspecified";
+
+                    if (parts.Length > 7)
+                        httpOnly = parts[7].Equals("TRUE", StringComparison.OrdinalIgnoreCase);
+
+                    if (parts.Length > 9)
+                        sameSite = parts[9];
+
+                    // Конвертируем дату
+                    double? expirationDate = null;
+                    bool isSession = string.IsNullOrEmpty(expiryStr);
+
+                    if (!isSession)
+                    {
+                        // Формат: MM/dd/yyyy HH:mm:ss
+                        if (DateTime.TryParseExact(expiryStr, "MM/dd/yyyy HH:mm:ss",
+                                CultureInfo.InvariantCulture, DateTimeStyles.None, out var expiry))
+                        {
+                            expirationDate = new DateTimeOffset(expiry).ToUnixTimeSeconds();
+                        }
+                    }
+
+                    cookies.Add(new
+                    {
+                        domain = domain,
+                        expirationDate = expirationDate,
+                        hostOnly = !includeSubdomains,
+                        httpOnly = httpOnly,
+                        name = name,
+                        path = path,
+                        sameSite = sameSite,
+                        secure = secure,
+                        session = isSession,
+                        storeId = (string)null,
+                        value = value,
+                        id = (domain + name + path).GetHashCode()
+                    });
+                }
+                catch (Exception ex)
+                {
+                    _logger.Send($"Failed to parse cookie: {ex.Message}");
+                }
+            }
+
+            _logger.Send($"Converted {cookies.Count} cookies");
+            return JsonConvert.SerializeObject(cookies, Formatting.None);
+        }
+
+        public void Set(string cookieSource = null, string jsonPath = null)
+        {
+            if (string.IsNullOrEmpty(jsonPath))
+                cookieSource = "fromFile";
+
+            if (cookieSource == null)
+                cookieSource = "dbMain";
+
+            switch (cookieSource)
+            {
+                case "dbMain":
+                    cookieSource = _project.SqlGet("cookies", "_instance");
+                    break;
+                case "dbProject":
+                    cookieSource = _project.SqlGet("cookies");
+                    break;
+                case "fromFile":
+                    if (string.IsNullOrEmpty(jsonPath))
+                        jsonPath = _project.PathCookies();
+                    cookieSource = File.ReadAllText(jsonPath);
+                    break;
+            }
+
+            _instance.SetCookie(cookieSource);
+        }
+        
+        public string Get(string domainFilter = "")
+        {
+            _logger.Send($"Get() called with filter: '{domainFilter}'");
+            
+            if (domainFilter == ".") 
+            {
+                domainFilter = _instance.ActiveTab.MainDomain;
+                _logger.Send($"Filter '.' resolved to main domain: '{domainFilter}'");
+            }
+            
+            var cookieContainer = _project.Profile.CookieContainer;
+            _logger.Send($"Cookie container accessed, total domains: {cookieContainer.Domains.Count()}");
+            
+            var cookieList = new List<object>();
+            int domainCount = 0;
+            int totalCookies = 0;
+            int filteredDomains = 0;
+
+            foreach (var domain in cookieContainer.Domains)
+            {
+                domainCount++;
+                
+                if (string.IsNullOrEmpty(domainFilter) || domain.Contains(domainFilter))
+                {
+                    filteredDomains++;
+                    _logger.Send($"Processing domain #{filteredDomains}: '{domain}'");
+                    
+                    var cookies = cookieContainer.Get(domain);
+                    int cookiesInDomain = cookies.Count();
+                    totalCookies += cookiesInDomain;
+                    
+                    _logger.Send($"Domain '{domain}' has {cookiesInDomain} cookies");
+                    
+                    cookieList.AddRange(cookies.Select(cookie => new
+                    {
+                        domain = cookie.Host,
+                        expirationDate = cookie.Expiry == DateTime.MinValue ? (double?)null : new DateTimeOffset(cookie.Expiry).ToUnixTimeSeconds(),
+                        hostOnly = !cookie.IsDomain,
+                        httpOnly = cookie.IsHttpOnly,
+                        name = cookie.Name,
+                        path = cookie.Path,
+                        sameSite = cookie.SameSite.ToString(),
+                        secure = cookie.IsSecure,
+                        session = cookie.IsSession,
+                        storeId = (string)null,
+                        value = cookie.Value,
+                        id = cookie.GetHashCode()
+                    }));
+                    
+                    _logger.Send($"Added {cookiesInDomain} cookies to list (total now: {cookieList.Count})");
+                }
+            }
+            
+            _logger.Send($"Filtering complete: {filteredDomains} domains matched out of {domainCount} total, {totalCookies} cookies collected");
+            _logger.Send($"Starting JSON serialization of {cookieList.Count} cookie objects...");
+            
+            string cookiesJson = Global.ZennoLab.Json.JsonConvert.SerializeObject(cookieList, formatting: Formatting.None);
+            
+            _logger.Send($"Serialization complete: {cookiesJson.Length} characters, {cookiesJson.Length / 1024.0:F2} KB");
+            
+            return cookiesJson;
+        }
+        public string GetByJs(string domainFilter = "", bool log = false)
+        {
+            string jsCode = @"
+		var cookies = document.cookie.split('; ').map(function(cookie) {
+			var parts = cookie.split('=');
+			var name = parts[0];
+			var value = parts.slice(1).join('=');
+			return {
+				'domain': window.location.hostname,
+				'name': name,
+				'value': value,
+				'path': '/', 
+				'expirationDate': null, 
+				'hostOnly': true,
+				'httpOnly': false,
+				'secure': window.location.protocol === 'https:',
+				'session': false,
+				'sameSite': 'Unspecified',
+				'storeId': null,
+				'id': 1
+			};
+		});
+		return JSON.stringify(cookies);
+		";
+
+            string jsonResult = _instance.ActiveTab.MainDocument.EvaluateScript(jsCode).ToString();
+            if (log) _project.log(jsonResult);
+            var escapedJson = jsonResult.Replace("\r\n", "").Replace("\n", "").Replace("\r", "").Replace(" ", "").Replace("'", "''").Trim();
+            _project.Json.FromString(jsonResult);
+            return escapedJson;
+        }
+
+        public void SetByJs(string cookiesJson, bool log = false)
+        {
+            try
+            {
+                JArray cookies = JArray.Parse(cookiesJson);
+
+                var uniqueCookies = cookies
+                    .GroupBy(c => new { Domain = c["domain"].ToString(), Name = c["name"].ToString() })
+                    .Select(g => g.Last())
+                    .ToList();
+
+                string currentDomain = _instance.ActiveTab.Domain;
+                string[] domainParts = currentDomain.Split('.');
+                string parentDomain = "." + string.Join(".", domainParts.Skip(domainParts.Length - 2));
+
+                string jsCode = "";
+                int cookieCount = 0;
+                foreach (JObject cookie in uniqueCookies)
+                {
+                    string domain = cookie["domain"].ToString();
+                    string name = cookie["name"].ToString();
+                    string value = cookie["value"].ToString();
+
+                    if (domain == currentDomain || domain == "." + currentDomain)
+                    {
+                        string path = cookie["path"]?.ToString() ?? "/";
+                        string expires;
+
+                        if (cookie["expirationDate"] != null && cookie["expirationDate"].Type != JTokenType.Null)
+                        {
+                            double expValue = double.Parse(cookie["expirationDate"].ToString());
+                            if (expValue < DateTimeOffset.UtcNow.ToUnixTimeSeconds()) 
+                                expires = DateTimeOffset.UtcNow.AddYears(1).ToString("R");
+                            else 
+                                expires = DateTimeOffset.FromUnixTimeSeconds((long)expValue).ToString("R");
+                        }
+                        else
+                            expires = DateTimeOffset.UtcNow.AddYears(1).ToString("R");
+
+                        jsCode += $"document.cookie = '{name}={value}; domain={parentDomain}; path={path}; expires={expires}'; Secure';\n";
+                        cookieCount++;
+                    }
+                }
+                
+                _logger.Send($"Found cookies for {currentDomain}: [{cookieCount}] runingJs...\n + {jsCode}");
+
+                if (!string.IsNullOrEmpty(jsCode))
+                {
+                    _instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
+                }
+                else _logger.Send($"!W No cookies Found for {currentDomain}");
+            }
+            catch (Exception ex)
+            {
+                _logger.Send($"!W cant't parse JSON: [{cookiesJson}]  {ex.Message}");
+            }
+        }
+    }
+    
 }

@@ -478,6 +478,11 @@ public class Init
             
             else
             {
+                // ВАРИАНТ 1: Используем снимок PID до запуска
+                var pidsBeforeLaunch = Utilities.ProcAcc.GetPidSnapshot();
+        
+                // ИЛИ ВАРИАНТ 2: Запоминаем время перед запуском
+                // var launchTime = DateTime.Now;
                 ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings settings = 
                     (ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings)
                     ZennoLab.CommandCenter.Classes.BrowserLaunchSettingsFactory.Create(browser);
@@ -485,7 +490,19 @@ public class Init
                 settings.ConvertProfileFolder = true;
                 settings.UseProfile = true;
                 _instance.Launch(settings);
-                pid = Utilities.ProcAcc.GetNewest(acc0);
+                
+                // ВАРИАНТ 1: Быстрый поиск среди новых процессов
+                pid = Utilities.ProcAcc.GetNewlyLaunchedPid(acc0, pidsBeforeLaunch);
+        
+                // ИЛИ ВАРИАНТ 2: Поиск по времени запуска
+                // pid = Utilities.ProcAcc.FindFirstNewPid(acc0, launchTime);
+                // Fallback на старый метод, если быстрый не сработал
+                if (pid == 0)
+                {
+                    _logger.Send("Fast PID search failed, using fallback");
+                    pid = Utilities.ProcAcc.GetNewest(acc0);
+                }
+        
                 port = _instance.Port;
             }
             

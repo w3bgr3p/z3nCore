@@ -148,8 +148,7 @@ namespace z3nCore
         }
         public void SaveCookies()
         {
-            string gCookies = new Cookies(_project, _instance).Get(".");
-            _project.DbUpd($"cookies = '{gCookies}'", "projects_github");
+            new Cookies(_project, _instance).SaveProjectFast();
         }
     }
 }

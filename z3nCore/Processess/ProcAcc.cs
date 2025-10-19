@@ -91,6 +91,108 @@ namespace z3nCore.Utilities
             }
         }
         
+        // ============== FAST API ==============
+
+        /// <summary>
+        /// Быстрый поиск нового PID для только что запущенного браузера
+        /// Ищет только среди процессов, которых не было до запуска
+        /// </summary>
+        public static int GetNewlyLaunchedPid(string acc, HashSet<int> pidsBeforeLaunch, int maxAttempts = 10, int delayMs = 100)
+        {
+            if (string.IsNullOrEmpty(acc)) return 0;
+            acc = Normalize(acc);
+            
+            for (int attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                // Получаем только новые процессы zbe1
+                var currentPids = zbe1();
+                var newPids = currentPids.Where(p => !pidsBeforeLaunch.Contains(p)).ToList();
+                
+                if (newPids.Count == 0)
+                {
+                    if (attempt < maxAttempts - 1)
+                        System.Threading.Thread.Sleep(delayMs);
+                    continue;
+                }
+                
+                // Проверяем только новые процессы
+                foreach (var pid in newPids)
+                {
+                    try
+                    {
+                        var foundAcc = GetAccFromPid(pid);
+                        if (Normalize(foundAcc) == acc)
+                        {
+                            // Нашли! Обновляем кеш если нужно
+                            ClearCache();
+                            return pid;
+                        }
+                    }
+                    catch { }
+                }
+                
+                if (attempt < maxAttempts - 1)
+                    System.Threading.Thread.Sleep(delayMs);
+            }
+            
+            return 0;
+        }
+
+        /// <summary>
+        /// Получить снимок всех PID процессов zbe1 (быстрый метод)
+        /// </summary>
+        public static HashSet<int> GetPidSnapshot()
+        {
+            return new HashSet<int>(zbe1());
+        }
+
+        /// <summary>
+        /// Альтернативный метод: ищет первый процесс с нужным acc среди новых
+        /// Прерывается сразу после нахождения
+        /// </summary>
+        public static int FindFirstNewPid(string acc, DateTime launchedAfter, int maxWaitMs = 2000)
+        {
+            if (string.IsNullOrEmpty(acc)) return 0;
+            acc = Normalize(acc);
+            
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            
+            while (stopwatch.ElapsedMilliseconds < maxWaitMs)
+            {
+                var processes = System.Diagnostics.Process.GetProcessesByName("zbe1");
+                
+                foreach (var proc in processes)
+                {
+                    try
+                    {
+                        // Проверяем только новые процессы
+                        if (proc.StartTime >= launchedAfter)
+                        {
+                            var foundAcc = GetAccFromPid(proc.Id);
+                            if (Normalize(foundAcc) == acc)
+                            {
+                                proc.Dispose();
+                                ClearCache();
+                                return proc.Id;
+                            }
+                        }
+                    }
+                    catch { }
+                    finally
+                    {
+                        proc?.Dispose();
+                    }
+                }
+                
+                System.Threading.Thread.Sleep(50);
+            }
+            
+            return 0;
+        }
+                
+        
+        
+        
         // ============== ВЫБОР ПО КРИТЕРИЯМ ==============
         
         /// <summary>
@@ -236,6 +338,7 @@ namespace z3nCore.Utilities
             var all = new List<string>();
             var allDic = new Dictionary<int,List<object>>();
             var allWithPids = ProcAcc.GetAllPidAcc();
+    
             foreach(var item in allWithPids)
             {
                 var pid = item.Key;
@@ -244,14 +347,13 @@ namespace z3nCore.Utilities
                     var acc = item.Value;
                     var mem = 0;
                     var age = 0;
-                    var port =0;
+                    var port = 0;
                     var proj = "unknown";
                     Running.Add(pid, new List<object> { mem, age, port, proj, acc });
                 }
-	                
             }
+    
             Running.PruneAndUpdate();
-                
             var r = Running.ToLocal();
 
             foreach (var p in r) 
@@ -262,19 +364,25 @@ namespace z3nCore.Utilities
                 int port = Convert.ToInt32(p.Value[2]);
                 var proj = p.Value[3];
                 var acc = p.Value[4]?.ToString() ?? "zbe1";
-                    
+        
+                // УБРАЛИ continue - теперь ВСЕ процессы попадают в allDic
                 if (acc == "Browser" || acc == "zbe1")
                 {
                     unbinded.Add($"pid: {pid}, age: {age}Min, mem: {mem}Mb");
                     all.Add($"pid: {pid}, acc: {acc}, proj: {proj}, age: {age}Min, mem: {mem}Mb");
-                    continue;
+                    // Добавляем в словарь с маркером для непривязанных
+                    allDic.Add(pid, new List<object> { mem, age, proj, acc });
+                    continue; // ← оставляем continue, но ПОСЛЕ добавления в allDic
                 }
+        
                 allDic.Add(pid, new List<object> { mem, age, proj, acc });
                 string info = $"pid: {pid}, acc: {acc}, proj: {proj}, age: {age}Min, mem: {mem}Mb";
                 all.Add(info);
+        
                 if (acc == "unknown") unbinded.Add(info);
                 else binded.Add(info);
             }
+    
             return allDic;
         }
         
@@ -401,6 +509,11 @@ namespace z3nCore.Utilities
             if (string.IsNullOrEmpty(acc)) return string.Empty;
             return acc.Replace("acc", "").Replace("ACC", "").Trim();
         }
+        
+        
+        
+        
+        
     }
     
 

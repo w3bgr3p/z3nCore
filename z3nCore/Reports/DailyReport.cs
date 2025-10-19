@@ -952,7 +952,7 @@ namespace z3nCore.Utilities
                 Dictionary<int, List<object>> zennoProcesses = new Dictionary<int, List<object>>();
                 try
                 {
-                    ProcAcc.PidReport();
+                    zennoProcesses = ProcAcc.PidReport();
                 }
                 catch 
                 {
@@ -1105,7 +1105,7 @@ namespace z3nCore.Utilities
                 }
                 .stats-sidebar {
                     flex: 1;  /* ← растянется на свободное место */
-                    max-width: 250px;  /* ← ограничит максимум, можно убрать если хочешь до конца */
+                    ax-width: 250px;   /*m ← ограничит максимум, можно убрать если хочешь до конца */
                     flex-shrink: 0;
                 }
                 .stats-card {
@@ -1632,10 +1632,10 @@ namespace z3nCore.Utilities
                         int age = Convert.ToInt32(proc.Value[1]);
                         var projName = proc.Value[2]?.ToString() ?? "unknown";
                         var acc = proc.Value[3]?.ToString() ?? "?";
-                        
-                        // Формируем название: acc@project или просто acc если project = unknown
+                        if (acc == "Browser" || acc == "zbe1") acc = "unbinded";
+                        else acc = "acc" + acc;
                         string displayName = projName != "unknown" 
-                            ? $"{acc}@{projName}" 
+                            ? $"{acc} [{projName}]" 
                             : acc;
                         
                         html.AppendLine("                                    <div class='process-line' title='" +
@@ -1809,7 +1809,7 @@ namespace z3nCore
     using Utilities;
     public static partial class ProjectExtensions
     {
-        public static void ReportDailyHtml(this IZennoPosterProjectModel project, bool call = false)
+        public static void ReportDailyHtml(this IZennoPosterProjectModel project, bool call = false, bool withPid = false)
         {
             string user = project.ExecuteMacro("{-Environment.CurrentUser-}");
 
@@ -1826,7 +1826,12 @@ namespace z3nCore
                 projects.Add(projectData);
             }
 
-            var html = DailyReport.FarmReportGenerator.GenerateHtmlReport(projects, user);
+            
+            var html = withPid 
+                ? DailyReport.FarmReportGenerator.GenerateHtmlReportWithPid(projects, user) 
+                : DailyReport.FarmReportGenerator.GenerateHtmlReport(projects, user) ;
+            
+            
             string tempPath = System.IO.Path.Combine(project.Path, ".data", "dailyReport.html");
             System.IO.File.WriteAllText(tempPath, html, Encoding.UTF8);
             project.SendInfoToLog($"Report saved to: {tempPath}", false);
