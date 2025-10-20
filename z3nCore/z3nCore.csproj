@@ -113,6 +113,7 @@
     <Compile Include="Reports\Reporter.cs" />
     <Compile Include="Security\Cryptography.cs" />
     <Compile Include="Security\ISAFU.cs" />
+    <Compile Include="Sql\newDb.cs" />
     <Compile Include="Utilities\Converter.cs" />
     <Compile Include="Utilities\Debug.cs" />
     <Compile Include="Utilities\F0rms.cs" />

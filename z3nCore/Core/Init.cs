@@ -555,7 +555,6 @@ public class Init
                 if (bs.GetScore().Contains("time")) bs.FixTime();
             }
         }
-
         private void SetDisplay(string webGl)
         {
             if (!string.IsNullOrEmpty(webGl))

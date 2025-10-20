@@ -368,8 +368,6 @@ namespace z3nCore
             project.AddRange(tblName,log:log);
         }
         
-        
-
         #region  COLUMNS
         public static bool ClmnExist(this IZennoPosterProjectModel project, string clmnName, string tblName, bool log = false)
         {
@@ -463,7 +461,7 @@ namespace z3nCore
                 }
             }
         }
-        public static void ClmnRearrange(this IZennoPosterProjectModel project, Dictionary<string, string> tableStructure, string tblName, bool log = false)
+        public static void ClmnRearrange_(this IZennoPosterProjectModel project, Dictionary<string, string> tableStructure, string tblName, bool log = false)
         {
             ValidateName(tblName, "table name");
             
@@ -605,6 +603,186 @@ namespace z3nCore
                 throw new Exception($"Failed to rearrange table {tblName}: {ex.Message}", ex);
             }
         }
+        
+        public static void ClmnRearrange(this IZennoPosterProjectModel project, Dictionary<string, string> tableStructure, string tblName, bool log = false)
+        {
+            ValidateName(tblName, "table name");
+            
+            bool _pstgr = project.Var("DBmode") == "PostgreSQL";
+            string quotedTable = Quote(tblName);
+            string tempTable = Quote($"{tblName}_temp_{DateTime.Now.Ticks}");
+            
+            try
+            {
+                var currentColumns = project.TblColumns(tblName, log: log);
+                var idType = GetIdType(project, tblName, _pstgr, log);
+                var newTableStructure = BuildNewStructure(project, tableStructure, currentColumns, idType, tblName, _pstgr, log);
+                
+                CreateTempTable(project, tempTable, newTableStructure, _pstgr, log);
+                CopyDataToTemp(project, quotedTable, tempTable, newTableStructure, log);
+                DropOldTable(project, quotedTable, log);
+                RenameTempTable(project, tempTable, quotedTable, tblName, _pstgr, log);
+                
+                if (log)
+                {
+                    project.SendInfoToLog($"Table {tblName} rearranged successfully. New column order: {string.Join(", ", newTableStructure.Keys)}", true);
+                }
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    project.DbQ($"DROP TABLE IF EXISTS {tempTable}", log: false, unSafe: true);
+                }
+                catch { }
+                
+                throw new Exception($"Failed to rearrange table {tblName}: {ex.Message}", ex);
+            }
+        }
+
+        #region  _ClmnRearrange_private
+        private static string GetIdType(IZennoPosterProjectModel project, string tblName, bool _pstgr, bool log)
+        {
+            string idType = "INTEGER PRIMARY KEY";
+            
+            if (_pstgr)
+            {
+                string getIdTypeQuery = $@"
+                    SELECT data_type, is_identity 
+                    FROM information_schema.columns 
+                    WHERE table_schema = '{_schemaName}' 
+                    AND table_name = '{UnQuote(tblName)}' 
+                    AND column_name = 'id'";
+                
+                var idInfo = project.DbQ(getIdTypeQuery, log: log);
+                if (!string.IsNullOrEmpty(idInfo))
+                {
+                    if (idInfo.Contains("character") || idInfo.Contains("text"))
+                        idType = "TEXT PRIMARY KEY";
+                    else if (idInfo.Contains("integer"))
+                        idType = "SERIAL PRIMARY KEY";
+                }
+            }
+            else
+            {
+                string getIdTypeQuery = $"SELECT type FROM pragma_table_info('{UnQuote(tblName)}') WHERE name='id'";
+                var sqliteIdType = project.DbQ(getIdTypeQuery, log: log);
+                if (!string.IsNullOrEmpty(sqliteIdType) && sqliteIdType.ToUpper().Contains("TEXT"))
+                    idType = "TEXT PRIMARY KEY";
+            }
+            
+            return idType;
+        }
+        private static Dictionary<string, string> BuildNewStructure(IZennoPosterProjectModel project, Dictionary<string, string> tableStructure, List<string> currentColumns, string idType, string tblName, bool _pstgr, bool log)
+        {
+            var newTableStructure = new Dictionary<string, string>();
+            newTableStructure.Add("id", idType);
+            
+            foreach (var col in tableStructure)
+            {
+                if (col.Key.ToLower() != "id" && currentColumns.Contains(col.Key))
+                {
+                    newTableStructure.Add(col.Key, col.Value);
+                }
+            }
+            
+            foreach (var col in currentColumns)
+            {
+                if (col.ToLower() != "id" && !newTableStructure.ContainsKey(col))
+                {
+                    string colType = GetColumnType(project, tblName, col, _pstgr, log);
+                    newTableStructure.Add(col, colType);
+                }
+            }
+            
+            return newTableStructure;
+        }
+        private static string GetColumnType(IZennoPosterProjectModel project, string tblName, string col, bool _pstgr, bool log)
+        {
+            string colType = "TEXT DEFAULT ''";
+            
+            if (_pstgr)
+            {
+                string getTypeQuery = $@"
+                    SELECT data_type, character_maximum_length, column_default
+                    FROM information_schema.columns 
+                    WHERE table_schema = '{_schemaName}' 
+                    AND table_name = '{UnQuote(tblName)}' 
+                    AND column_name = '{col}'";
+                
+                var typeInfo = project.DbQ(getTypeQuery, log: log);
+                if (!string.IsNullOrEmpty(typeInfo))
+                {
+                    if (typeInfo.Contains("integer")) colType = "INTEGER";
+                    else if (typeInfo.Contains("text") || typeInfo.Contains("character")) colType = "TEXT";
+                    else if (typeInfo.Contains("timestamp")) colType = "TIMESTAMP";
+                    else if (typeInfo.Contains("boolean")) colType = "BOOLEAN";
+                    
+                    if (typeInfo.Contains("''::")) colType += " DEFAULT ''";
+                }
+            }
+            else
+            {
+                string getTypeQuery = $"SELECT type FROM pragma_table_info('{UnQuote(tblName)}') WHERE name='{col}'";
+                var sqliteType = project.DbQ(getTypeQuery, log: log);
+                if (!string.IsNullOrEmpty(sqliteType))
+                    colType = sqliteType;
+            }
+            
+            return colType;
+        }
+        private static void CreateTempTable(IZennoPosterProjectModel project, string tempTable, Dictionary<string, string> newTableStructure, bool _pstgr, bool log)
+        {
+            string createTempTableQuery;
+            if (_pstgr)
+            {
+                createTempTableQuery = $@"CREATE TABLE {tempTable} ( 
+                    {string.Join(", ", newTableStructure.Select(kvp => $"{Quote(kvp.Key)} {kvp.Value.Replace("AUTOINCREMENT", "SERIAL")}"))} )";
+            }
+            else
+            {
+                createTempTableQuery = $@"CREATE TABLE {tempTable} ( 
+                    {string.Join(", ", newTableStructure.Select(kvp => $"{Quote(kvp.Key)} {kvp.Value}"))} )";
+            }
+            
+            project.DbQ(createTempTableQuery, log: log);
+        }
+        private static void CopyDataToTemp(IZennoPosterProjectModel project, string quotedTable, string tempTable, Dictionary<string, string> newTableStructure, bool log)
+        {
+            var columnsList = string.Join(", ", newTableStructure.Keys.Select(k => Quote(k)));
+            string copyDataQuery = $@"
+                INSERT INTO {tempTable} ({columnsList})
+                SELECT {columnsList}
+                FROM {quotedTable}";
+            
+            project.DbQ(copyDataQuery, log: log);
+        }
+        private static void DropOldTable(IZennoPosterProjectModel project, string quotedTable, bool log)
+        {
+            string dropOldTableQuery = $"DROP TABLE {quotedTable}";
+            project.DbQ(dropOldTableQuery, log: log, unSafe: true);
+        }
+        private static void RenameTempTable(IZennoPosterProjectModel project, string tempTable, string quotedTable, string tblName, bool _pstgr, bool log)
+        {
+            string renameTableQuery;
+            if (_pstgr)
+            {
+                renameTableQuery = $"ALTER TABLE {tempTable} RENAME TO {quotedTable}";
+            }
+            else
+            {
+                renameTableQuery = $"ALTER TABLE {tempTable} RENAME TO {UnQuote(tblName)}";
+            }
+            
+            project.DbQ(renameTableQuery, log: log);
+        }
+        
+        
+
+        #endregion
+        
+        
+        
         #endregion
         
         //Range

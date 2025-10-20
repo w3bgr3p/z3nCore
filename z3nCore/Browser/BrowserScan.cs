@@ -37,8 +37,10 @@ namespace z3nCore
         private void LoadStats()
         {
             _instance.Go("https://www.browserscan.net/", true);
+            _project.Deadline();
         loading:
             _logger.Send("loading...");
+            _project.Deadline(60);
             try
             {
                 _instance.HeGet(("div", "outerhtml", "use xlink:href=\"#etc2\"", "regexp", 0), deadline: 3);
