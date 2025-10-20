@@ -12,27 +12,23 @@ namespace z3nCore
 {
     public class X
     {
-        protected readonly IZennoPosterProjectModel _project;
-        protected readonly Instance _instance;
+        private readonly IZennoPosterProjectModel _project;
+        private readonly Instance _instance;
         private readonly Logger _logger;
-
-        protected readonly bool _logShow;
-        //protected readonly Sql _sql;
-
-        protected string _status;
-        protected string _token;
-        protected string _login;
-        protected string _pass;
-        protected string _2fa;
-        protected string _email;
-        protected string _email_pass;
+        
+        private string _status;
+        private string _token;
+        private string _login;
+        private string _pass;
+        private string _2fa;
+        private string _email;
+        private string _email_pass;
 
         public X(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
 
             _project = project;
             _instance = instance;
-            //_logShow = log;
             _logger = new Logger(project, log: log, classEmoji: "X");
 
             LoadCreds();
@@ -40,14 +36,21 @@ namespace z3nCore
         }
         private void LoadCreds()
         {
-            string[] creds = _project.SqlGet(" status, token, login, password, otpsecret, email, emailpass", "_twitter").Split('|');
-            try { _status = creds[0].Trim(); _project.Variables["twitterSTATUS"].Value = _status; } catch (Exception ex) { _logger.Send(ex.Message); }
-            try { _token = creds[1].Trim(); _project.Variables["twitterTOKEN"].Value = _token; } catch (Exception ex) { _logger.Send(ex.Message); }
-            try { _login = creds[2].Trim(); _project.Variables["twitterLOGIN"].Value = _login; } catch (Exception ex) { _logger.Send(ex.Message); }
-            try { _pass = creds[3].Trim(); _project.Variables["twitterPASSWORD"].Value = _pass; } catch (Exception ex) { _logger.Send(ex.Message); }
-            try { _2fa = creds[4].Trim(); _project.Variables["twitterCODE2FA"].Value = _2fa; } catch (Exception ex) { _logger.Send(ex.Message); }
-            try { _email = creds[5].Trim(); _project.Variables["twitterEMAIL"].Value = _email; } catch (Exception ex) { _logger.Send(ex.Message); }
-            try { _email_pass = creds[6].Trim(); _project.Variables["twitterEMAIL_PASSWORD"].Value = _email_pass; } catch (Exception ex) { _logger.Send(ex.Message); }
+            var creds = _project.SqlGetDicFromLine(" status, token, login, password, otpsecret, email, emailpass", "_twitter");
+            _status = creds["status"];
+            _token = creds["token"];
+            _login = creds["login"];
+            _pass = creds["password"];
+            _2fa = creds["otpsecret"];
+            _email = creds["email"];
+            _email_pass = creds["emailpass"];
+            //try { _status = creds[0].Trim(); _project.Variables["twitterSTATUS"].Value = _status; } catch (Exception ex) { _logger.Send(ex.Message); }
+            //try { _token = creds[1].Trim(); _project.Variables["twitterTOKEN"].Value = _token; } catch (Exception ex) { _logger.Send(ex.Message); }
+            //try { _login = creds[2].Trim(); _project.Variables["twitterLOGIN"].Value = _login; } catch (Exception ex) { _logger.Send(ex.Message); }
+            //try { _pass = creds[3].Trim(); _project.Variables["twitterPASSWORD"].Value = _pass; } catch (Exception ex) { _logger.Send(ex.Message); }
+           // try { _2fa = creds[4].Trim(); _project.Variables["twitterCODE2FA"].Value = _2fa; } catch (Exception ex) { _logger.Send(ex.Message); }
+            //try { _email = creds[5].Trim(); _project.Variables["twitterEMAIL"].Value = _email; } catch (Exception ex) { _logger.Send(ex.Message); }
+            //try { _email_pass = creds[6].Trim(); _project.Variables["twitterEMAIL_PASSWORD"].Value = _email_pass; } catch (Exception ex) { _logger.Send(ex.Message); }
 
             if (string.IsNullOrEmpty(_login) || string.IsNullOrEmpty(_pass))
                 throw new Exception($"invalid credentials login:[{_login}] pass:[{_pass}]");
@@ -58,7 +61,7 @@ namespace z3nCore
             log = _project.Variables["debug"].Value == "True";
             DateTime start = DateTime.Now;
             DateTime deadline = DateTime.Now.AddSeconds(60);
-            string login = _project.Variables["twitterLOGIN"].Value;
+            string login = _login;
             _instance.ActiveTab.Navigate($"https://x.com/{login}", "");
             var status = "";
 
@@ -151,7 +154,7 @@ namespace z3nCore
 
         private void TokenSet()
         {
-            var token = _project.Variables["twitterTOKEN"].Value;
+            var token = _token;
             string jsCode = _project.ExecuteMacro($"document.cookie = \"auth_token={token}; domain=.x.com; path=/; expires=${DateTimeOffset.UtcNow.AddYears(1).ToString("R")}; Secure\";\r\nwindow.location.replace(\"https://x.com\")");
             _instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
         }
@@ -167,7 +170,7 @@ namespace z3nCore
                 if (toParse[i]["name"].ToString() == "auth_token") token = toParse[i]["value"].ToString();
                 i++;
             }
-            _project.Variables["twitterTOKEN"].Value = token;
+            _token = token;
             _project.DbUpd($"token = '{token}'", "_twitter");
             return token;
         }
@@ -175,7 +178,7 @@ namespace z3nCore
         private string Login()
         {
             DateTime deadline = DateTime.Now.AddSeconds(60);
-            var login = _project.Variables["twitterLOGIN"].Value;
+            var login = _login;
 
             _instance.ActiveTab.Navigate("https://x.com/", ""); Thread.Sleep(2000);
             _instance.HeClick(("button", "innertext", "Accept\\ all\\ cookies", "regexp", 0), deadline: 1, thr0w: false);
@@ -186,14 +189,14 @@ namespace z3nCore
 
             if (!_instance.ActiveTab.FindElementByXPath("//*[contains(text(), 'Sorry, we could not find your account')]", 0).IsVoid) return "NotFound";
 
-            _instance.HeSet(("password", "name"), _project.Variables["twitterPASSWORD"].Value);
+            _instance.HeSet(("password", "name"), _pass);
 
 
             _instance.HeClick(("button", "data-testid", "LoginForm_Login_Button", "regexp", 0), "clickOut");
 
             if (!_instance.ActiveTab.FindElementByXPath("//*[contains(text(), 'Wrong password!')]", 0).IsVoid) return "WrongPass";
 
-            var codeOTP = OTP.Offline(_project.Variables["twitterCODE2FA"].Value);
+            var codeOTP = OTP.Offline(_2fa);
             _instance.HeSet(("text", "name"), codeOTP);
 
 
@@ -397,7 +400,7 @@ namespace z3nCore
                 otpsecret = '{fields["CODE2FA"]}', 
                 email = '{fields["EMAIL"]}', 
                 emailpass = '{fields["EMAIL_PASSWORD"]}', 
-                otpbackup = '{fields["RECOVERY_SEED"]}'", "_twitter", log:_logShow);
+                otpbackup = '{fields["RECOVERY_SEED"]}'", "_twitter");
             }
             catch (Exception ex)
             {
@@ -438,7 +441,7 @@ namespace z3nCore
                 followers = '{followers}',
                 following = '{following}',
                 tweets = '{tweets}',
-                ","__twitter", log:_logShow);
+                ","__twitter");
             try
             {
                 var toFill = _project.Lists["editProfile"];
@@ -533,7 +536,7 @@ namespace z3nCore
                         lang = '{lang}',
                         gender = '{gender}',
                         birth = '{birth}',
-                        ","__twitter", log:_logShow);
+                        ","__twitter");
 
 
             try

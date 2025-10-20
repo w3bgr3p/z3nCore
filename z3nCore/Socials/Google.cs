@@ -10,42 +10,39 @@ namespace z3nCore
 {
     public class Google
     {
-        protected readonly IZennoPosterProjectModel _project;
-        protected readonly Instance _instance;
-        private readonly Logger _logger;
-
-        protected readonly bool _logShow;
-
-
-        protected string _status;
-        protected string _login;
-        protected string _pass;
-        protected string _2fa;
-        protected string _recoveryMail;
-        protected string _recoveryCodes;
-        protected string _cookies;
-        protected bool _cookRestored = false;
+        private readonly IZennoPosterProjectModel _project;
+        private readonly Instance _instance;
+        private readonly Logger _log;
+        
+        private string _status;
+        private string _login;
+        private string _pass;
+        private string _2fa;
+        private string _recoveryMail;
+        private string _recoveryCodes;
+        private string _cookies;
 
         public Google(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
-
             _project = project;
             _instance = instance;
-
-            _logger = new Logger(project, log: log, classEmoji: "G");
-            DbCreds();
+            _log = new Logger(project, log: log, classEmoji: "G");
+            LoadCreds();
 
         }
-        private void DbCreds()
+        
+        private void LoadCreds()
         {
-            string[] creds = _project.SqlGet("status, login, password, otpsecret, recoveryemail, otpbackup, cookies", "_google").Split('|');
-            try { _status = creds[0]; _project.Variables["googleSTATUS"].Value = _status; } catch (Exception ex) { _logger.Send(ex.Message); }
-            try { _login = creds[1]; _project.Variables["googleLOGIN"].Value = _login; } catch (Exception ex) { _logger.Send(ex.Message); }
-            try { _pass = creds[2]; _project.Variables["googlePASSWORD"].Value = _pass; } catch (Exception ex) { _logger.Send(ex.Message); }
-            try { _2fa = creds[3]; _project.Variables["google2FACODE"].Value = _2fa; } catch (Exception ex) { _logger.Send(ex.Message); }
-            try { _recoveryMail = creds[4]; _project.Variables["googleSECURITY_MAIL"].Value = _recoveryMail; } catch (Exception ex) { _logger.Send(ex.Message); }
-            try { _recoveryCodes = creds[5]; _project.Variables["googleBACKUP_CODES"].Value = _recoveryCodes; } catch (Exception ex) { _logger.Send(ex.Message); }
-            try { _cookies = creds[6]; _project.Variables["googleCOOKIES"].Value = _cookies; } catch (Exception ex) { _logger.Send(ex.Message); }
+            var creds = _project.SqlGetDicFromLine("status, login, password, otpsecret, recoveryemail, otpbackup, cookies", "_google");
+            _status = creds["status"];
+            _login = creds["login"];
+            _pass = creds["password"];
+            _2fa = creds["otpsecret"];
+            _recoveryMail = creds["recoveryemail"];
+            _recoveryCodes = creds["otpbackup"];
+            _cookies = creds["cookies"];
+            if (string.IsNullOrEmpty(_login) || string.IsNullOrEmpty(_pass))
+                throw new Exception($"invalid credentials login:[{_login}] pass:[{_pass}]");
         }
         public string Load(bool log = false, bool cookieBackup = true)
         {
@@ -56,7 +53,7 @@ namespace z3nCore
 
             _project.Var("googleSTATUS", state);
 
-            _logger.Send(state);
+            _log.Send(state);
             switch (state)
             {
                 case "ok":
@@ -159,7 +156,7 @@ namespace z3nCore
 
             else state = "undefined";
 
-            //_logger.Send(state);
+            //_log.Send(state);
 
             switch (state)
             {
@@ -167,13 +164,13 @@ namespace z3nCore
                     var currentAcc = _instance.HeGet(("a", "href", "https://accounts.google.com/SignOutOptions\\?", "regexp", 0), atr: "aria-label").Split('\n')[1];
                     if (currentAcc.ToLower().Contains(_login.ToLower()))
                     {
-                        _logger.Send($"{currentAcc} is Correct. Login done");
+                        _log.Send($"{currentAcc} is Correct. Login done");
                         state = "ok";
                     }
 
                     else
                     {
-                        _logger.Send($"!W {currentAcc} is InCorrect. MustBe {_login}");
+                        _log.Send($"!W {currentAcc} is InCorrect. MustBe {_login}");
                         state = "!WrongAcc";
                     }
                     break;
@@ -194,10 +191,10 @@ namespace z3nCore
             try
             {
                 var userContainer = _instance.HeGet(("div", "data-authuser", "0", "regexp", 0));
-                _logger.Send($"container:{userContainer} catched");
+                _log.Send($"container:{userContainer} catched");
                 if (userContainer.IndexOf(_login, StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    _logger.Send($"correct user found: {_login}");
+                    _log.Send($"correct user found: {_login}");
                     _instance.HeClick(("div", "data-authuser", "0", "regexp", 0), delay: 3);
                     Thread.Sleep(5000);
                     if (!_instance.ActiveTab.FindElementByAttribute("div", "data-authuser", "0", "regexp", 0).IsVoid)
@@ -224,7 +221,7 @@ namespace z3nCore
                 }
                 else
                 {
-                    _logger.Send($"!Wrong account [{userContainer}]. Expected: {_login}. Cleaning");
+                    _log.Send($"!Wrong account [{userContainer}]. Expected: {_login}. Cleaning");
                     _instance.CloseAllTabs();
                     _instance.ClearCookie("google.com");
                     _instance.ClearCookie("google.com");

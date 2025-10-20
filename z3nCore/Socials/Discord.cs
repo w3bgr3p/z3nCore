@@ -11,64 +11,56 @@ namespace z3nCore
 {
     public class Discord
     {
-        protected readonly IZennoPosterProjectModel _project;
-        protected readonly Instance _instance;
-        protected readonly bool _logShow;
-        protected readonly string _pass;
-
-        protected readonly NetHttp _http;
+        private readonly IZennoPosterProjectModel _project;
+        private readonly Instance _instance;
+        private readonly Logger _log;
+        private string _status;
+        private string _token;
+        private string _login;
+        private string _pass;
+        private string _2fa;
+        
         public Discord(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
             _project = project;
             _instance = instance;
-            _logShow = log;
-            _http = new NetHttp(_project);
-        }
-        public void Log(string tolog = "", [CallerMemberName] string callerName = "", bool log = false)
-        {
-            if (!_logShow && !log) return;
-            var stackFrame = new System.Diagnostics.StackFrame(1);
-            var callingMethod = stackFrame.GetMethod();
-            if (callingMethod == null || callingMethod.DeclaringType == null || callingMethod.DeclaringType.FullName.Contains("Zenno")) callerName = "null";
-            _project.log($"[ 👾  {callerName}] [{tolog}] ");
+            _log = new Logger(project, log: log, classEmoji: "👾");
+            LoadCreds();
         }
         
-        public string CredsFromDb()
+        private void LoadCreds()
         {
+            var creds = _project.SqlGetDicFromLine("status, token, login, password, otpsecret", "_discord");
+            _status = creds["status"];
+            _token = creds["token"];
+            _login = creds["login"];
+            _pass = creds["password"];
+            _2fa = creds["otpsecret"];
 
-
-            var resp = _project.SqlGet("status, token, login, password, otpsecret", "_discord");
-
-            string[] discordData = resp.Split('|');
-            _project.Variables["discordSTATUS"].Value = discordData[0].Trim();
-            _project.Variables["discordTOKEN"].Value = discordData[1].Trim();
-            _project.Variables["discordLOGIN"].Value = discordData[2].Trim();
-            _project.Variables["discordPASSWORD"].Value = discordData[3].Trim();
-            _project.Variables["discord2FACODE"].Value = discordData[4].Trim();
-
-            return _project.Variables["discordSTATUS"].Value;
+            if (string.IsNullOrEmpty(_login) || string.IsNullOrEmpty(_pass))
+                throw new Exception($"invalid credentials login:[{_login}] pass:[{_pass}]");
         }
         
-        private void DSsetToken()
+        private void TokenSet()
         {
-            var jsCode = "function login(token) {\r\n    setInterval(() => {\r\n        document.body.appendChild(document.createElement `iframe`).contentWindow.localStorage.token = `\"${token}\"`\r\n    }, 50);\r\n    setTimeout(() => {\r\n        location.reload();\r\n    }, 1000);\r\n}\r\n    login(\'discordTOKEN\');\r\n".Replace("discordTOKEN", _project.Variables["discordTOKEN"].Value);
+            var jsCode = "function login(token) {\r\n    setInterval(() => {\r\n        document.body.appendChild(document.createElement `iframe`).contentWindow.localStorage.token = `\"${token}\"`\r\n    }, 50);\r\n    setTimeout(() => {\r\n        location.reload();\r\n    }, 1000);\r\n}\r\n    login(\'discordTOKEN\');\r\n".Replace("discordTOKEN", _token);
             _instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
         }
-        private string DSgetToken()
+        private string TokenGet()
         {
             var stats = new Traffic(_project,_instance).Get("https://discord.com/api/v9/science",  reload:true).RequestHeaders;
             string patern = @"(?<=uthorization:\ ).*";
             string token = System.Text.RegularExpressions.Regex.Match(stats, patern).Value;
             return token;
         }
-        private string DSlogin()
+        private string Login()
         {
             _project.SendInfoToLog("DLogin");
             _project.Deadline();
 
             _instance.CloseExtraTabs();
-            _instance.HeSet(("input:text", "aria-label", "Email or Phone Number", "text", 0), _project.Variables["discordLOGIN"].Value);
-            _instance.HeSet(("input:password", "aria-label", "Password", "text", 0), _project.Variables["discordPASSWORD"].Value);
+            _instance.HeSet(("input:text", "aria-label", "Email or Phone Number", "text", 0), _login);
+            _instance.HeSet(("input:password", "aria-label", "Password", "text", 0), _pass);
             _instance.HeClick(("button", "type", "submit", "regexp", 0));
 
 
@@ -84,16 +76,14 @@ namespace z3nCore
 
                 goto capcha;
             }
-            _instance.HeSet(("input:text", "autocomplete", "one-time-code", "regexp", 0), OTP.Offline(_project.Variables["discord2FACODE"].Value));
+            _instance.HeSet(("input:text", "autocomplete", "one-time-code", "regexp", 0), OTP.Offline(_2fa));
             _instance.HeClick(("button", "type", "submit", "regexp", 0));
             Thread.Sleep(3000);
             return "ok";
         }
-        public string DSload(bool log = false)
+        public string Load(bool log = false)
         {
-
-            CredsFromDb();
-
+            //CredsFromDb();
             string state = null;
             var emu = _instance.UseFullMouseEmulation;
             _instance.UseFullMouseEmulation = false;
@@ -109,12 +99,12 @@ namespace z3nCore
                 if (!_instance.ActiveTab.FindElementByAttribute("section", "aria-label", "User\\ area", "regexp", 0).IsVoid) state = "logged";
             }
 
-            Log(state);
+            _log.Send(state);
 
 
             if (state == "login" && !tokenUsed)
             {
-                DSsetToken();
+                TokenSet();
                 tokenUsed = true;
                 //Thread.Sleep(5000);					
                 goto start;
@@ -122,14 +112,14 @@ namespace z3nCore
 
             else if (state == "login" && tokenUsed)
             {
-                var login = DSlogin();
+                var login = Login();
                 if (login == "ok")
                 {
                     Thread.Sleep(5000);
                     goto start;
                 }
                 else if (login == "capcha")
-                    Log("!W capcha");
+                    _log.Send("!W capcha");
                 _project.CapGuru();
                 _instance.UseFullMouseEmulation = emu;
                 state = "capcha";
@@ -140,8 +130,8 @@ namespace z3nCore
                 _instance.HeClick(("button", "innertext", "Apply", "regexp", 0), thr0w: false);
                 state = _instance.ActiveTab.FindElementByAttribute("div", "class", "avatarWrapper__", "regexp", 0).FirstChild.GetAttribute("aria-label");
 
-                Log(state);
-                var token = DSgetToken();
+                _log.Send(state);
+                var token = TokenGet();
                 if (string.IsNullOrEmpty(token))
                 _project.DbUpd($"token = '{token}', status = 'ok'", "_discord");
                 _project.Var("discordSTATUS", "ok");
@@ -150,7 +140,7 @@ namespace z3nCore
             return state;
 
         }
-        public string DSservers()
+        public List<string> Servers()
         {
             _instance.UseFullMouseEmulation = true;
             var folders = new List<HtmlElement>();
@@ -180,7 +170,7 @@ namespace z3nCore
 
             string result = string.Join(" , ", servers);
             _project.DbUpd($"servers = '{result}'", "_discord");
-            return result;
+            return servers;
         }
     }
 

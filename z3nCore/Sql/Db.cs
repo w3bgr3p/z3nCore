@@ -72,38 +72,26 @@ namespace z3nCore
         }
         #endregion
         
-        #region GET 
+        #region GET PUBLIC
         public static string DbGet(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", string acc = null, string where = "")
         {
             return project.SqlGet(toGet, tableName, log, thrw, key, acc, where);
         }
         public static Dictionary<string, string> DbGetColumns(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "", bool set = false)
         {
-            string result = project.SqlGet(toGet, tableName, log, thrw, key, id, where);
-    
-            if (string.IsNullOrWhiteSpace(result))
-                return new Dictionary<string, string>();
-           
-            var columns = toGet.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(c => c.Trim().Trim('`', '"', '[', ']'))
-                .ToList();
-            var values = result.Split(_columnSeparator);
-            var dictionary = new Dictionary<string, string>();
-    
-            for (int i = 0; i < columns.Count && i < values.Length; i++)
-            {
-                dictionary[columns[i]] = values[i];
-            }
+            var dictionary =  project.SqlGetDicFromLine(toGet, tableName, log, thrw, key, id, where);
             if (set) project.VarsFromDict(dictionary);
             return dictionary;
         }
         public static string[] DbGetLine(this IZennoPosterProjectModel project, string toGet, string tableName = null,  bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
         {
-            return project.SqlGet(toGet, tableName, log, thrw, key, id, where).Split(_columnSeparator);
+            return project.SqlGetArrFromLine(toGet, tableName, log, thrw, key, id, where);
         }
-        public static List<string> DbGetLines(this IZennoPosterProjectModel project, string toGet, string tableName = null,  bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
+        public static List<string> DbGetLines(this IZennoPosterProjectModel project, string toGet, string tableName = null,  bool log = false, bool thrw = false, string key = "id", object id = null, string where = "", string toList = null)
         {
-            return project.SqlGet(toGet, tableName, log, thrw, key, id, where).Split(_rawSeparator).ToList();
+            var list =  project.SqlGetListFromLines(toGet, tableName, log, thrw, key, id, where);
+            if (string.IsNullOrEmpty(toList)) project.ListSync(toList,list);
+            return list;
         }
         
         #endregion
@@ -197,8 +185,8 @@ namespace z3nCore
         }
 
 
-        #region INTERNAL
-        public static string SqlGet(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
+        #region GET INTERNAL
+        internal static string SqlGet(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
         {
 
             if (string.IsNullOrWhiteSpace(toGet))
@@ -223,6 +211,34 @@ namespace z3nCore
             }
 
             return project.DbQ(query, log: log, thrw: thrw);
+        }
+        internal static Dictionary<string, string> SqlGetDicFromLine(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "", bool set = false)
+        {
+            string result = project.SqlGet(toGet, tableName, log, thrw, key, id, where);
+    
+            if (string.IsNullOrWhiteSpace(result))
+                return new Dictionary<string, string>();
+           
+            var columns = toGet.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(c => c.Trim().Trim('`', '"', '[', ']'))
+                .ToList();
+            var values = result.Split(_columnSeparator);
+            var dictionary = new Dictionary<string, string>();
+    
+            for (int i = 0; i < columns.Count && i < values.Length; i++)
+            {
+                dictionary[columns[i]] = values[i];
+            }
+            if (set) project.VarsFromDict(dictionary);
+            return dictionary;
+        }
+        internal static string[] SqlGetArrFromLine(this IZennoPosterProjectModel project, string toGet, string tableName = null,  bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
+        {
+            return project.SqlGet(toGet, tableName, log, thrw, key, id, where).Split(_columnSeparator);
+        }
+        internal static List<string> SqlGetListFromLines(this IZennoPosterProjectModel project, string toGet, string tableName = null,  bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
+        {
+            return project.SqlGet(toGet, tableName, log, thrw, key, id, where).Split(_rawSeparator).ToList();
         }
         private static string SqlUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
         {          
