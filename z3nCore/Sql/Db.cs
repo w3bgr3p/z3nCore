@@ -90,7 +90,7 @@ namespace z3nCore
         public static List<string> DbGetLines(this IZennoPosterProjectModel project, string toGet, string tableName = null,  bool log = false, bool thrw = false, string key = "id", object id = null, string where = "", string toList = null)
         {
             var list =  project.SqlGetListFromLines(toGet, tableName, log, thrw, key, id, where);
-            if (string.IsNullOrEmpty(toList)) project.ListSync(toList,list);
+            if (!string.IsNullOrEmpty(toList)) project.ListSync(toList,list);
             return list;
         }
         
