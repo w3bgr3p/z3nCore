@@ -460,11 +460,11 @@ public class Init
                 case "WithoutBrowser":
                     browser = BrowserType.WithoutBrowser;
                     break;
-                case "ZennoBrowser":
-                    browser = BrowserType.ChromiumFromZB;	
+                case "ZB":
                     break;
                 case "Chromium":
                     break;	
+                
                 default:
                     _project.SendWarningToLog($"unknown browser config {cfgBrowser}");
                     throw new Exception($"unknown browser config {cfgBrowser}");
@@ -472,17 +472,25 @@ public class Init
             
             int pid = 0;
             int port = 0;
-            
+
             if (cfgBrowser == "WithoutBrowser")
-                _instance.Launch(BrowserType.WithoutBrowser, false);
-            
-            else
             {
-                // ВАРИАНТ 1: Используем снимок PID до запуска
-                var pidsBeforeLaunch = Utilities.ProcAcc.GetPidSnapshot();
-        
-                // ИЛИ ВАРИАНТ 2: Запоминаем время перед запуском
-                // var launchTime = DateTime.Now;
+                _instance.Launch(BrowserType.WithoutBrowser, false);
+            }
+            else if (cfgBrowser == "ZB")
+            {
+                var path = Path.Combine(_project.Path,".internal","_launchZB.zp");
+                
+                var launchTime = DateTime.Now; // ИЛИ ВАРИАНТ 2: Запоминаем время перед запуском
+                _project.RunZp(path);
+                pid = Utilities.ProcAcc.FindFirstNewPid(acc0, launchTime); // ИЛИ ВАРИАНТ 2: Поиск по времени запуска
+                port = _instance.Port;
+            }
+            else if (cfgBrowser == "Chromium")
+            {
+               
+                var pidsBeforeLaunch = Utilities.ProcAcc.GetPidSnapshot();  // ВАРИАНТ 1: Используем снимок PID до запуска
+                
                 ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings settings = 
                     (ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings)
                     ZennoLab.CommandCenter.Classes.BrowserLaunchSettingsFactory.Create(browser);
@@ -491,12 +499,8 @@ public class Init
                 settings.UseProfile = true;
                 _instance.Launch(settings);
                 
-                // ВАРИАНТ 1: Быстрый поиск среди новых процессов
-                pid = Utilities.ProcAcc.GetNewlyLaunchedPid(acc0, pidsBeforeLaunch);
-        
-                // ИЛИ ВАРИАНТ 2: Поиск по времени запуска
-                // pid = Utilities.ProcAcc.FindFirstNewPid(acc0, launchTime);
-                // Fallback на старый метод, если быстрый не сработал
+                pid = Utilities.ProcAcc.GetNewlyLaunchedPid(acc0, pidsBeforeLaunch); // ВАРИАНТ 1: Быстрый поиск среди новых процессов
+                
                 if (pid == 0)
                 {
                     _logger.Send("Fast PID search failed, using fallback");
@@ -505,7 +509,6 @@ public class Init
         
                 port = _instance.Port;
             }
-            
             _project.Variables["instancePort"].Value = $"port: {port}, pid: {pid}";
             _logger.Send($"started {cfgBrowser} in  {_project.Variables["instancePort"].Value}");
             BindPid(pid,port);
@@ -517,38 +520,48 @@ public class Init
             string acc0 = _project.Var("acc0");
             if (string.IsNullOrEmpty(acc0)) throw new ArgumentException("acc0 can't be null or empty");
             
+            string instanceType = "WithoutBrowser";
+            try
+            {
+                instanceType = _instance.BrowserType.ToString();
+            }
+            finally
+            {
+                
+            }
+            _logger.Send($"setting {instanceType}");
+            if (instanceType == "Chromium")
+            {
+                string webGlData = _project.SqlGet("webgl", "_instance");
+                SetDisplay(webGlData);
+                bool goodProxy = new NetHttp(_project, log).ProxySet(_instance);
+                if (strictProxy && !goodProxy) throw new Exception($"!E bad proxy");
+                var cookiePath = _project.PathCookies();
+                _project.Var("pathCookies", cookiePath);
 
-            string webGlData = _project.SqlGet("webgl", "_instance");
-            SetDisplay(webGlData);
-
-            bool goodProxy = new NetHttp(_project, log).ProxySet(_instance);
-            if (strictProxy && !goodProxy) throw new Exception($"!E bad proxy");
-            var cookiePath = _project.PathCookies();
-            _project.Var("pathCookies", cookiePath);
-
-            if (cookies != null) 
-                _instance.SetCookie(cookies);
-            else
-                try
-                {
-                    cookies = _project.SqlGet("cookies", "_instance");
+                if (cookies != null) 
                     _instance.SetCookie(cookies);
-                }
-                catch (Exception Ex)
-                {
-                    _logger.Send($"!W Fail to set cookies from file {cookiePath}");
+                else
                     try
                     {
-                        _logger.Send($"!E Fail to set cookies from db Err. {Ex.Message}");
-                        cookies = File.ReadAllText(cookiePath);
+                        cookies = _project.SqlGet("cookies", "_instance");
                         _instance.SetCookie(cookies);
                     }
-                    catch (Exception E)
+                    catch (Exception Ex)
                     {
-                        _logger.Send($"!W Fail to set cookies from file {cookiePath} {E.Message}");
+                        _logger.Send($"!W Fail to set cookies from file {cookiePath}");
+                        try
+                        {
+                            _logger.Send($"!E Fail to set cookies from db Err. {Ex.Message}");
+                            cookies = File.ReadAllText(cookiePath);
+                            _instance.SetCookie(cookies);
+                        }
+                        catch (Exception E)
+                        {
+                            _logger.Send($"!W Fail to set cookies from file {cookiePath} {E.Message}");
+                        }
                     }
-                }
-
+            }
             if (_project.Var("skipBrowserScan") != "True")
             {
                 var bs = new BrowserScan(_project, _instance);
@@ -599,7 +612,6 @@ public class Init
                 _logger.Send(ex.Message, thrw: true);
             }
         }
-        
         private void BindPid(int pid, int port)
         {
             if (pid == 0) return;
@@ -619,7 +631,6 @@ public class Init
                 _logger.Warn(ex.Message);
             }
         }
-        
         
         #endregion
 

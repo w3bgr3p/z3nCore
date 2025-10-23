@@ -6,9 +6,7 @@ using ZennoLab.InterfacesLibrary.Enums.Browser;
 
 namespace z3nCore
 {
-    /// <summary>
-    /// Отвечает за управление завершением сессии и координацию процесса отчетности
-    /// </summary>
+
     public class Disposer
     {
         #region Fields & Constructor
@@ -32,10 +30,7 @@ namespace z3nCore
 
         #region Public API
 
-        /// <summary>
-        /// Основной метод завершения сессии
-        /// Координирует отчетность, сохранение cookies и cleanup
-        /// </summary>
+
         public void FinishSession()
         {
             _logger.Send("Starting session finish sequence");
@@ -64,21 +59,15 @@ namespace z3nCore
             _logger.Send("Session finish sequence completed");
         }
 
-        /// <summary>
-        /// Быстрое создание отчета об ошибке (для ручного вызова)
-        /// </summary>
+
         public string ErrorReport(bool toLog = true, bool toTelegram = false, bool toDb = false, bool screenshot = false)
         {
-            _logger.Send($"Manual error report requested: toLog={toLog}, toTelegram={toTelegram}, toDb={toDb}, screenshot={screenshot}");
             return _reporter.ReportError(toLog, toTelegram, toDb, screenshot);
         }
 
-        /// <summary>
-        /// Быстрое создание отчета об успехе (для ручного вызова)
-        /// </summary>
+
         public string SuccessReport(bool toLog = true, bool toTelegram = false, bool toDb = false, string customMessage = null)
         {
-            _logger.Send($"Manual success report requested: toLog={toLog}, toTelegram={toTelegram}, toDb={toDb}, hasCustomMessage={!string.IsNullOrEmpty(customMessage)}");
             return _reporter.ReportSuccess(toLog, toTelegram, toDb, customMessage);
         }
 
@@ -155,7 +144,6 @@ namespace z3nCore
             catch (Exception ex)
             {
                 _logger.Warn($"Cookie save FAILED: {ex.GetType().Name} - {ex.Message}");
-                //_project.SendWarningToLog($"Cookie saving failed: {ex.Message}");
             }
         }
 
@@ -189,7 +177,6 @@ namespace z3nCore
             
             try
             {
-                // Очищаем глобальную переменную аккаунта
                 if (!string.IsNullOrEmpty(acc0))
                 {
                     _logger.Send($"Clearing global variable 'acc{acc0}'");
@@ -200,11 +187,9 @@ namespace z3nCore
                     _logger.Send("Skipping global variable cleanup: acc0 is empty");
                 }
 
-                // Очищаем локальную переменную аккаунта
                 _logger.Send("Clearing local variable 'acc0'");
                 _project.Var("acc0", string.Empty);
 
-                // Останавливаем инстанс
                 _logger.Send("Stopping instance");
                 _instance.Stop();
                 
@@ -215,7 +200,6 @@ namespace z3nCore
                 _logger.Send($"Cleanup FAILED: {ex.GetType().Name} - {ex.Message}");
                 _project.SendWarningToLog($"Cleanup failed: {ex.Message}");
                 
-                // Всё равно пытаемся остановить инстанс
                 try
                 {
                     _logger.Send("Attempting emergency instance stop");
@@ -232,38 +216,27 @@ namespace z3nCore
         #endregion
     }
     
-    
-    /// <summary>
-    /// Extension методы для удобного использования
-    /// </summary>
+
     public static partial class ProjectExtensions
     {
-        /// <summary>
-        /// Быстрый вызов завершения сессии
-        /// </summary>
+
         public static void Finish(this IZennoPosterProjectModel project, Instance instance)
         {
             new Disposer(project, instance).FinishSession();
         }
 
-        /// <summary>
-        /// Быстрый вызов отчета об ошибке
-        /// </summary>
         public static string ReportError(this IZennoPosterProjectModel project, Instance instance, 
             bool toLog = true, bool toTelegram = false, bool toDb = false, bool screenshot = false)
         {
             return new Disposer(project, instance).ErrorReport(toLog, toTelegram, toDb, screenshot);
         }
 
-        /// <summary>
-        /// Быстрый вызов отчета об успехе
-        /// </summary>
+
         public static string ReportSuccess(this IZennoPosterProjectModel project, Instance instance,
             bool toLog = true, bool toTelegram = false, bool toDb = false, string customMessage = null)
         {
             return new Disposer(project, instance).SuccessReport(toLog, toTelegram, toDb, customMessage);
         }
     }
-
-   
+    
 }

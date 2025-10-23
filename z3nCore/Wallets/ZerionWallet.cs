@@ -25,7 +25,6 @@ namespace z3nCore
 
 
         private readonly string _extId = "klghhnkeealcohjjanjjdaeeggmfmlpl";
-
         private readonly string _urlOnboardingTab = "chrome-extension://klghhnkeealcohjjanjjdaeeggmfmlpl/popup.8e8f209b.html?windowType=tab&appMode=onboarding#/onboarding/import";
         private readonly string _urlPopup = "chrome-extension://klghhnkeealcohjjanjjdaeeggmfmlpl/popup.8e8f209b.html#";
         private readonly string _urlImport = "chrome-extension://klghhnkeealcohjjanjjdaeeggmfmlpl/popup.8e8f209b.html#/get-started/import";
@@ -253,7 +252,7 @@ namespace z3nCore
             _instance.CloseExtraTabs(true);
             _instance.Go(_urlPopup);
         }
-
+        
         private void Unlock(bool log = false)
         {
             try

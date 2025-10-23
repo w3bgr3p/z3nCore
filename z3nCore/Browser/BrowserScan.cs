@@ -123,7 +123,6 @@ namespace z3nCore
             score = $"[{score}] {problems}";
             return score;
         }
-
         public void FixTime()
         {
             LoadStats();

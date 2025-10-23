@@ -96,6 +96,7 @@
     <Compile Include="Browser\Captcha.cs" />
     <Compile Include="Browser\HtmlExtensions.cs" />
     <Compile Include="Browser\Traffic.cs" />
+    <Compile Include="Browser\ZB.cs" />
     <Compile Include="Core\Disposer.cs" />
     <Compile Include="Core\Init.cs" />
     <Compile Include="MethodExtensions\ListExtentions.cs" />
@@ -113,7 +114,7 @@
     <Compile Include="Reports\Reporter.cs" />
     <Compile Include="Security\Cryptography.cs" />
     <Compile Include="Security\ISAFU.cs" />
-    <Compile Include="Sql\newDb.cs" />
+    <None Include="Test.cs" />
     <Compile Include="Utilities\Converter.cs" />
     <Compile Include="Utilities\Debug.cs" />
     <Compile Include="Utilities\F0rms.cs" />
@@ -126,7 +127,6 @@
     <Compile Include="W3b\SolTools.cs" />
     <Compile Include="W3b\SuiTools.cs" />
     <Compile Include="Wallets\Keplr.cs" />
-    <Compile Include="Wallets\Zerion.cs" />
     <Compile Include="Browser\InstanceExtensions.cs" />
     <Compile Include="ProjectExtentions\Rnd.cs" />
     <Compile Include="ProjectExtentions\Vars.cs" />
@@ -161,6 +161,7 @@
     <Compile Include="Sql\SQLite.cs" />
     <Compile Include="Requests\Requests.cs" />
     <Compile Include="Socials\X.cs" />
+    <Compile Include="Wallets\Zerion.cs" />
     <Compile Include="Wallets\ZerionWallet.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -7,9 +7,6 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 using Nethereum.Web3;
 using Nethereum.Hex.HexTypes;
 using Nethereum.RPC.Eth.DTOs;
-using ZennoLab.CommandCenter;
-using Newtonsoft.Json;
-using System.Collections.Generic;
 
 namespace z3nCore
 {
@@ -194,6 +191,180 @@ namespace z3nCore
                 throw;
             }
         }
+        internal string SendTx(string chainRpc, string zerionJson, string walletKey = null, int txType = 2, int speedup = 1, bool debug = false)
+        {
+            var report = new StringBuilder();
+            
+            try
+            {
+                if (string.IsNullOrEmpty(chainRpc))
+                    throw new ArgumentException("Chain RPC is null or empty");
+
+                if (string.IsNullOrEmpty(zerionJson))
+                    throw new ArgumentException("Transaction JSON is null or empty");
+                
+                // Parse JSON to extract transaction parameters
+                dynamic txData;
+                try
+                {
+                    txData = Newtonsoft.Json.JsonConvert.DeserializeObject(zerionJson);
+                }
+                catch (Exception ex)
+                {
+                    throw new ArgumentException($"Failed to parse transaction JSON: {ex.Message}", ex);
+                }
+                
+                // Extract parameters from JSON
+                string contractAddress = txData.to;
+                string encodedData = txData.data;
+                string valueHex = txData.value;
+                string fromAddress = txData.from;
+                
+                // Convert hex value to BigInteger
+                BigInteger _value = 0;
+                if (!string.IsNullOrEmpty(valueHex) && valueHex != "0x0")
+                {
+                    _value = BigInteger.Parse(valueHex.Replace("0x", ""), System.Globalization.NumberStyles.HexNumber);
+                }
+                
+                // If walletKey not provided, use default
+                if (string.IsNullOrEmpty(walletKey))
+                    walletKey = _project.DbKey("evm");
+                
+                if (string.IsNullOrEmpty(walletKey))
+                    throw new ArgumentException("Wallet key is null or empty");
+                
+                var web3 = new Web3(chainRpc);
+                report.AppendLine($"rpc: {chainRpc}");
+                int chainId;
+                
+                try
+                {
+                    var chainIdTask = web3.Eth.ChainId.SendRequestAsync();
+                    chainIdTask.Wait();
+                    chainId = (int)chainIdTask.Result.Value;
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Failed to get chain ID: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
+                }
+                report.AppendLine($"chainId: {chainId}");
+                
+                // Verify wallet address matches the from address in JSON
+                string walletFromAddress;
+                try
+                {
+                    var ethECKey = new Nethereum.Signer.EthECKey(walletKey);
+                    walletFromAddress = ethECKey.GetPublicAddress();
+                    
+                    // Check if addresses match (case-insensitive)
+                    if (!string.Equals(walletFromAddress, fromAddress, StringComparison.OrdinalIgnoreCase))
+                    {
+                        report.AppendLine($"Warning: Wallet address {walletFromAddress} does not match JSON from address {fromAddress}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Failed to initialize EthECKey: length={walletKey.Length}, startsWith={walletKey.Substring(0, Math.Min(6, walletKey.Length))}..., Message={ex.Message}, InnerException={ex.InnerException?.Message}", ex);
+                }
+                report.AppendLine($"from: {walletFromAddress}");
+                report.AppendLine($"_value: {_value}");
+                
+                BigInteger gasLimit = 0;
+                BigInteger gasPrice = 0;
+                BigInteger maxFeePerGas = 0;
+                BigInteger priorityFee = 0;
+                
+                try
+                {
+                    var gasPriceTask = web3.Eth.GasPrice.SendRequestAsync();
+                    gasPriceTask.Wait();
+                    BigInteger baseGasPrice = gasPriceTask.Result.Value / 100 + gasPriceTask.Result.Value;
+                    if (txType == 0)
+                    {
+                        gasPrice = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
+                        report.AppendLine($"gasPrice: {gasPrice}");
+                    }
+                    else
+                    {
+                        priorityFee = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
+                        report.AppendLine($"priorityFee: {priorityFee}");
+                        maxFeePerGas = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
+                        report.AppendLine($"maxFeePerGas: {maxFeePerGas}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    report.AppendLine($"Failed to estimate gas price: {ex.Message}, InnerException: {ex.InnerException?.Message}");
+                    throw new Exception($"Failed to estimate gas price: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
+                }
+                
+                try
+                {
+                    report.AppendLine($"data: {encodedData}");
+                    report.AppendLine($"txType: {txType}");
+                    var transactionInput = new TransactionInput
+                    {
+                        To = contractAddress,
+                        From = walletFromAddress,
+                        Data = encodedData,
+                        Value = new HexBigInteger(_value),
+                        GasPrice = txType == 0 ? new HexBigInteger(gasPrice) : null,
+                        MaxPriorityFeePerGas = txType == 2 ? new HexBigInteger(priorityFee) : null,
+                        MaxFeePerGas = txType == 2 ? new HexBigInteger(maxFeePerGas) : null,
+                        Type = txType == 2 ? new HexBigInteger(2) : null
+                    };
+
+                    var gasEstimateTask = web3.Eth.Transactions.EstimateGas.SendRequestAsync(transactionInput);
+                    gasEstimateTask.Wait();
+                    var gasEstimate = gasEstimateTask.Result;
+                    gasLimit = gasEstimate.Value + (gasEstimate.Value / 2);
+                    report.AppendLine($"gasLimit: {gasLimit}");
+                }
+                catch (AggregateException ae)
+                {
+                    if (ae.InnerException is Nethereum.JsonRpc.Client.RpcResponseException rpcEx)
+                    {
+                        var error = $"Code: {rpcEx.RpcError.Code}, Message: {rpcEx.RpcError.Message}, Data: {rpcEx.RpcError.Data}";
+                        report.AppendLine($"error: {error}");
+                        throw new Exception($"RPC error during gas estimation: {error}, InnerException: {ae.InnerException?.Message}", ae);
+                    }
+                    throw new Exception($"Gas estimation failed: {ae.Message}, InnerException: {ae.InnerException?.Message}", ae);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception($"Gas estimation failed: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
+                }
+
+                try
+                {
+                    var blockchain = new Blockchain(walletKey, chainId, chainRpc);
+                    string hash = txType == 0
+                        ? blockchain.SendTransaction(contractAddress, _value, encodedData, gasLimit, gasPrice).Result
+                        : blockchain.SendTransactionEIP1559(contractAddress, _value, encodedData, gasLimit, maxFeePerGas, priorityFee).Result;
+                    report.AppendLine($"hash: {hash}");
+                    return hash;
+                }
+                catch (AggregateException ae)
+                {
+                    string errorMsg = ae.InnerException?.Message ?? ae.Message;
+                    throw new Exception(errorMsg, ae);
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception(ex.InnerException?.Message ?? ex.Message, ex);
+                }
+            }
+            catch //(Exception ex)
+            {
+                if (debug) 
+                {
+                    _project.warn(report.ToString());
+                }
+                throw;
+            }
+        }       //FOR ZERION
+
         private BigInteger ConvertValueToWei(object value)
         {
             // Уже готовое значение в Wei
@@ -439,239 +610,7 @@ namespace z3nCore
         
         #endregion
         
-        #region ZERION
-        private string ParseTxUrlFromZerion(Instance instance)
-            {
-                _project.Deadline();
-                string txUrl;
 
-                while (true)
-                {
-                    txUrl = instance.ActiveTab.URL;
-                    if (txUrl.StartsWith("chrome-extension://klghhnkeealcohjjanjjdaeeggmfmlpl/popup.8e8f209b.html?windowType=dialog#/sendTransaction?"))
-                        return txUrl;
-                    _project.Deadline(20);
-                }
-                
-            }
-        private string ExtractTxFromZerionUrl(string url)
-        {
-            if (string.IsNullOrEmpty(url))
-                throw new ArgumentException("URL is null or empty");
-
-            try
-            {
-                var uri = new Uri(url);
-                var query = uri.Fragment.Contains("?") ? uri.Fragment.Split('?')[1] : uri.Query.TrimStart('?');
-
-                string transactionJson = null;
-                var pairs = query.Split('&');
-                foreach (var pair in pairs)
-                {
-                    if (pair.StartsWith("transaction="))
-                    {
-                        transactionJson = Uri.UnescapeDataString(pair.Substring("transaction=".Length));
-                        break;
-                    }
-                }
-
-                if (string.IsNullOrEmpty(transactionJson))
-                    throw new ArgumentException("Transaction data not found in URL");
-
-                var temp = JsonConvert.DeserializeObject<Dictionary<string, string>>(transactionJson);
-                if (temp == null || !temp.ContainsKey("to") || !temp.ContainsKey("from"))
-                    throw new ArgumentException("Invalid transaction data");
-
-                return transactionJson;
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Failed to parse transaction from URL: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
-            }
-        }
-        public string ReplaceInZerion(Instance instance, string chainRpc, int txType = 2, int speedup = 1, bool debug = false)
-        {
-            var walletKey = _project.DbKey("evm");
-            string txUrl = ParseTxUrlFromZerion(instance);
-            string txJson = ExtractTxFromZerionUrl(txUrl);
-            _project.SendInfoToLog(txJson);
-            var hash = SendTx(chainRpc, txJson, walletKey, txType, speedup, debug);
-            return hash;
-        }
-        public string SendTx(string chainRpc, string zerionJson, string walletKey = null, int txType = 2, int speedup = 1, bool debug = false)
-        {
-            var report = new StringBuilder();
-            
-            try
-            {
-                if (string.IsNullOrEmpty(chainRpc))
-                    throw new ArgumentException("Chain RPC is null or empty");
-
-                if (string.IsNullOrEmpty(zerionJson))
-                    throw new ArgumentException("Transaction JSON is null or empty");
-                
-                // Parse JSON to extract transaction parameters
-                dynamic txData;
-                try
-                {
-                    txData = Newtonsoft.Json.JsonConvert.DeserializeObject(zerionJson);
-                }
-                catch (Exception ex)
-                {
-                    throw new ArgumentException($"Failed to parse transaction JSON: {ex.Message}", ex);
-                }
-                
-                // Extract parameters from JSON
-                string contractAddress = txData.to;
-                string encodedData = txData.data;
-                string valueHex = txData.value;
-                string fromAddress = txData.from;
-                
-                // Convert hex value to BigInteger
-                BigInteger _value = 0;
-                if (!string.IsNullOrEmpty(valueHex) && valueHex != "0x0")
-                {
-                    _value = BigInteger.Parse(valueHex.Replace("0x", ""), System.Globalization.NumberStyles.HexNumber);
-                }
-                
-                // If walletKey not provided, use default
-                if (string.IsNullOrEmpty(walletKey))
-                    walletKey = _project.DbKey("evm");
-                
-                if (string.IsNullOrEmpty(walletKey))
-                    throw new ArgumentException("Wallet key is null or empty");
-                
-                var web3 = new Web3(chainRpc);
-                report.AppendLine($"rpc: {chainRpc}");
-                int chainId;
-                
-                try
-                {
-                    var chainIdTask = web3.Eth.ChainId.SendRequestAsync();
-                    chainIdTask.Wait();
-                    chainId = (int)chainIdTask.Result.Value;
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception($"Failed to get chain ID: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
-                }
-                report.AppendLine($"chainId: {chainId}");
-                
-                // Verify wallet address matches the from address in JSON
-                string walletFromAddress;
-                try
-                {
-                    var ethECKey = new Nethereum.Signer.EthECKey(walletKey);
-                    walletFromAddress = ethECKey.GetPublicAddress();
-                    
-                    // Check if addresses match (case-insensitive)
-                    if (!string.Equals(walletFromAddress, fromAddress, StringComparison.OrdinalIgnoreCase))
-                    {
-                        report.AppendLine($"Warning: Wallet address {walletFromAddress} does not match JSON from address {fromAddress}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception($"Failed to initialize EthECKey: length={walletKey.Length}, startsWith={walletKey.Substring(0, Math.Min(6, walletKey.Length))}..., Message={ex.Message}, InnerException={ex.InnerException?.Message}", ex);
-                }
-                report.AppendLine($"from: {walletFromAddress}");
-                report.AppendLine($"_value: {_value}");
-                
-                BigInteger gasLimit = 0;
-                BigInteger gasPrice = 0;
-                BigInteger maxFeePerGas = 0;
-                BigInteger priorityFee = 0;
-                
-                try
-                {
-                    var gasPriceTask = web3.Eth.GasPrice.SendRequestAsync();
-                    gasPriceTask.Wait();
-                    BigInteger baseGasPrice = gasPriceTask.Result.Value / 100 + gasPriceTask.Result.Value;
-                    if (txType == 0)
-                    {
-                        gasPrice = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
-                        report.AppendLine($"gasPrice: {gasPrice}");
-                    }
-                    else
-                    {
-                        priorityFee = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
-                        report.AppendLine($"priorityFee: {priorityFee}");
-                        maxFeePerGas = baseGasPrice / 100 * speedup + gasPriceTask.Result.Value;
-                        report.AppendLine($"maxFeePerGas: {maxFeePerGas}");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    report.AppendLine($"Failed to estimate gas price: {ex.Message}, InnerException: {ex.InnerException?.Message}");
-                    throw new Exception($"Failed to estimate gas price: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
-                }
-                
-                try
-                {
-                    report.AppendLine($"data: {encodedData}");
-                    report.AppendLine($"txType: {txType}");
-                    var transactionInput = new TransactionInput
-                    {
-                        To = contractAddress,
-                        From = walletFromAddress,
-                        Data = encodedData,
-                        Value = new HexBigInteger(_value),
-                        GasPrice = txType == 0 ? new HexBigInteger(gasPrice) : null,
-                        MaxPriorityFeePerGas = txType == 2 ? new HexBigInteger(priorityFee) : null,
-                        MaxFeePerGas = txType == 2 ? new HexBigInteger(maxFeePerGas) : null,
-                        Type = txType == 2 ? new HexBigInteger(2) : null
-                    };
-
-                    var gasEstimateTask = web3.Eth.Transactions.EstimateGas.SendRequestAsync(transactionInput);
-                    gasEstimateTask.Wait();
-                    var gasEstimate = gasEstimateTask.Result;
-                    gasLimit = gasEstimate.Value + (gasEstimate.Value / 2);
-                    report.AppendLine($"gasLimit: {gasLimit}");
-                }
-                catch (AggregateException ae)
-                {
-                    if (ae.InnerException is Nethereum.JsonRpc.Client.RpcResponseException rpcEx)
-                    {
-                        var error = $"Code: {rpcEx.RpcError.Code}, Message: {rpcEx.RpcError.Message}, Data: {rpcEx.RpcError.Data}";
-                        report.AppendLine($"error: {error}");
-                        throw new Exception($"RPC error during gas estimation: {error}, InnerException: {ae.InnerException?.Message}", ae);
-                    }
-                    throw new Exception($"Gas estimation failed: {ae.Message}, InnerException: {ae.InnerException?.Message}", ae);
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception($"Gas estimation failed: {ex.Message}, InnerException: {ex.InnerException?.Message}", ex);
-                }
-
-                try
-                {
-                    var blockchain = new Blockchain(walletKey, chainId, chainRpc);
-                    string hash = txType == 0
-                        ? blockchain.SendTransaction(contractAddress, _value, encodedData, gasLimit, gasPrice).Result
-                        : blockchain.SendTransactionEIP1559(contractAddress, _value, encodedData, gasLimit, maxFeePerGas, priorityFee).Result;
-                    report.AppendLine($"hash: {hash}");
-                    return hash;
-                }
-                catch (AggregateException ae)
-                {
-                    string errorMsg = ae.InnerException?.Message ?? ae.Message;
-                    throw new Exception(errorMsg, ae);
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception(ex.InnerException?.Message ?? ex.Message, ex);
-                }
-            }
-            catch //(Exception ex)
-            {
-                if (debug) 
-                {
-                    _project.warn(report.ToString());
-                }
-                throw;
-            }
-        }
-        #endregion
         
     }
     

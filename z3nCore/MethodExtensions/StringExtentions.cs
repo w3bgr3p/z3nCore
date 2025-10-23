@@ -1,5 +1,4 @@
-﻿
-using ZennoLab.InterfacesLibrary.ProjectModel;
+﻿using ZennoLab.InterfacesLibrary.ProjectModel;
 using NBitcoin;
 using Newtonsoft.Json;
 using System;
@@ -18,15 +17,8 @@ namespace z3nCore
 {
     public static partial class StringExtensions
     {
-        public static string EscapeMarkdown(this string text)
-        {
-            string[] specialChars = new[] { "_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!" };
-            foreach (var ch in specialChars)
-            {
-                text = text.Replace(ch, "\\" + ch);
-            }
-            return text;
-        }
+
+        #region CRYPTO
         public static string GetTxHash(this string link)
         {
             string hash;
@@ -158,6 +150,102 @@ namespace z3nCore
 
             return prefixMatch && suffixMatch;
         }
+        public static string StringToHex(this string value, string convert = "")
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(value)) return "0x0";
+
+                value = value?.Trim();
+                if (!decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal number))
+                    return "0x0";
+
+                BigInteger result;
+                switch (convert.ToLower())
+                {
+                    case "gwei":
+                        result = (BigInteger)(number * 1000000000m);
+                        break;
+                    case "eth":
+                        result = (BigInteger)(number * 1000000000000000000m);
+                        break;
+                    default:
+                        result = (BigInteger)number;
+                        break;
+                }
+
+                // Convert to hexadecimal and ensure it starts with 0x
+                string hex = result.ToString("X").TrimStart('0');
+                return string.IsNullOrEmpty(hex) ? "0x0" : "0x" + hex;
+            }
+            catch
+            {
+                return "0x0";
+            }
+        }
+        public static string HexToString(this string hexValue, string convert = "")
+        {
+            try
+            {
+                hexValue = hexValue?.Replace("0x", "").Trim();
+                if (string.IsNullOrEmpty(hexValue)) return "0";
+                BigInteger number = BigInteger.Parse("0" + hexValue, NumberStyles.AllowHexSpecifier);
+                switch (convert.ToLower())
+                {
+                    case "gwei":
+                        decimal gweiValue = (decimal)number / 1000000000m;
+                        return gweiValue.ToString("0.#########", CultureInfo.InvariantCulture);
+                    case "eth":
+                        decimal ethValue = (decimal)number / 1000000000000000000m;
+                        return ethValue.ToString("0.##################", CultureInfo.InvariantCulture);
+                    default:
+                        return number.ToString();
+                }
+            }
+            catch
+            {
+                return "0";
+            }
+        }
+        
+        public static string KeyType(this string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                throw new Exception($"input isNullOrEmpty");
+
+            input = input.Trim().StartsWith("0x") ? input.Substring(2) : input;
+            
+            if (Regex.IsMatch(input, @"^[0-9a-fA-F]{64}$"))
+                return "keyEvm";
+
+            if (Regex.IsMatch(input, @"^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{87,88}$"))
+                return "keySol";
+
+            var words = input.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length == 12 || words.Length == 24)
+                return "seed";
+            
+            throw new Exception ($"not recognized as any key or seed {input}");
+        }
+
+        #endregion
+        
+        public static string Regx(this string input, string pattern)
+        {
+            var result = ZennoLab.Macros.TextProcessing.Regex(input, pattern, "0")[0].FirstOrDefault();
+            return result;
+        }
+        
+        public static string EscapeMarkdown(this string text)
+        {
+            string[] specialChars = new[] { "_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!" };
+            foreach (var ch in specialChars)
+            {
+                text = text.Replace(ch, "\\" + ch);
+            }
+            return text;
+        }
+
 
         public static Dictionary<string, string> ParseCreds(this string data, string format, char devider = ':')
         {
@@ -222,66 +310,7 @@ namespace z3nCore
             }
             return result;
         }
-
-        public static string StringToHex(this string value, string convert = "")
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(value)) return "0x0";
-
-                value = value?.Trim();
-                if (!decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out decimal number))
-                    return "0x0";
-
-                BigInteger result;
-                switch (convert.ToLower())
-                {
-                    case "gwei":
-                        result = (BigInteger)(number * 1000000000m);
-                        break;
-                    case "eth":
-                        result = (BigInteger)(number * 1000000000000000000m);
-                        break;
-                    default:
-                        result = (BigInteger)number;
-                        break;
-                }
-
-                // Convert to hexadecimal and ensure it starts with 0x
-                string hex = result.ToString("X").TrimStart('0');
-                return string.IsNullOrEmpty(hex) ? "0x0" : "0x" + hex;
-            }
-            catch
-            {
-                return "0x0";
-            }
-        }
-
-        public static string HexToString(this string hexValue, string convert = "")
-        {
-            try
-            {
-                hexValue = hexValue?.Replace("0x", "").Trim();
-                if (string.IsNullOrEmpty(hexValue)) return "0";
-                BigInteger number = BigInteger.Parse("0" + hexValue, NumberStyles.AllowHexSpecifier);
-                switch (convert.ToLower())
-                {
-                    case "gwei":
-                        decimal gweiValue = (decimal)number / 1000000000m;
-                        return gweiValue.ToString("0.#########", CultureInfo.InvariantCulture);
-                    case "eth":
-                        decimal ethValue = (decimal)number / 1000000000000000000m;
-                        return ethValue.ToString("0.##################", CultureInfo.InvariantCulture);
-                    default:
-                        return number.ToString();
-                }
-            }
-            catch
-            {
-                return "0";
-            }
-        }
-
+        
         public static string[] Range(this string accRange)
         {
             if (string.IsNullOrEmpty(accRange))  
@@ -304,27 +333,7 @@ namespace z3nCore
                 return accRange.Split(',');
             }
         }
-
-        public static string KeyType(this string input)
-        {
-            if (string.IsNullOrWhiteSpace(input))
-                throw new Exception($"input isNullOrEmpty");
-
-            input = input.Trim().StartsWith("0x") ? input.Substring(2) : input;
-            
-            if (Regex.IsMatch(input, @"^[0-9a-fA-F]{64}$"))
-                return "keyEvm";
-
-            if (Regex.IsMatch(input, @"^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{87,88}$"))
-                return "keySol";
-
-            var words = input.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (words.Length == 12 || words.Length == 24)
-                return "seed";
-            
-            throw new Exception ($"not recognized as any key or seed {input}");
-        }
-
+        
         public static string GetLink(this string text)
         {
             int startIndex = text.IndexOf("https://");

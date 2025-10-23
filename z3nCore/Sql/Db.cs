@@ -77,11 +77,9 @@ namespace z3nCore
         {
             return project.SqlGet(toGet, tableName, log, thrw, key, acc, where);
         }
-        public static Dictionary<string, string> DbGetColumns(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "", bool set = false)
+        public static Dictionary<string, string> DbGetColumns(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
         {
-            var dictionary =  project.SqlGetDicFromLine(toGet, tableName, log, thrw, key, id, where);
-            if (set) project.VarsFromDict(dictionary);
-            return dictionary;
+            return  project.SqlGetDicFromLine(toGet, tableName, log, thrw, key, id, where);
         }
         public static string[] DbGetLine(this IZennoPosterProjectModel project, string toGet, string tableName = null,  bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
         {
@@ -93,8 +91,18 @@ namespace z3nCore
             if (!string.IsNullOrEmpty(toList)) project.ListSync(toList,list);
             return list;
         }
+        public static Dictionary<string, string> DbToVars(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
+        {
+            var data = project.SqlGetDicFromLine(toGet, tableName, log, thrw, key, id, where);
+            project.VarsFromDict(data);
+            return data;
+        }
         
+
         #endregion
+        
+        
+        
         
 
         public static void DbUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, string key = "id", object acc = null, string where = "")
@@ -184,9 +192,12 @@ namespace z3nCore
 
         }
 
+        
+        
+        
 
-        #region GET INTERNAL
-        internal static string SqlGet(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
+        #region GET Sql
+        public static string SqlGet(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
         {
 
             if (string.IsNullOrWhiteSpace(toGet))
@@ -212,7 +223,7 @@ namespace z3nCore
 
             return project.DbQ(query, log: log, thrw: thrw);
         }
-        internal static Dictionary<string, string> SqlGetDicFromLine(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "", bool set = false)
+        public static Dictionary<string, string> SqlGetDicFromLine(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "", bool set = false)
         {
             string result = project.SqlGet(toGet, tableName, log, thrw, key, id, where);
     
@@ -232,15 +243,15 @@ namespace z3nCore
             if (set) project.VarsFromDict(dictionary);
             return dictionary;
         }
-        internal static string[] SqlGetArrFromLine(this IZennoPosterProjectModel project, string toGet, string tableName = null,  bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
+        public static string[] SqlGetArrFromLine(this IZennoPosterProjectModel project, string toGet, string tableName = null,  bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
         {
             return project.SqlGet(toGet, tableName, log, thrw, key, id, where).Split(_columnSeparator);
         }
-        internal static List<string> SqlGetListFromLines(this IZennoPosterProjectModel project, string toGet, string tableName = null,  bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
+        public static List<string> SqlGetListFromLines(this IZennoPosterProjectModel project, string toGet, string tableName = null,  bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
         {
             return project.SqlGet(toGet, tableName, log, thrw, key, id, where).Split(_rawSeparator).ToList();
         }
-        private static string SqlUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
+        public static string SqlUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
         {          
             var parameters = new DynamicParameters();
             if (string.IsNullOrEmpty(tableName)) tableName = project.Var("projectTable");
@@ -318,7 +329,6 @@ namespace z3nCore
                 .ToList();
             return result;
         }
-
         public static List<string> TblColumns(this IZennoPosterProjectModel project, string tblName, bool log = false)
         {
             var result = new List<string>();

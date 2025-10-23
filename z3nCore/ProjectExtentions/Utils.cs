@@ -1,17 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.IO;
-using System.Reflection;
-using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using ZennoLab.CommandCenter;
-using ZennoLab.InterfacesLibrary.Enums.Log;
 using ZennoLab.InterfacesLibrary.ProjectModel;
-using Newtonsoft.Json.Linq;
+
 
 
 namespace z3nCore
@@ -33,12 +25,7 @@ namespace z3nCore
             if (!string.IsNullOrEmpty(project.Var("accRnd")))
                 new FS(project).RmRf(project.Var("pathProfileFolder"));
         }
-        
-        
-       
-        
 
-        
         public static bool RunZp(this IZennoPosterProjectModel project, List<string> vars = null)
         {
             string tempFilePath = project.Var("projectScript");
@@ -65,7 +52,22 @@ namespace z3nCore
                 throw;
             }
         }
-
+        public static bool RunZp(this IZennoPosterProjectModel project, string path)
+        {
+            var vars = new List<string> {
+                "acc0", "cfgLog", "cfgPin",
+                "DBmode", "DBpstgrPass", "DBpstgrUser", "DBsqltPath",          
+                "instancePort",  "lastQuery",
+                "projectScript", "varSessionId", "wkMode",
+            };
+            
+            
+            var mapVars = new List<Tuple<string, string>>();
+            if (vars != null)
+                foreach (var v in vars)
+                    mapVars.Add(new Tuple<string, string>(v, v)); 
+            return project.ExecuteProject(path, mapVars, true, true, true); 
+        }
         public static void SessionInfo(this IZennoPosterProjectModel project, Instance instance,bool showInZp = false,bool resetSessionId = true)
         {
             var startInfo = new StringBuilder();

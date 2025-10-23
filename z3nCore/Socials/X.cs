@@ -431,7 +431,7 @@ namespace z3nCore
             string tweets = interactionStatistic?[2]?["userInteractionCount"]?.ToString() ?? "";
 
             _project.DbUpd($@"datecreated = '{dateCreated}',
-                id = '{id}',
+                account_id = '{id}',
                 username = '{username}',
                 description = '{description}',
                 givenname = '{givenName}',

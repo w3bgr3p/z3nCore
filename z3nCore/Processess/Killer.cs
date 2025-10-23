@@ -319,10 +319,10 @@ namespace z3nCore.Utilities
                 log.Send($"ok ({ok.Count}): \n{string.Join("\n", ok)}");
             
             if (heavy.Count != 0)
-                log.Send($"heavy ({heavy.Count}): \n{string.Join("\n", heavy)}", color: LogColor.Yellow);
+                log.Send($"exceeded {memLim}mb ({heavy.Count}): \n{string.Join("\n", heavy)}", color: LogColor.Yellow);
             
             if (old.Count != 0)
-                log.Send($"old ({old.Count}): \n{string.Join("\n", old)}", color: LogColor.Orange);
+                log.Send($"exceeded {tLim}min ({old.Count}): \n{string.Join("\n", old)}", color: LogColor.Orange);
 
             #endregion
 

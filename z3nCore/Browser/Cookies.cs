@@ -287,110 +287,165 @@ namespace z3nCore
             _logger = new Logger(project, log: log, classEmoji: "⚡");
         }
 
-       public void Save(string source = null, string jsonPath = null)
+    public void Save(string source = null, string jsonPath = null)
+    {
+        switch (source)
         {
-
-            switch (source)
-            {
-                case "project":
-                    SaveProjectFast();
-                    return;
-                    
-                case "all":
-                    SaveAllFast(jsonPath);
-                    return;
-                    
-                default:
-                    _logger.Send($"ERROR: Unsupported source '{source}'");
-                    throw new Exception($"unsupported input {source}. Use [null|project|all]");
-            }
+            case "project":
+                SaveProjectFast();
+                return;
+                
+            case "all":
+                SaveAllFast(jsonPath);
+                return;
+                
+            default:
+                _logger.Send($"ERROR: Unsupported source '{source}'");
+                throw new Exception($"unsupported input {source}. Use [null|project|all]");
         }
+    }
 
-        public void SaveAllFast(string jsonPath = null)
+    public void SaveAllFast(string jsonPath = null)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        string tempFile = Path.Combine(Path.GetTempPath(), $"cookies_{Guid.NewGuid()}.txt");
+        
+        try
         {
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-
-            // 1. Используем встроенный метод ZennoPoster (моментально!)
-            string tempFile = Path.Combine(Path.GetTempPath(), $"cookies_{Guid.NewGuid()}.txt");
+            // 1. Сохраняем куки в файл
             _instance.SaveCookie(tempFile);
             var saveTime = sw.ElapsedMilliseconds;
             _logger.Send($"Native SaveCookie: {saveTime}ms");
 
-            try
+            // Проверяем что файл создался
+            if (!File.Exists(tempFile))
             {
-                // 2. Читаем файл
-                sw.Restart();
-                string cookieContent = File.ReadAllText(tempFile);
-                var readTime = sw.ElapsedMilliseconds;
-                _logger.Send($"File read: {readTime}ms, size: {cookieContent.Length / 1024.0:F2} KB");
-
-                // 3. Конвертируем в JSON
-                sw.Restart();
-                string jsonCookies = ConvertToJson(cookieContent);
-                var convertTime = sw.ElapsedMilliseconds;
-                _logger.Send($"Conversion to JSON: {convertTime}ms, {jsonCookies.Length / 1024.0:F2} KB");
-
-                // 4. Сохраняем в БД
-                sw.Restart();
-                string escaped = jsonCookies.Replace("'", "''");
-                _project.DbUpd($"cookies = '{escaped}'", "_instance");
-                var dbTime = sw.ElapsedMilliseconds;
-                _logger.Send($"DB save: {dbTime}ms");
-
-                // 5. Сохраняем в файл если нужно
-                if (!string.IsNullOrEmpty(jsonPath))
-                {
-                    sw.Restart();
-                    File.WriteAllText(jsonPath, jsonCookies);
-                    _logger.Send($"JSON file saved to {jsonPath}: {sw.ElapsedMilliseconds}ms");
-                }
-
-                var totalTime = saveTime + readTime + convertTime + dbTime;
-                _logger.Send($"✅ TOTAL TIME: {totalTime}ms ({totalTime / 1000.0:F1}s)");
+                _logger.Send($"ERROR: Cookie file was not created: {tempFile}");
+                throw new FileNotFoundException($"Cookie file was not created: {tempFile}");
             }
-            finally
+
+            // 2. Читаем файл
+            sw.Restart();
+            string cookieContent = File.ReadAllText(tempFile);
+            var readTime = sw.ElapsedMilliseconds;
+            _logger.Send($"File read: {readTime}ms, size: {cookieContent.Length / 1024.0:F2} KB");
+
+            // 3. Конвертируем в JSON
+            sw.Restart();
+            string jsonCookies = ConvertToJson(cookieContent);
+            var convertTime = sw.ElapsedMilliseconds;
+            _logger.Send($"Conversion to JSON: {convertTime}ms, {jsonCookies.Length / 1024.0:F2} KB");
+
+            // 4. Сохраняем в БД
+            sw.Restart();
+            string escaped = jsonCookies.Replace("'", "''");
+            _project.DbUpd($"cookies = '{escaped}'", "_instance");
+            var dbTime = sw.ElapsedMilliseconds;
+            _logger.Send($"DB save: {dbTime}ms");
+
+            // 5. Сохраняем в файл если нужно
+            if (!string.IsNullOrEmpty(jsonPath))
             {
-                // Удаляем временный файл
-                try
-                {
-                    File.Delete(tempFile);
-                }
-                catch
-                {
-                }
+                sw.Restart();
+                File.WriteAllText(jsonPath, jsonCookies);
+                _logger.Send($"JSON file saved to {jsonPath}: {sw.ElapsedMilliseconds}ms");
             }
+
+            var totalTime = saveTime + readTime + convertTime + dbTime;
+            _logger.Send($"✅ TOTAL TIME: {totalTime}ms ({totalTime / 1000.0:F1}s)");
         }
-
-        public void SaveProjectFast()
+        catch (Exception ex)
         {
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            string currentDomain = _instance.ActiveTab.MainDomain;
-
-            string tempFile = Path.Combine(Path.GetTempPath(), $"cookies_{Guid.NewGuid()}.txt");
-            _instance.SaveCookie(tempFile);
-
-            try
-            {
-                string cookieContent = File.ReadAllText(tempFile);
-                string jsonCookies = ConvertToJson(cookieContent, domainFilter: currentDomain);
-
-                string escaped = jsonCookies.Replace("'", "''");
-                _project.DbUpd($"cookies = '{escaped}'");
-
-                _logger.Send($"✅ Project cookies saved in {sw.ElapsedMilliseconds}ms");
-            }
-            finally
+            _logger.Send($"ERROR in SaveAllFast: {ex.Message}");
+            throw;
+        }
+        finally
+        {
+            // Удаляем временный файл
+            if (File.Exists(tempFile))
             {
                 try
                 {
                     File.Delete(tempFile);
+                    _logger.Send($"Temp file deleted: {tempFile}");
                 }
-                catch
+                catch (Exception ex)
                 {
+                    _logger.Send($"WARNING: Could not delete temp file: {ex.Message}");
                 }
             }
         }
+    }
 
+    public void SaveProjectFast()
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        string currentDomain = _instance.ActiveTab.MainDomain;
+
+        string tempFile = Path.Combine(Path.GetTempPath(), $"cookies_{Guid.NewGuid()}.txt");
+        
+        try
+        {
+            _instance.SaveCookie(tempFile);
+            
+            // Проверяем что файл создался
+            if (!File.Exists(tempFile))
+            {
+                _logger.Send($"ERROR: Cookie file was not created: {tempFile}");
+                throw new FileNotFoundException($"Cookie file was not created: {tempFile}");
+            }
+
+            string cookieContent = File.ReadAllText(tempFile);
+            string jsonCookies = ConvertToJson(cookieContent, domainFilter: currentDomain);
+
+            string escaped = jsonCookies.Replace("'", "''");
+            _project.DbUpd($"cookies = '{escaped}'");
+
+            _logger.Send($"✅ Project cookies saved in {sw.ElapsedMilliseconds}ms");
+        }
+        catch (Exception ex)
+        {
+            _logger.Send($"ERROR in SaveProjectFast: {ex.Message}");
+            throw;
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                try
+                {
+                    File.Delete(tempFile);
+                    _logger.Send($"Temp file deleted: {tempFile}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.Send($"WARNING: Could not delete temp file: {ex.Message}");
+                }
+            }
+        }
+    }
+        public static string CookieFix(string brokenJson)
+        {
+            string fixedJson = brokenJson.Replace("\"\"value\":\"", "\"value\":\"");
+            fixedJson = fixedJson.Replace("\" =", "=");
+            try
+            {
+                JArray cookies = JArray.Parse(fixedJson);
+                foreach (JObject cookie in cookies)
+                {
+                    if (cookie["id"] != null)
+                    {
+                        cookie["id"] = 1;
+                    }
+                }
+                return JsonConvert.SerializeObject(cookies, Formatting.Indented);
+            }
+            catch (JsonReaderException ex)
+            {
+                return $"Ошибка парсинга JSON: {ex.Message}";
+            }
+        }
         private string ConvertToJson(string content, string domainFilter = null)
         {
             var cookies = new List<object>();
@@ -500,6 +555,10 @@ namespace z3nCore
             {
                 case "dbMain":
                     cookieSource = _project.SqlGet("cookies", "_instance");
+                    if (!string.IsNullOrEmpty(cookieSource))
+                    {
+                        cookieSource = cookieSource.Replace("''", "'");
+                    }
                     break;
                 case "dbProject":
                     cookieSource = _project.SqlGet("cookies");
@@ -666,5 +725,14 @@ namespace z3nCore
             }
         }
     }
-    
+
+    public static partial class ProjectExtensions
+    {
+        public static string DbCookies(this IZennoPosterProjectModel project)
+        {
+            var rawCookies = project.SqlGet("cookies", "_instance");
+            return Cookies.CookieFix(rawCookies);
+        }
+    }
+
 }

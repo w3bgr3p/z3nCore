@@ -117,8 +117,9 @@ namespace z3nCore
         }
         
         //new
-        public static string HeGet(this Instance instance, object obj, string method = "", int deadline = 10, string atr = "innertext", int delay = 1, string comment = "", bool thr0w = true)
+        public static string HeGet(this Instance instance, object obj, string method = "", int deadline = 10, string atr = "innertext", int delay = 1, string comment = "", bool thrw = true, bool thr0w = true)
         {
+            //if (!thr0w) 
             DateTime functionStart = DateTime.Now;
             string lastExceptionMessage = "";
 
@@ -174,7 +175,7 @@ namespace z3nCore
                 Thread.Sleep(500);
             }
         }
-        public static void HeClick(this Instance instance, object obj, string method = "", int deadline = 10, int delay = 1, string comment = "", bool thr0w = true, int emu = 0)
+        public static void HeClick(this Instance instance, object obj, string method = "", int deadline = 10, int delay = 1, string comment = "", bool thrw = true , bool thr0w = true, int emu = 0)
         {
             bool emuSnap = instance.UseFullMouseEmulation;
             if (emu > 0) instance.UseFullMouseEmulation = true;
@@ -234,7 +235,7 @@ namespace z3nCore
             }
 
         }
-        public static void HeSet(this Instance instance, object obj, string value, string method = "id", int deadline = 10, int delay = 1, string comment = "", bool thr0w = true)
+        public static void HeSet(this Instance instance, object obj, string value, string method = "id", int deadline = 10, int delay = 1, string comment = "", bool thrw = true, bool thr0w = true)
         {
             DateTime functionStart = DateTime.Now;
             string lastExceptionMessage = "";
