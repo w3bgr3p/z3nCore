@@ -61,8 +61,8 @@ namespace z3nCore
             {
                 "acc0", "cfgLog", "cfgPin",
                 "DBmode", "DBpstgrPass", "DBpstgrUser", "DBsqltPath",
-                "instancePort", "lastQuery",
-                "projectScript", "varSessionId", "toDo",
+                "instancePort", "lastQuery", "cookies",
+                "projectScript", "varSessionId", "toDo", 
             };
             var mapVars = new List<Tuple<string, string>>();
             foreach (var v in vars) mapVars.Add(new Tuple<string, string>(v, v));
