@@ -6,7 +6,7 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
 {
-    public static class ZB
+    public static class ZennoBrowser
     {
         private static readonly object _dbLock = new object();
         public static Dictionary<string, string> ZBids(this IZennoPosterProjectModel project)
@@ -51,6 +51,22 @@ namespace z3nCore
                     project.Var("DBmode", modeBkp);
                 }
             }
+        }
+        
+        public static bool ZB(this IZennoPosterProjectModel project, string toDo)
+        {
+            var path = Path.Combine(project.Path,".internal","ZB.zp");
+            project.Var("toDo", toDo);
+            var vars = new List<string>
+            {
+                "acc0", "cfgLog", "cfgPin",
+                "DBmode", "DBpstgrPass", "DBpstgrUser", "DBsqltPath",
+                "instancePort", "lastQuery",
+                "projectScript", "varSessionId", "toDo",
+            };
+            var mapVars = new List<Tuple<string, string>>();
+            foreach (var v in vars) mapVars.Add(new Tuple<string, string>(v, v));
+            return project.ExecuteProject(path, mapVars, true, true, true);
         }
     }
 }

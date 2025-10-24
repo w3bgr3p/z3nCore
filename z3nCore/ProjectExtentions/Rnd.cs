@@ -1,10 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.IO;
 using System.Globalization;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
@@ -280,6 +278,24 @@ namespace z3nCore
         public static bool RndBool(this int truePercent)
         {
             return random.NextDouble() * 100 < truePercent;
+        }
+        public static string RndFile(string directoryPath, string extension = null)
+        {
+            readrandom:
+            try
+            {
+                string searchPattern = extension != null && !string.IsNullOrEmpty(extension) 
+                    ? "*." + extension.TrimStart('.') 
+                    : "*";
+                var files = Directory.GetFiles(directoryPath, searchPattern, SearchOption.AllDirectories);
+                if (files.Length == 0) return null;
+                var random = new Random();
+                return files[random.Next(files.Length)];
+            }
+            catch 
+            {
+                goto readrandom;
+            }
         }
     }
 }

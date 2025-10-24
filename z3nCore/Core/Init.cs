@@ -737,7 +737,7 @@ public class Init
 
                 foreach (string social in demanded)
                 {
-                    string tableName = $"projects_{social.Trim().ToLower()}";
+                    string tableName = $"_{social.Trim().ToLower()}";
                     var notOK = _project.SqlGet($"id", tableName, log: _log, where: "status LIKE '%suspended%' OR status LIKE '%restricted%' OR status LIKE '%ban%' OR status LIKE '%CAPTCHA%' OR status LIKE '%applyed%' OR status LIKE '%Verify%'")
                         .Split('·')
                         .Select(x => x.Trim())

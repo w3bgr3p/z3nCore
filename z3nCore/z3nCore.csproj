@@ -114,12 +114,12 @@
     <Compile Include="Reports\Reporter.cs" />
     <Compile Include="Security\Cryptography.cs" />
     <Compile Include="Security\ISAFU.cs" />
-    <None Include="Test.cs" />
     <Compile Include="Utilities\Converter.cs" />
     <Compile Include="Utilities\Debug.cs" />
     <Compile Include="Utilities\F0rms.cs" />
     <Compile Include="Utilities\Helper.cs" />
     <Compile Include="Utilities\OTP.cs" />
+    <Compile Include="Utilities\Rss.cs" />
     <Compile Include="Utilities\Snapper.cs" />
     <Compile Include="W3b\AptosTools.cs" />
     <Compile Include="W3b\CosmosTools.cs" />

@@ -431,6 +431,14 @@ namespace z3nCore
         {
             instance.ActiveTab.MainDocument.EvaluateScript("location.reload(true)");
         }
+
+        public static void ScrollDown(this Instance instance, int y = 420)
+        {
+            bool emu = instance.UseFullMouseEmulation;
+            instance.UseFullMouseEmulation = true;
+            instance.ActiveTab.FullEmulationMouseWheel(0, y);
+            instance.UseFullMouseEmulation = emu;
+        }
         public static void CtrlV(this Instance instance, string ToPaste)
         {
             lock (new object())
