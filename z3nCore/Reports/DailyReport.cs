@@ -714,7 +714,8 @@ namespace z3nCore.Utilities
                             if (DateTime.TryParse(ts, null, System.Globalization.DateTimeStyles.RoundtripKind,
                                     out DateTime timestamp))
                             {
-                                var recordDate = timestamp.Date;
+                                //var recordDate = timestamp.Date;
+                                var recordDate = timestamp.ToUniversalTime().Date;
                                 var daysDiff = (today - recordDate).Days;
     
                                 if (daysDiff == 0)
