@@ -143,14 +143,13 @@ public class Init
             _logger.Send($"running {pn} with acc{acc}.  [{accountsLeft}] accounts left in que", show: true);
         }
         
-        public void PrepareInstance(string browserToLaunch = null)
+        public void PrepareInstance(string browserToLaunch = null, bool getscore = false)
         {
             if (_project.Var("wkMode") == "UpdBalance")
             {
                 _instance.Launch(ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.WithoutBrowser, false);
                 return;
             }
-            _logger.Send($"Launching {browserToLaunch}");
             try
             {
                 LaunchBrowser(browserToLaunch);
@@ -169,7 +168,7 @@ public class Init
             try 
             {
                 if (browser && _project.Variables["acc0"].Value != "") //if browser					
-                    SetBrowser();	
+                    SetBrowser(getscore:getscore);	
                 else
                     new NetHttp(_project, false).CheckProxy();
             }
@@ -515,7 +514,7 @@ public class Init
             return pid.ToString();
         }
 
-        private void SetBrowser(bool strictProxy = true, string cookies = null, bool log = false)
+        private void SetBrowser(bool strictProxy = true, string cookies = null, bool getscore = false, bool log = false)
         {
             string acc0 = _project.Var("acc0");
             if (string.IsNullOrEmpty(acc0)) throw new ArgumentException("acc0 can't be null or empty");
@@ -562,7 +561,9 @@ public class Init
                         }
                     }
             }
-            if (_project.Var("skipBrowserScan") != "True")
+            //_project.Var("skipBrowserScan") != "True"
+            
+            if (getscore)
             {
                 var bs = new BrowserScan(_project, _instance);
                 if (bs.GetScore().Contains("time")) bs.FixTime();

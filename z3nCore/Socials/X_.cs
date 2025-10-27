@@ -10,7 +10,7 @@ using Newtonsoft.Json.Linq;
 
 namespace z3nCore
 {
-    public class X
+    public class X_
     {
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
@@ -24,7 +24,7 @@ namespace z3nCore
         private string _email;
         private string _email_pass;
 
-        public X(IZennoPosterProjectModel project, Instance instance, bool log = false)
+        public X_(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
 
             _project = project;
