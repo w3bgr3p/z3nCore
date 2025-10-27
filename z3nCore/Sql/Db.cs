@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using System;
+using System.Text;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -101,9 +102,27 @@ namespace z3nCore
 
         #endregion
         
-        
-        
-        
+        public static void JsonToDb(this IZennoPosterProjectModel project, string json, string tableName = null, bool log = false, bool thrw = false)
+        {
+            if (string.IsNullOrWhiteSpace(tableName)) tableName = project.Var("projectTable");
+            
+            var userInfo = json.JsonToDic();
+            var columns = new List<string>();
+            var updString = new StringBuilder();
+            
+            foreach(var p in userInfo)
+            {
+                columns.Add(p.Key);
+            }
+            project.ClmnAdd(project.TblForProject(columns), tableName);
+            
+            foreach(var p in userInfo)
+            {
+                updString.Append($"{p.Key} = '{p.Value.Replace("'","")}',");
+            }
+            project.DbUpd(updString.ToString().Trim(','), tableName);
+
+        }
 
         public static void DbUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, string key = "id", object acc = null, string where = "")
         {
