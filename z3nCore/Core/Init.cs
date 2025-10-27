@@ -902,7 +902,7 @@ public class Init
                 }
                 var toDb = $"- {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffZ} 0\n";
                 toDb += $"no balance required: [{minNativeInUsd}] in chains {_project.Var("gateOnchainChain")}";
-                _project.DbUpd($"status = 'lowBalance', last = '{toDb}' daily = '{Time.Cd(60)}'");
+                _project.DbUpd($"status = 'lowBalance', last = '{toDb}', daily = '{Time.Cd(60)}'");
                 throw new Exception(toDb);
             }
         }

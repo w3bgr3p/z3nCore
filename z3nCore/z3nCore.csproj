@@ -115,7 +115,6 @@
     <Compile Include="Security\Cryptography.cs" />
     <Compile Include="Security\ISAFU.cs" />
     <Compile Include="Socials\X.cs" />
-    <Compile Include="Test.cs" />
     <Compile Include="Utilities\Converter.cs" />
     <Compile Include="Utilities\Debug.cs" />
     <Compile Include="Utilities\F0rms.cs" />

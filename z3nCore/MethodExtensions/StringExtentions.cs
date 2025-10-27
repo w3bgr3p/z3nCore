@@ -246,7 +246,44 @@ namespace z3nCore
             return text;
         }
 
-
+        public static Dictionary<string, string> JsonToDic(this string json)
+        {
+            var result = new Dictionary<string, string>();
+            var jObject = JObject.Parse(json);
+    
+            FlattenJson(jObject, "", result);
+    
+            return result;
+    
+            void FlattenJson(JToken token, string prefix, Dictionary<string, string> dict)
+            {
+                switch (token.Type)
+                {
+                    case JTokenType.Object:
+                        foreach (var property in token.Children<JProperty>())
+                        {
+                            var key = string.IsNullOrEmpty(prefix) 
+                                ? property.Name 
+                                : $"{prefix}_{property.Name}";
+                            FlattenJson(property.Value, key, dict);
+                        }
+                        break;
+                
+                    case JTokenType.Array:
+                        var index = 0;
+                        foreach (var item in token.Children())
+                        {
+                            FlattenJson(item, $"{prefix}_{index}", dict);
+                            index++;
+                        }
+                        break;
+                
+                    default:
+                        dict[prefix] = token.ToString();
+                        break;
+                }
+            }
+        }
         public static Dictionary<string, string> ParseCreds(this string data, string format, char devider = ':')
         {
             var parsedData = new Dictionary<string, string>();
