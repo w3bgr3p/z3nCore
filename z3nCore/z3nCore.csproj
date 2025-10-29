@@ -121,6 +121,7 @@
     <Compile Include="Utilities\Helper.cs" />
     <Compile Include="Utilities\OTP.cs" />
     <Compile Include="Utilities\Rss.cs" />
+    <Compile Include="Utilities\Sleeper.cs" />
     <Compile Include="Utilities\Snapper.cs" />
     <Compile Include="W3b\AptosTools.cs" />
     <Compile Include="W3b\CosmosTools.cs" />

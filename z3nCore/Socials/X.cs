@@ -7,6 +7,7 @@ using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
+using z3nCore.Utilities;
 
 
 namespace z3nCore
@@ -16,7 +17,7 @@ namespace z3nCore
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
         private readonly Logger _log;
-
+        private readonly Sleeper _idle;
         private string _status;
         private string _token;
         private string _login;
@@ -32,7 +33,7 @@ namespace z3nCore
             _project = project;
             _instance = instance;
             _log = new Logger(project, log: log, classEmoji: "X");
-
+            _idle = new Sleeper(1337, 2078);
             LoadCreds();
 
         }
@@ -373,7 +374,7 @@ namespace z3nCore
                     $"document.cookie = \"auth_token={token}; domain=.x.com; path=/; expires=${DateTimeOffset.UtcNow.AddYears(1).ToString("R")}; Secure\";\r\nwindow.location.replace(\"https://x.com\")");
             _instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
         }
-        public string TokenGet()
+        public string TokenGet_()
         {
             _project.ZB("GetCookies");
             var cookJson = _project.Var("cookies");//new Cookies(project, instance).GetByJs("x.com");
@@ -391,7 +392,7 @@ namespace z3nCore
             return token;
         }
         
-        private string TokenGetChromium()
+        public string TokenGet()
         {
             //var cookJson = _instance.GetCookies(_project,".");
             
@@ -412,18 +413,80 @@ namespace z3nCore
         }
         public string Login()
         {
-            DateTime deadline = DateTime.Now.AddSeconds(60);
-            var login = _login;
+            var err = "";
+            if (_instance.ActiveTab.FindElementByAttribute("input:text", "autocomplete", "username", "text", 0).IsVoid)
+            {
+                DateTime deadline = DateTime.Now.AddSeconds(60);
 
-            _instance.ActiveTab.Navigate("https://x.com/", "");
-            Thread.Sleep(2000);
+                _instance.ActiveTab.Navigate("https://x.com/", "");
+                _idle.Sleep();
+                _instance.HeClick(("button", "innertext", "Accept\\ all\\ cookies", "regexp", 0), deadline: 1,
+                    thr0w: false);
+                _instance.HeClick(("button", "data-testid", "xMigrationBottomBar", "regexp", 0), deadline: 0, thr0w: false);
+                _instance.HeClick(("a", "data-testid", "login", "regexp", 0));
+            }
+
+           
+            _instance.JsSet_("[autocomplete='username']", _login);
+            _instance.WaitFieldEmulationDelay();
+            _instance.SendText("{ENTER}", 15);
+            _idle.Sleep();
+            
+            var toast = CatchToast();
+            if (toast.Contains("Could not log you in now."))
+                return toast;
+
+            err = CatchErr();
+            if (err != "") return err;
+            
+            
+            _instance.JsSet_("[name='password']", _pass);
+            _idle.Sleep();
+            _instance.SendText("{ENTER}", 15);
+            _idle.Sleep();
+            
+            err = CatchErr();
+            if (err != "") return err;
+            
+            var codeOTP = OTP.Offline(_2fa);
+            _instance.JsSet_("[name='text']", codeOTP);
+            _idle.Sleep();
+            _instance.SendText("{ENTER}", 15);
+            _idle.Sleep();
+            
+            err = CatchErr();
+            if (err != "") return err;
+
             _instance.HeClick(("button", "innertext", "Accept\\ all\\ cookies", "regexp", 0), deadline: 1,
                 thr0w: false);
             _instance.HeClick(("button", "data-testid", "xMigrationBottomBar", "regexp", 0), deadline: 0, thr0w: false);
-            _instance.HeClick(("a", "data-testid", "login", "regexp", 0));
-            _instance.HeSet(("input:text", "autocomplete", "username", "text", 0), login, deadline: 30);
-            _instance.HeClick(("span", "innertext", "Next", "regexp", 1));
+            TokenGet();
+            return "ok";
+        }
+        private string CatchErr()
+        {
             
+            if (!_instance.ActiveTab
+                    .FindElementByXPath("//*[contains(text(), 'Sorry, we could not find your account')]", 0)
+                    .IsVoid) return "NotFound";
+            if (!_instance.ActiveTab.FindElementByXPath("//*[contains(text(), 'Wrong password!')]", 0).IsVoid)
+                return "WrongPass";
+            
+            if (!_instance.ActiveTab.FindElementByXPath("//*[contains(text(), 'Your account is suspended')]", 0).IsVoid)
+                return "Suspended";
+            
+            if (!_instance.ActiveTab.FindElementByAttribute("span", "innertext",
+                        "Oops,\\ something\\ went\\ wrong.\\ Please\\ try\\ again\\ later.", "regexp", 0)
+                    .IsVoid) return "SomethingWentWrong";
+            
+            if (!_instance.ActiveTab
+                    .FindElementByAttribute("*", "innertext", "Suspicious\\ login\\ prevented", "regexp", 0)
+                    .IsVoid) return "SuspiciousLogin";
+            return "";
+        }
+
+        private string CatchToast()
+        {
             var err = "";
             try{
                 err = _instance.HeGet(("div", "data-testid", "toast", "regexp", 0));
@@ -433,43 +496,10 @@ namespace z3nCore
             {
                 _project.warn(err);
                 if (err.Contains("Could not log you in now."))
-                return err;
+                    return err;
             }
-
-            if (!_instance.ActiveTab
-                    .FindElementByXPath("//*[contains(text(), 'Sorry, we could not find your account')]", 0)
-                    .IsVoid) return "NotFound";
-
-            _instance.HeSet(("password", "name"), _pass);
-
-
-            _instance.HeClick(("button", "data-testid", "LoginForm_Login_Button", "regexp", 0), "clickOut");
-
-            if (!_instance.ActiveTab.FindElementByXPath("//*[contains(text(), 'Wrong password!')]", 0).IsVoid)
-                return "WrongPass";
-
-            var codeOTP = OTP.Offline(_2fa);
-            _instance.HeSet(("text", "name"), codeOTP);
-
-
-            _instance.HeClick(("span", "innertext", "Next", "regexp", 1), "clickOut");
-
-            if (!_instance.ActiveTab.FindElementByXPath("//*[contains(text(), 'Your account is suspended')]", 0).IsVoid)
-                return "Suspended";
-            if (!_instance.ActiveTab.FindElementByAttribute("span", "innertext",
-                        "Oops,\\ something\\ went\\ wrong.\\ Please\\ try\\ again\\ later.", "regexp", 0)
-                    .IsVoid) return "SomethingWentWrong";
-            if (!_instance.ActiveTab
-                    .FindElementByAttribute("*", "innertext", "Suspicious\\ login\\ prevented", "regexp", 0)
-                    .IsVoid) return "SuspiciousLogin";
-
-            _instance.HeClick(("button", "innertext", "Accept\\ all\\ cookies", "regexp", 0), deadline: 1,
-                thr0w: false);
-            _instance.HeClick(("button", "data-testid", "xMigrationBottomBar", "regexp", 0), deadline: 0, thr0w: false);
-            TokenGet();
-            return "ok";
+            return err;
         }
-
         public string Load(bool log = false)
         {
             bool tokenUsed = false;
@@ -538,7 +568,6 @@ namespace z3nCore
 
             goto check;
         }
-
         public void Auth()
         {
             _project.Deadline();
@@ -674,7 +703,6 @@ namespace z3nCore
         #region UI Actions
         public void SendSingleTweet(string tweet, string accountToMention = null)
         {
-            
             GoToProfile(accountToMention);
             _instance.HeClick(("a", "data-testid", "SideNav_NewTweet_Button", "regexp", 0));
             _instance.HeClick(("div", "class", "notranslate\\ public-DraftEditor-content", "regexp", 0),delay:2);
@@ -703,18 +731,20 @@ namespace z3nCore
                 SendSingleTweet(title, accountToMention);
                 return;
             }
-            _instance.HeClick(("a", "data-testid", "SideNav_NewTweet_Button", "regexp", 0));
-            _instance.HeClick(("div", "class", "notranslate\\ public-DraftEditor-content", "regexp", 0),delay:2);
-            _instance.CtrlV(title);  
-            
-        
+            _instance.JsClick_("[data-testid='SideNav_NewTweet_Button']");
+            _instance.JsSet_("[data-testid='tweetTextarea_0']", title);
+            _idle.Sleep();
+
+            int tIndex = 1;
             foreach (var add in tweets)
             {
-                _instance.HeClick(("button", "data-testid", "addButton", "regexp", 0),delay:2);
-                _instance.CtrlV(add);
+                _instance.JsClick_("[data-testid='addButton']");
+                _idle.Sleep();
+                _instance.JsSet_($"[data-testid='tweetTextarea_{tIndex}']", add);
+                _idle.Sleep();
+                tIndex++;
             }
-            
-            _instance.HeClick(("button", "data-testid", "tweetButton", "regexp", 0),delay:2);
+            _instance.JsClick_("[data-testid='tweetButton']");
             try
             {
                 var toast = _instance.HeGet(("*", "data-testid", "toast", "regexp", 0));
@@ -724,7 +754,6 @@ namespace z3nCore
             {
                 _log.Warn(ex.Message,thrw:true);
             }
-
         }
 
         public void Follow()
