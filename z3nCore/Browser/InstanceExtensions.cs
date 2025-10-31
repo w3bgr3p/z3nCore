@@ -20,6 +20,8 @@ namespace z3nCore
         private static readonly object ClipboardLock = new object();
         private static readonly SemaphoreSlim ClipboardSemaphore = new SemaphoreSlim(1, 1);
         private static readonly object LockObject = new object();
+        private static readonly Sleeper _clickSleep = new Sleeper(1008, 1337);
+        private static readonly Sleeper _inputSleep = new Sleeper(1337, 2077);
         
         private class ElementNotFoundException : Exception
         {
@@ -175,7 +177,7 @@ namespace z3nCore
                 Thread.Sleep(500);
             }
         }
-        public static void HeClick(this Instance instance, object obj, string method = "", int deadline = 10, int delay = 1, string comment = "", bool thrw = true , bool thr0w = true, int emu = 0)
+        public static void HeClick(this Instance instance, object obj, string method = "", int deadline = 10, double delay = 1, string comment = "", bool thrw = true , bool thr0w = true, int emu = 0)
         {
             bool emuSnap = instance.UseFullMouseEmulation;
             if (emu > 0) instance.UseFullMouseEmulation = true;
@@ -195,7 +197,8 @@ namespace z3nCore
                 try
                 {
                     HtmlElement he = instance.GetHe(obj, method);
-                    Thread.Sleep(delay * 1000);
+                    //Thread.Sleep(delay * 1000);
+                    _clickSleep.Sleep(delay);
                     he.RiseEvent("click", instance.EmulationLevel);
                     instance.UseFullMouseEmulation = emuSnap;
                     break;
@@ -221,7 +224,8 @@ namespace z3nCore
                     try
                     {
                         HtmlElement he = instance.GetHe(obj, method);
-                        Thread.Sleep(delay * 1000);
+                        _clickSleep.Sleep(delay);
+                        //Thread.Sleep(delay * 1000);
                         he.RiseEvent("click", instance.EmulationLevel);
                         continue;
                     }
@@ -235,7 +239,7 @@ namespace z3nCore
             }
 
         }
-        public static void HeSet(this Instance instance, object obj, string value, string method = "id", int deadline = 10, int delay = 1, string comment = "", bool thrw = true, bool thr0w = true)
+        public static void HeSet(this Instance instance, object obj, string value, string method = "id", int deadline = 10, double delay = 1, string comment = "", bool thrw = true, bool thr0w = true)
         {
             DateTime functionStart = DateTime.Now;
             string lastExceptionMessage = "";
@@ -251,7 +255,9 @@ namespace z3nCore
                 try
                 {
                     HtmlElement he = instance.GetHe(obj, method);
-                    Thread.Sleep(delay * 1000);
+                    _inputSleep.Sleep(delay);
+
+                    //Thread.Sleep(delay * 1000);
                     instance.WaitFieldEmulationDelay(); // Mimics WaitSetValue behavior
                     he.SetValue(value, "Full", false);
                     break;
@@ -271,10 +277,9 @@ namespace z3nCore
         }
 
         //js
-        public static string JsClick_(this Instance instance, string selector, int delay = 2)
+        public static string JsClick(this Instance instance, string selector, double delayX = 1.0)
         {
-            Thread.Sleep(1000 * delay);
-    
+            _clickSleep.Sleep(delayX);
             try
             {
                 string escapedSelector = selector
@@ -314,10 +319,9 @@ namespace z3nCore
                 return $"Error: {ex.Message}";
             }
         }
-        public static string JsSet_(this Instance instance, string selector, string value, int delay = 2)
+        public static string JsSet(this Instance instance, string selector, string value, double delayX = 1.0)
         {
-            Thread.Sleep(1000 * delay);
-            
+            _inputSleep.Sleep(delayX);
             try
             {
                 string escapedValue = value
@@ -508,277 +512,9 @@ namespace z3nCore
                 catch { }
             }
         }
-
-
-
-
+        
 
     }
 
-    public static class JsEmulation
-    {
-        private static readonly Sleeper _clickSleep = new Sleeper(800, 1500);
-        private static readonly Sleeper _inputSleep = new Sleeper(1000, 2000);
-        
-        private static string ConvertToCssSelector(object obj, string method = "")
-        {
-            if (obj == null)
-                throw new ArgumentNullException(nameof(obj));
-            
-            Type inputType = obj.GetType();
-            int objLength = inputType.GetFields().Length;
-            
-            // Tuple с 2 элементами: (value, method) - например ("username", "id")
-            if (objLength == 2)
-            {
-                string value = inputType.GetField("Item1").GetValue(obj).ToString();
-                string tupleMethod = inputType.GetField("Item2").GetValue(obj).ToString();
-                
-                if (tupleMethod == "id")
-                {
-                    return $"#{value}";
-                }
-                else if (tupleMethod == "name")
-                {
-                    return $"[name='{value}']";
-                }
-                else
-                {
-                    throw new Exception($"Unsupported tuple method: {tupleMethod}");
-                }
-            }
-            else if (objLength == 5)
-            {
-                string tag = inputType.GetField("Item1").GetValue(obj).ToString();
-                string attribute = inputType.GetField("Item2").GetValue(obj).ToString();
-                string pattern = inputType.GetField("Item3").GetValue(obj).ToString();
-                string mode = inputType.GetField("Item4").GetValue(obj).ToString();
-                object posObj = inputType.GetField("Item5").GetValue(obj);
-                
-                if (!int.TryParse(posObj.ToString(), out int pos))
-                    throw new ArgumentException("5th element must be int.");
-                
-                string cssSelector;
-                
-                switch (mode.ToLower())
-                {
-                    case "exact":
-                        cssSelector = $"{tag}[{attribute}='{pattern}']";
-                        break;
-                        
-                    case "contains":
-                        cssSelector = $"{tag}[{attribute}*='{pattern}']";
-                        break;
-                        
-                    case "begins":
-                    case "startswith":
-                        cssSelector = $"{tag}[{attribute}^='{pattern}']";
-                        break;
-                        
-                    case "ends":
-                    case "endswith":
-                        cssSelector = $"{tag}[{attribute}$='{pattern}']";
-                        break;
-                        
-                    case "regexp":
-                    case "regex":
-                        cssSelector = $"{tag}[{attribute}]";
-                        break;
-                        
-                    default:
-                        cssSelector = $"{tag}[{attribute}='{pattern}']";
-                        break;
-                }
-                
-                if (method == "last")
-                {
-                    return $"{cssSelector}:last-of-type";
-                }
-                else if (pos > 0)
-                {
-                    return $"{cssSelector}:nth-of-type({pos + 1})";
-                }
-                
-                return cssSelector;
-            }
-            
-            throw new ArgumentException($"Unsupported object type: {inputType}");
-        }
-        
-        public static string JsClick(this Instance instance, object obj, string method = "", int delay = 0)
-        {
-            if (delay > 0)
-                Thread.Sleep(delay * 1000);
-            else
-                _clickSleep.Sleep();
-            
-            try
-            {
-                string cssSelector = ConvertToCssSelector(obj, method);
-                
-                string escapedSelector = cssSelector
-                    .Replace("\\", "\\\\")
-                    .Replace("\"", "\\\"");
-
-                string jsCode = $@"
-                (function() {{
-                    var element = document.querySelector(""{escapedSelector}"");
-                    if (!element) {{
-                        throw new Error(""Элемент не найден по селектору: {escapedSelector}"");
-                    }}
-                    
-                    // Синхронная прокрутка к элементу
-                    element.scrollIntoView({{ block: 'center' }});
-                    
-                    // Фокусируемся на элементе (если возможно)
-                    if (element.focus) {{
-                        element.focus();
-                    }}
-                    
-                    // Клик (основное событие)
-                    var clickEvent = new MouseEvent('click', {{
-                        bubbles: true,
-                        cancelable: true,
-                        view: window,
-                        button: 0
-                    }});
-                    element.dispatchEvent(clickEvent);
-                    
-                    return 'Click successful';
-                }})();
-                ";
-
-                string result = instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
-                return result;
-            }
-            catch (Exception ex)
-            {
-                return $"Error: {ex.Message}";
-            }
-        }
-        
-        public static string JsSet(this Instance instance, object obj, string value, string method = "", int delay = 0)
-        {
-            if (delay > 0)
-                Thread.Sleep(delay * 1000);
-            else
-                _inputSleep.Sleep();
-            
-            try
-            {
-                string cssSelector = ConvertToCssSelector(obj, method);
-                
-                string escapedValue = value
-                    .Replace("\\", "\\\\")
-                    .Replace("\"", "\\\"")
-                    .Replace("\n", "\\n")
-                    .Replace("\r", "\\r")
-                    .Replace("\t", "\\t");
-                
-                string escapedSelector = cssSelector
-                    .Replace("\\", "\\\\")
-                    .Replace("\"", "\\\"");
-
-                string jsCode = $@"
-                (function() {{
-                    var element = document.querySelector(""{escapedSelector}"");
-                    if (!element) {{
-                        throw new Error(""Элемент не найден по селектору: {escapedSelector}"");
-                    }}
-                    
-                    // Синхронная прокрутка к элементу
-                    element.scrollIntoView({{ block: 'center' }});
-                    
-                    // Клик по элементу для фокуса (React часто требует клик перед вводом)
-                    var clickEvent = new MouseEvent('click', {{
-                        bubbles: true,
-                        cancelable: true,
-                        view: window
-                    }});
-                    element.dispatchEvent(clickEvent);
-                    
-                    // Фокусируемся
-                    element.focus();
-                    
-                    // Событие focusin (для React/Vue)
-                    var focusinEvent = new FocusEvent('focusin', {{ bubbles: true }});
-                    element.dispatchEvent(focusinEvent);
-                    
-                    // Очищаем поле
-                    element.value = '';
-                    
-                    // Используем execCommand для имитации реального ввода
-                    document.execCommand('insertText', false, ""{escapedValue}"");
-                    
-                    // Триггерим события для фреймворков
-                    var inputEvent = new Event('input', {{ bubbles: true }});
-                    var changeEvent = new Event('change', {{ bubbles: true }});
-                    element.dispatchEvent(inputEvent);
-                    element.dispatchEvent(changeEvent);
-                    
-                    return 'Value set successfully';
-                }})();
-                ";
-
-                string result = instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
-                return result;
-            }
-            catch (Exception ex)
-            {
-                return $"Error: {ex.Message}";
-            }
-        }
-        
-        public static string JsGet(this Instance instance, object obj, string attribute = "innerText", string method = "", int delay = 0)
-        {
-            if (delay > 0)
-                Thread.Sleep(delay * 1000);
-            
-            try
-            {
-                string cssSelector = ConvertToCssSelector(obj, method);
-                
-                string escapedSelector = cssSelector
-                    .Replace("\\", "\\\\")
-                    .Replace("\"", "\\\"");
-                
-                string escapedAttribute = attribute
-                    .Replace("\\", "\\\\")
-                    .Replace("\"", "\\\"");
-
-                string jsCode = $@"
-                (function() {{
-                    var element = document.querySelector(""{escapedSelector}"");
-                    if (!element) {{
-                        throw new Error(""Элемент не найден по селектору: {escapedSelector}"");
-                    }}
-                    
-                    // Получаем атрибут или свойство
-                    var attr = ""{escapedAttribute}"";
-                    if (attr === 'innerText' || attr === 'innertext') {{
-                        return element.innerText;
-                    }} else if (attr === 'innerHTML' || attr === 'innerhtml') {{
-                        return element.innerHTML;
-                    }} else if (attr === 'value') {{
-                        return element.value;
-                    }} else if (attr === 'outerHTML' || attr === 'outerhtml') {{
-                        return element.outerHTML;
-                    }} else {{
-                        return element.getAttribute(attr) || element[attr] || '';
-                    }}
-                }})();
-                ";
-
-                string result = instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
-                return result ?? string.Empty;
-            }
-            catch (Exception ex)
-            {
-                return $"Error: {ex.Message}";
-            }
-        }
-    }
-
-
-
+    
 }

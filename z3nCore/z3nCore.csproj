@@ -162,7 +162,6 @@
     <Compile Include="Sql\Sql.cs" />
     <Compile Include="Sql\SQLite.cs" />
     <Compile Include="Requests\Requests.cs" />
-    <Compile Include="Socials\X_.cs" />
     <Compile Include="Wallets\Zerion.cs" />
     <Compile Include="Wallets\ZerionWallet.cs" />
   </ItemGroup>

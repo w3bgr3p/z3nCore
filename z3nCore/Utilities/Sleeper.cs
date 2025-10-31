@@ -26,14 +26,9 @@ namespace z3nCore.Utilities
             _random = new Random(Guid.NewGuid().GetHashCode());
         }
         
-        public void Sleep()
-        {
-            int delay = _random.Next(_min, _max + 1);
-            Thread.Sleep(delay);
-        }
         
         /// <param name="multiplier">Множитель для задержки (например, 2.0 = в 2 раза дольше)</param>
-        public void Sleep(double multiplier)
+        public void Sleep(double multiplier = 1.0)
         {
             int delay = _random.Next(_min, _max + 1);
             Thread.Sleep((int)(delay * multiplier));

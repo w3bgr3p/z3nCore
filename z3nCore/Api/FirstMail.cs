@@ -1,9 +1,9 @@
 ﻿using System;
-using System.Net.Http;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 using ZennoLab.InterfacesLibrary.ProjectModel;
+
+using System.Collections.Generic;
 
 namespace z3nCore
 {
@@ -17,14 +17,32 @@ namespace z3nCore
         private string _login;
         private string _pass;
         private string _proxy;
-        private bool _log;
+        private string _auth;
+        private string[] _headers;
+       
 
+        private Dictionary<string, string> _commands = new Dictionary<string, string>
+        {
+            { "delete", "https://api.firstmail.ltd/v1/mail/delete" },
+            { "getAll", "https://api.firstmail.ltd/v1/get/messages" },
+            { "getOne", "https://api.firstmail.ltd/v1/mail/one" },
+        };
+
+        
         public FirstMail(IZennoPosterProjectModel project, bool log = false)
         {
             _project = project;
             _logger = new Logger(project, log: log, classEmoji: "FirstMail");
             LoadKeys();
-            _log = log;
+        }
+        public FirstMail(IZennoPosterProjectModel project, string mail, string password, bool log = false)
+        {
+            _project = project;
+            _logger = new Logger(project, log: log, classEmoji: "FirstMail");
+            LoadKeys();
+            _login = Uri.EscapeDataString(mail);
+            _pass = Uri.EscapeDataString(password);
+            _auth = $"?username={_login} &password={_pass}";
         }
 
         private void LoadKeys()
@@ -35,55 +53,39 @@ namespace z3nCore
             _login = Uri.EscapeDataString(creds["apisecret"]);
             _pass = Uri.EscapeDataString(creds["passphrase"]);
             _proxy = creds["proxy"];
-
+            _headers = new [] { $"accept: application/json", $"X-API-KEY: {_key}" };
+            _auth = $"?username={_login} &password={_pass}";
         }
-        public async Task<string> Request(string url)
-        {
-            var client = new HttpClient();
-            var request = new HttpRequestMessage
-            {
-                Method = HttpMethod.Delete,
-                RequestUri = new Uri(url),
-                Headers =
-                    {
-                        { "accept", "application/json" },
-                        { "X-API-KEY", _key },
-                    },
-            };
-            using (var response = await client.SendAsync(request))
-            {
-                response.EnsureSuccessStatusCode();
-                var body = await response.Content.ReadAsStringAsync();
-                return body;
-            }
-        }
+        
         public string Delete(string email, bool seen = false)
         {
-            string url = $"https://api.firstmail.ltd/v1/mail/delete?username={_login} &password= {_pass}";
+            string url = _commands["delete"] + _auth;//$"https://api.firstmail.ltd/v1/mail/delete?username={_login} &password={_pass}";
             string additional = seen ? "seen=true" : null;
             url += additional;
-            string result = Request(url).GetAwaiter().GetResult();
-            _project.Json.FromString(result);
+            string result = _project.GET(url,_proxy, _headers, parseJson:true);
             return result;
         }
         public string GetOne(string email)
         {
-            string url = $"https://api.firstmail.ltd/v1/mail/one?username={_login}&password={_pass}";
-            string result = Request(url).GetAwaiter().GetResult();
-            _project.Json.FromString(result);
+            string url = _commands["getOne"] + _auth;
+            //string url = $"https://api.firstmail.ltd/v1/mail/one?username={_login}&password={_pass}";
+            string result = _project.GET(url,_proxy, _headers, parseJson:true);
             return result;
         }
         public string GetAll(string email)
         {
-            string url = $"https://api.firstmail.ltd/v1/get/messages?username={_login} &password= {_pass}";
-            string result = Request(url).GetAwaiter().GetResult();
-            _project.Json.FromString(result);
+            string url = _commands["getAll"] + _auth;
+            //string url = $"https://api.firstmail.ltd/v1/get/messages?username={_login} &password={_pass}";
+            string result = _project.GET(url,_proxy, _headers, parseJson:true);
             return result;
         }
         
+        
         public string GetMail(string email)
         {
-
+            _project.ObsoleteCode("FirstMail.GetOne");
+            return GetOne(email);
+            /*
             string url = $"https://api.firstmail.ltd/v1/mail/one?username={_login}&password={_pass}";
 
             string[] headers = new string[]
@@ -92,21 +94,21 @@ namespace z3nCore
                 $"X-API-KEY: {_key}"
             };
 
-            string result = _project.GET(url,_proxy, headers, log:_log);
+            string result = _project.GET(url,_proxy, headers);
             _project.Json.FromString(result);
             return result;
+            */
 
         }    
         public string GetOTP(string email)
         {
 
-            string json = GetMail(email);
-            _project.Json.FromString(json);
+            GetOne(email);
+            //_project.Json.FromString(json);
             string deliveredTo = _project.Json.to[0];
             string text = _project.Json.text;
             string subject = _project.Json.subject;
             string html = _project.Json.html;
-
 
             if (!deliveredTo.Contains(email)) throw new Exception($"Fmail: Email {email} not found in last message");
             else
@@ -129,8 +131,7 @@ namespace z3nCore
         }
         public string GetLink(string email)
         {
-            string json = GetMail(email);
-            _project.Json.FromString(json);
+            GetOne(email);
             string deliveredTo = _project.Json.to[0];
             string text = _project.Json.text;
 
@@ -151,4 +152,16 @@ namespace z3nCore
                 : throw new Exception($"No Link found in message {text}");
         }
     }
+
+    public static partial class ProjectExtensions
+    {
+        public static string Otp(this IZennoPosterProjectModel project, string source)
+        {
+            if (source.Contains("@"))
+                return new FirstMail(project).GetOTP(source);
+            else
+                return OTP.Offline(source);
+        }
+    }
+
 }

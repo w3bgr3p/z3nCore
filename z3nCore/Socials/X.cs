@@ -57,95 +57,6 @@ namespace z3nCore
 
         #region API
 
-        public Dictionary<string, string> UserByScreenName_()
-        {
-            _log.Send("UserByScreenName_ method started");
-            bool secondTry = false;
-            p0:
-            _log.Send($"Creating Traffic object, secondTry: {secondTry}");
-            var traffic = new Traffic(_project, _instance).Snapshot();
-            _log.Send("Traffic snapshot created successfully");
-            var all = traffic.GetAll("UserByScreenName", strict: false);
-            _log.Send($"Traffic elements count: {all.Count}");
-            
-            if (all.Count == 0 && !secondTry)
-            {
-                _instance.F5();
-                Thread.Sleep(5000);
-                secondTry = true;
-                goto p0;
-            }
-
-            if (all.Count == 0) throw new Exception(" UserByScreenName_ not Found in traffic ");
-
-
-            var url = "";
-            foreach (var tEl in all)
-            {
-                _log.Send(tEl.Url);
-                url = tEl.Url;
-                var body = tEl.ResponseBody;
-
-                if (body.Contains("user"))
-                    _project.ToJson(body);
-            }
-            _log.Send($"URL for regex: {url}");
-            string user = url.Regx("(?<=screen_name%22%3A%22).*?(?=%)");
-            dynamic data = _project.Json.data.user.result;
-            var result = new Dictionary<string, string>();
-
-
-            var __typename = data.__typename;
-
-            if (__typename == "UserUnavailable")
-            {
-                var message = data.message;
-                _log.Warn(message);
-                result = new Dictionary<string, string>
-                {
-                    { "status", message },
-                    { "user", user },
-                };
-            }
-            else
-            {
-                var image_url = data.avatar.image_url;
-                var name = data.core.name;
-                var screen_name = data.core.screen_name;
-                //var lang = data.profile_description_language;
-
-
-                dynamic legacy = data.legacy;
-                var fast_followers_count = legacy.fast_followers_count;
-                var favourites_count = legacy.favourites_count;
-                var followers_count = legacy.followers_count;
-                var friends_count = legacy.friends_count;
-                var statuses_count = legacy.statuses_count;
-                var description = legacy.description;
-                var default_profile_image = legacy.default_profile_image;
-                var default_profile = legacy.default_profile;
-
-                result = new Dictionary<string, string>
-                {
-                    { "status", "ok" },
-                    { "user", user },
-                    { "image_url", image_url?.ToString() ?? "" },
-                    { "name", name?.ToString() ?? "" },
-                    { "screen_name", screen_name?.ToString() ?? "" },
-                    //{ "lang", lang?.ToString() ?? "" },
-                    { "fast_followers_count", fast_followers_count?.ToString() ?? "" },
-                    { "favourites_count", favourites_count?.ToString() ?? "" },
-                    { "followers_count", followers_count?.ToString() ?? "" },
-                    { "friends_count", friends_count?.ToString() ?? "" },
-                    { "statuses_count", statuses_count?.ToString() ?? "" },
-                    { "description", description?.ToString() ?? "" },
-                    { "default_profile_image", default_profile_image?.ToString() ?? "" },
-                    { "default_profile", default_profile?.ToString() ?? "" }
-                };
-            }
-
-            return result;
-        }
         public Dictionary<string, string> UserByScreenName()
         {
             _log.Send("UserByScreenName_ method started");
@@ -186,7 +97,6 @@ namespace z3nCore
             return result;
             
         }
-
         public Dictionary<string, string> Settings()
         {
             bool secondTry = false;
@@ -265,7 +175,6 @@ namespace z3nCore
             _project.ToJson(t);
             return t;
         }
-
         
         #endregion
 
@@ -278,11 +187,10 @@ namespace z3nCore
             _instance.HeClick(("button", "innertext", "Got\\ it", "regexp", 0), deadline: 0, thr0w: false);
            
         }
-        
         public bool CheckCurrent()
         {
             GoToProfile();
-            var current = UserByScreenName_();
+            var current = UserByScreenName();
             if (current["user"].ToLower() != _login.ToLower())
             {
                 _log.Warn($"wrong profile: expected {_login} detected {current["user"]}", show: true);
@@ -306,9 +214,78 @@ namespace z3nCore
                     _instance.ActiveTab.Navigate($"https://x.com/{profile}", "");
             }
         }
+        
+        
+        public string GetState()
+        {
+
+            _project.Deadline();
+            _instance.Go($"https://x.com/home");
+            var status = "";
+
+            while (string.IsNullOrEmpty(status))
+            {
+                Thread.Sleep(5000);
+                _project.Deadline(60);
+                if (_instance.ActiveTab.URL == "https://x.com/home")
+                {
+                    _status = "logined";
+                    goto end;
+                }
+
+                if (!_instance.ActiveTab.FindElementByAttribute("input:text", "autocomplete", "username", "text", 0).IsVoid)
+                {
+                    _status = "inputLogin";
+                    goto end;
+                }
+                
+                if (!_instance.ActiveTab.FindElementByName("password").IsVoid)
+                {
+                    _status = "inputPassword";
+                    goto end;
+                }
+                
+                if (!_instance.ActiveTab.FindElementByName("text").IsVoid)
+                {
+                    _status = "inputOtp";
+                    goto end;
+                }
+                
+                if (!_instance.ActiveTab.FindElementByName("text").IsVoid)
+                {
+                    _status = "inputOtp";
+                    goto end;
+                }
+                if (!_instance.ActiveTab.FindElementByAttribute("button", "data-testid", "apple_sign_in_button", "text", 0).IsVoid)
+                {
+                    _status = "defaultPade";
+                    goto end;
+                }
+                
+            }
+            end:
+            _log.Send(_status);
+            _project.Var("xStatus", _status);
+            return _status;
+        }
+
+        public void LoginWithToken(string token = null)
+        {
+            if (string.IsNullOrEmpty(token)) token = _token;
+            string jsCode =
+                _project.ExecuteMacro(
+                    $"document.cookie = \"auth_token={token}; domain=.x.com; path=/; expires=${DateTimeOffset.UtcNow.AddYears(1).ToString("R")}; Secure\";\r\nwindow.location.replace(\"https://x.com\")");
+            _instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
+            
+            _log.Send($"token {_token} has been applied");
+            _instance.F5();
+            Thread.Sleep(3000);
+            
+        }
+
         private string LoginState(bool log = false)
         {
-            log = _project.Variables["debug"].Value == "True";
+            
             DateTime start = DateTime.Now;
             DateTime deadline = DateTime.Now.AddSeconds(60);
            	_log.Send($"https://x.com/{_login}");
@@ -374,30 +351,10 @@ namespace z3nCore
                     $"document.cookie = \"auth_token={token}; domain=.x.com; path=/; expires=${DateTimeOffset.UtcNow.AddYears(1).ToString("R")}; Secure\";\r\nwindow.location.replace(\"https://x.com\")");
             _instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
         }
-        public string TokenGet_()
-        {
-            _project.ZB("GetCookies");
-            var cookJson = _project.Var("cookies");//new Cookies(project, instance).GetByJs("x.com");
-            
-            JArray toParse = JArray.Parse(cookJson);
-            int i = 0;
-            var token = "";
-            while (token == "")
-            {
-                if (toParse[i]["name"].ToString() == "auth_token") token = toParse[i]["value"].ToString();
-                i++;
-            }
-            var _token = token;
-            _project.DbUpd($"token = '{token}'", "_twitter");
-            return token;
-        }
         
         public string TokenGet()
         {
-            //var cookJson = _instance.GetCookies(_project,".");
-            
-            //var cookJson = new Cookies(_project, _instance).Get("."); //_instance.GetCookies(_project, ".");
-            var cookJson = new Cookies(_project, _instance).GetByJs("x.com");
+            var cookJson = new Cookies(_project, _instance).Get("."); //_instance.GetCookies(_project, ".");
             JArray toParse = JArray.Parse(cookJson);
             int i = 0;
             var token = "";
@@ -411,7 +368,7 @@ namespace z3nCore
             _project.DbUpd($"token = '{token}'", "_twitter");
             return token;
         }
-        public string Login()
+        public string LoginWithCredentials()
         {
             var err = "";
             if (_instance.ActiveTab.FindElementByAttribute("input:text", "autocomplete", "username", "text", 0).IsVoid)
@@ -427,10 +384,10 @@ namespace z3nCore
             }
 
            
-            _instance.JsSet_("[autocomplete='username']", _login);
-            _instance.WaitFieldEmulationDelay();
-            _instance.SendText("{ENTER}", 15);
+            _instance.JsSet("[autocomplete='username']", _login);
             _idle.Sleep();
+            _instance.SendText("{ENTER}", 15);
+            
             
             var toast = CatchToast();
             if (toast.Contains("Could not log you in now."))
@@ -440,7 +397,7 @@ namespace z3nCore
             if (err != "") return err;
             
             
-            _instance.JsSet_("[name='password']", _pass);
+            _instance.JsSet("[name='password']", _pass);
             _idle.Sleep();
             _instance.SendText("{ENTER}", 15);
             _idle.Sleep();
@@ -449,7 +406,7 @@ namespace z3nCore
             if (err != "") return err;
             
             var codeOTP = OTP.Offline(_2fa);
-            _instance.JsSet_("[name='text']", codeOTP);
+            _instance.JsSet("[name='text']", codeOTP);
             _idle.Sleep();
             _instance.SendText("{ENTER}", 15);
             _idle.Sleep();
@@ -489,7 +446,7 @@ namespace z3nCore
         {
             var err = "";
             try{
-                err = _instance.HeGet(("div", "data-testid", "toast", "regexp", 0));
+                err = _instance.HeGet(("div", "data-testid", "toast", "regexp", 0), deadline:2);
             }
             catch{}
             if (err != "")
@@ -500,8 +457,11 @@ namespace z3nCore
             }
             return err;
         }
+        
+        
         public string Load(bool log = false)
         {
+            
             bool tokenUsed = false;
             DateTime deadline = DateTime.Now.AddSeconds(60);
             check:
@@ -527,14 +487,13 @@ namespace z3nCore
                 }
                 else
                 {
-                    // Если токена нет, сразу идти на логин
                     tokenUsed = true;
-                    status = Login();
+                    status = LoginWithCredentials();
                 }
             }
             else if (status == "login" && tokenUsed)
             {
-                status = Login();
+                status = LoginWithCredentials();
                 _project.log($"{status}");
                 Thread.Sleep(3000);
             }
@@ -614,7 +573,7 @@ namespace z3nCore
                     }
                     else
                     {
-                        throw new Exception("wrong account");
+                        throw new Exception($"wrong account: expected[{_login}] catched:[{userdata}]");
                     }
                 case "AuthV1SignIn":
                     _instance.HeClick(("allow", "id"));
@@ -719,7 +678,6 @@ namespace z3nCore
                 _log.Warn(ex.Message,thrw:true);
             }
         }
-
         public void SendThread(List<string> tweets, string accountToMention = null)
         {
             GoToProfile(accountToMention);
@@ -731,20 +689,20 @@ namespace z3nCore
                 SendSingleTweet(title, accountToMention);
                 return;
             }
-            _instance.JsClick_("[data-testid='SideNav_NewTweet_Button']");
-            _instance.JsSet_("[data-testid='tweetTextarea_0']", title);
+            _instance.JsClick("[data-testid='SideNav_NewTweet_Button']");
+            _instance.JsSet("[data-testid='tweetTextarea_0']", title);
             _idle.Sleep();
 
             int tIndex = 1;
             foreach (var add in tweets)
             {
-                _instance.JsClick_("[data-testid='addButton']");
+                _instance.JsClick("[data-testid='addButton']");
                 _idle.Sleep();
-                _instance.JsSet_($"[data-testid='tweetTextarea_{tIndex}']", add);
+                _instance.JsSet($"[data-testid='tweetTextarea_{tIndex}']", add);
                 _idle.Sleep();
                 tIndex++;
             }
-            _instance.JsClick_("[data-testid='tweetButton']");
+            _instance.JsClick("[data-testid='tweetButton']");
             try
             {
                 var toast = _instance.HeGet(("*", "data-testid", "toast", "regexp", 0));
@@ -755,7 +713,6 @@ namespace z3nCore
                 _log.Warn(ex.Message,thrw:true);
             }
         }
-
         public void Follow()
         {
             try
@@ -783,7 +740,6 @@ namespace z3nCore
             }
 
         }
-
         public void RandomLike(string targetAccount = null)
         {
             _project.Deadline();
@@ -904,10 +860,57 @@ namespace z3nCore
 
 
         }
+        public string GetCurrentEmail()
+        {
 
+            _instance.Go("https://x.com/settings/email");
+
+        
+            try
+            {
+                _instance.HeSet(("current_password", "name"), _pass, deadline: 1);
+                _instance.HeClick(("button", "innertext", "Confirm", "regexp", 0));
+            }
+            catch { }
+
+            string email = _instance.HeGet(("current_email", "name"), atr:"value");
+            return email.ToLower();
+
+        }
+       
+        
         #endregion
 
+        #region IntentLinks
 
+        public void FollowByLink(string screen_name)
+        {
+            _instance.Go($"https://x.com/intent/follow?screen_name={screen_name}");
+            _instance.HeGet(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
+            _instance.JsClick("[data-testid='confirmationSheetConfirm']");
+            //_instance.HeClick(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
+        }
+        public void QuoteByLink(string tweeturl)
+        {
+            string text = Uri.EscapeDataString(tweeturl);
+            _instance.Go($"https://x.com/intent/post?text={text}");
+            _instance.HeGet(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
+            _instance.JsClick("[data-testid='confirmationSheetConfirm']");
+        }
+        public void RetweetByLink(string tweet_id)
+        {
+            _instance.Go($"https://x.com/intent/retweet?tweet_id={tweet_id}");
+            _instance.HeGet(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
+            _instance.JsClick("[data-testid='confirmationSheetConfirm']");
+        }
+        public void LiketByLink(string tweet_id)
+        {
+            _instance.Go($"https://x.com/intent/like?tweet_id={tweet_id}");
+            _instance.HeGet(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
+            _instance.JsClick("[data-testid='confirmationSheetConfirm']");
+        }
+
+        #endregion
 
         #region Old & obsolete
         
@@ -964,208 +967,7 @@ namespace z3nCore
 
             LoadCreds();
         }
-
-        public void ParseProfile()
-        {
-            _instance.HeClick(("*", "data-testid", "AppTabBar_Profile_Link", "regexp", 0));
-            string json = _instance.HeGet(("*", "data-testid", "UserProfileSchema-test", "regexp", 0));
-
-            var jo = JObject.Parse(json);
-            var main = jo["mainEntity"] as JObject;
-
-            string dateCreated = jo["dateCreated"]?.ToString() ?? "";
-            string identifier = main?["identifier"]?.ToString() ?? "";
-            string username = main?["additionalName"]?.ToString() ?? "";
-            string description = main?["description"]?.ToString() ?? "";
-            string givenName = main?["givenName"]?.ToString() ?? "";
-            string homeLocation = main?["homeLocation"]?["name"]?.ToString() ?? "";
-            string ava = main?["image"]?["contentUrl"]?.ToString() ?? "";
-            string banner = main?["image"]?["thumbnailUrl"]?.ToString() ?? "";
-
-            var interactionStatistic = main?["interactionStatistic"] as JArray;
-            string followers = interactionStatistic?[0]?["userInteractionCount"]?.ToString() ?? "";
-            string following = interactionStatistic?[1]?["userInteractionCount"]?.ToString() ?? "";
-            string tweets = interactionStatistic?[2]?["userInteractionCount"]?.ToString() ?? "";
-
-            _project.DbUpd($@"datecreated = '{dateCreated}',
-                identifier = '{identifier}',
-                username = '{username}',
-                description = '{description}',
-                givenname = '{givenName}',
-                homelocation = '{homeLocation}',
-                ava = '{ava}',
-                banner = '{banner}',
-                followers = '{followers}',
-                following = '{following}',
-                tweets = '{tweets}'
-                ", "__twitter");
-            try
-            {
-                var toFill = _project.Lists["editProfile"];
-                toFill.Clear();
-
-                if (description == "") toFill.Add("description");
-                if (homeLocation == "") toFill.Add("homeLocation");
-                if (ava == "https://abs.twimg.com/sticky/default_profile_images/default_profile_400x400.png")
-                    toFill.Add("ava");
-                if (banner == "https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png")
-                    toFill.Add("banner");
-
-            }
-            catch
-            {
-            }
-
-        }
-
-        public void ParseSecurity()
-        {
-
-            _instance.ActiveTab.Navigate("https://x.com/settings/your_twitter_data/account", "");
-
-            scan:
-            try
-            {
-                _instance.HeSet(("current_password", "name"), _pass, deadline: 1);
-                _instance.HeClick(("button", "innertext", "Confirm", "regexp", 0));
-            }
-            catch
-            {
-            }
-
-            var tIdList = _instance.ActiveTab.FindElementsByAttribute("*", "data-testid", ".", "regexp").ToList();
-
-            if (tIdList.Count < 50)
-            {
-                Thread.Sleep(3000);
-                goto scan;
-            }
-
-            string email = null;
-            string phone = null;
-            string creation = null;
-            string country = null;
-            string lang = null;
-            string gender = null;
-            string birth = null;
-
-
-            foreach (HtmlElement he in tIdList)
-            {
-                string pName = null;
-                string pValue = null;
-                string testid = he.GetAttribute("data-testid");
-                string href = he.GetAttribute("href");
-                string text = he.InnerText;
-
-                switch (testid)
-                {
-                    case "account-creation":
-                        pName = text.Split('\n')[0];
-                        pValue = text.Replace(pName, "").Replace("\n", " ").Trim();
-                        creation = pValue;
-                        continue;
-                    case "pivot":
-                        pName = text.Split('\n')[0];
-                        pValue = text.Replace(pName, "").Replace("\n", " ").Trim();
-                        switch (pName)
-                        {
-                            case "Phone":
-                                phone = pValue;
-                                break;
-                            case "Email":
-                                email = pValue;
-                                break;
-                            case "Country":
-                                country = pValue;
-                                break;
-                            case "Languages":
-                                lang = pValue;
-                                break;
-                            case "Gender":
-                                gender = pValue;
-                                break;
-                            case "Birth date":
-                                birth = pValue;
-                                break;
-                        }
-
-                        continue;
-                    default:
-                        continue;
-                }
-            }
-
-            _project.DbUpd($@"creation = '{creation}',
-                        email = '{email}',
-                        phone = '{phone}',
-                        country = '{country}',
-                        lang = '{lang}',
-                        gender = '{gender}',
-                        birth = '{birth}'
-                        ", "__twitter");
-
-
-            try
-            {
-                email = email.ToLower();
-                var emails = _project.DbGet("gmail, icloud, firstmail", "_mail").ToLower();
-                var address = _project.DbGet("evm_pk", "_addresses").ToLower();
-                var toFill = _project.Lists["editSecurity"];
-                toFill.Clear();
-
-                if (!emails.Contains(email) || !email.Contains(address)) toFill.Add("email");
-
-            }
-            catch
-            {
-            }
-        }
-
-        public void Tweet()
-        {
-            if(!_instance.ActiveTab.URL.Contains(_login))
-                _instance.HeClick(("*", "data-testid", "AppTabBar_Profile_Link", "regexp",0));
-
-            try
-            {
-                int tryes = 5;
-                gen:
-                tryes--;
-                if (tryes == 0) throw new Exception("generation problem");
-
-                GenerateJson("tweet");
-                string tweet = _project.Json.statement;
-
-                if (tweet.Length > 280)
-                {
-                    _log.Warn($"Regenerating (tryes: {tryes}) (Exceed 280char) : {tweet}");
-                    goto gen;
-                }
-                
-		
-                _instance.HeClick(("a", "data-testid", "SideNav_NewTweet_Button", "regexp", 0));
-                _instance.HeClick(("div", "class", "notranslate\\ public-DraftEditor-content", "regexp", 0),delay:2);
-                _instance.CtrlV(tweet);
-                
-                _instance.HeClick(("button", "data-testid", "tweetButton", "regexp", 0),delay:2);
-                try
-                {
-                    var toast = _instance.HeGet(("*", "data-testid", "toast", "regexp", 0));
-                    _project.log(toast);
-                }
-                catch (Exception ex)
-                {
-                    _log.Warn(ex.Message,thrw:true);
-                }
-                
-            }
-            catch (Exception ex)
-            {
-                _log.Warn(ex.Message,thrw:true);
-            }
-
-        }
+        
         #endregion
     }
 }

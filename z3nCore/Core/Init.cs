@@ -223,48 +223,6 @@ public class Init
                     mapVars.Add(new Tuple<string, string>(v, v)); 
             return _project.ExecuteProject(pathZp, mapVars, true, true, true); 
         }
-
-        public string LoadSocials(string requiredSocial)
-        {
-            if (_instance.BrowserType != BrowserType.Chromium) return "noBrowser";
-            
-            int exCnt = 0;
-            string[] socials = requiredSocial.Split(',');
-            Dictionary<string, Action> socialActions = new Dictionary<string, Action>
-            {
-                { "Google", () => new Google(_project, _instance, true).Load() },
-                { "Twitter", () => new X(_project, _instance, true).Load() },
-                { "Discord", () => new Discord(_project, _instance, true).Load() },
-                { "GitHub", () => new GitHub(_project, _instance, true).Load() }
-            };
-
-            foreach (var social in socials)
-            {
-                if (!socialActions.ContainsKey(social)) continue;
-
-                bool success = false;
-                for (int i = 0; i < 3; i++)
-                {
-                    try
-                    {
-                        socialActions[social]();
-                        success = true;
-                        break;
-                    }
-                    catch (Exception ex)
-                    {
-                        _instance.CloseAllTabs();
-                        exCnt++;
-                        if (exCnt >= 3) throw new Exception($"[{social}] !W:{ex.Message}");
-                    }
-                }
-                if (!success) throw new Exception($"!W: {social} load filed");
-            }
-            _logger.Send($"Socials loaded: [{requiredSocial}]");
-            
-            _instance.CloseExtraTabs(true);
-            return requiredSocial;
-        }
         
         public string LoadWallets(string walletsToUse)
         {
@@ -479,7 +437,7 @@ public class Init
             else if (cfgBrowser == "ZB")
             {
                 var path = Path.Combine(_project.Path,".internal","_launchZB.zp");
-                
+                if (!File.Exists(path)) throw new Exception($"file {path} is required to rub ZB");
                 var launchTime = DateTime.Now; // ИЛИ ВАРИАНТ 2: Запоминаем время перед запуском
                 _project.RunZp(path);
                 pid = Utilities.ProcAcc.FindFirstNewPid(acc0, launchTime); // ИЛИ ВАРИАНТ 2: Поиск по времени запуска
@@ -1156,9 +1114,14 @@ public class Init
 
     public static partial class ProjectExtensions
     {
-        public static void LaunchBrowser(this IZennoPosterProjectModel project, Instance instance, string browserToLaunch)
+        public static void LaunchBrowser(this IZennoPosterProjectModel project, Instance instance, string browserToLaunch = "Chromium")
         {
-            new  Init(project, instance).PrepareInstance(browserToLaunch);
+            var browser = instance.BrowserType;
+            var brw = new Init(project,instance, true);
+            if (browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium)
+            {	
+                brw.PrepareInstance(browserToLaunch);
+            }
         }
         
     }
