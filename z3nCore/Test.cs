@@ -215,7 +215,25 @@ namespace z3nCore
                     _instance.ActiveTab.Navigate($"https://x.com/{profile}", "");
             }
         }
-        
+        public void Retry()
+{
+_project.Deadline();
+Thread.Sleep(2000);
+while (true)
+{
+	_project.Deadline(60);
+	if (!_instance.ActiveTab.FindElementByAttribute("button", "innertext", "Retry", "regexp", 0).IsVoid)
+	{
+		_project.log("pageFuckedUp Retry...");
+		_instance.HeClick(("button", "innertext", "Retry", "regexp", 0), emu:1);
+		Thread.Sleep(5000);
+		continue;
+	}
+	break;
+}
+
+
+}
         
         public string GetState()
         {

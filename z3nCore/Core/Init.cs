@@ -1118,11 +1118,18 @@ public class Init
         {
             var browser = instance.BrowserType;
             var brw = new Init(project,instance, true);
-            if (browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium)
+            if (browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium && browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.ChromiumFromZB)
             {	
                 brw.PrepareInstance(browserToLaunch);
             }
         }
+
+        public static void InitVariables(this IZennoPosterProjectModel project,Instance instance, string author = "w3bgr3p")
+        {
+            new Init(project, instance).InitVariables(author);
+        }
+
+        
         
     }
 

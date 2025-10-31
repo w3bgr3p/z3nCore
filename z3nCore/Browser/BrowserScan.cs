@@ -1,7 +1,9 @@
 ﻿
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading;
+using z3nCore.Utilities;
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
@@ -12,12 +14,14 @@ namespace z3nCore
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
         private readonly Logger _logger;
+        private readonly Sleeper _idle;
 
         public BrowserScan(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
             _project = project;
             _instance = instance;
             _logger = new Logger(project, log: log, classEmoji: "🌎");
+            _idle = new Sleeper(3000, 5000);
         }
 
         private void AddTable()
@@ -38,18 +42,28 @@ namespace z3nCore
         {
             _instance.Go("https://www.browserscan.net/", true);
             _project.Deadline();
-        loading:
-            _logger.Send("loading...");
-            _project.Deadline(60);
-            try
+            while (true)
             {
-                _instance.HeGet(("div", "outerhtml", "use xlink:href=\"#etc2\"", "regexp", 0), deadline: 3);
-                goto loading;
+                _logger.Send("still loading...");
+                _idle.Sleep();
+                try
+                {
+                    _project.Deadline(60);
+                }
+                catch
+                {
+                    _logger.Warn("took too long. Skipping... ");
+                    break;
+                }
+
+                if (_instance.ActiveTab.FindElementByAttribute("div", "outerhtml", "use xlink:href=\"#etc2\"", "regexp", 0)
+                    .IsNull)
+                {
+                    _logger.Send("loaded");
+                    break;
+                }
             }
-            catch
-            {
-                _logger.Send("loaded");
-            }
+            
         }
 
         public void ParseStats()
@@ -158,5 +172,20 @@ namespace z3nCore
 
         }
 
+    }
+    public static partial class ProjectExtensions
+    {
+        public static void FixTime(this IZennoPosterProjectModel project, Instance instance, bool log = false)
+        {
+            try
+            {
+                instance.Go("https://www.browserscan.net/");
+                new BrowserScan(project, instance, true).FixTime();
+            }
+            catch (Exception ex)
+            {
+                project.warn(ex.Message);
+            }
+        }
     }
 }

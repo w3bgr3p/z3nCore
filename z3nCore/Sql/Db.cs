@@ -412,6 +412,25 @@ namespace z3nCore
             project.ClmnAdd(tableStructure, tblName, log: log);
             project.AddRange(tblName,log:log);
         }
+
+        
+        public static void PrepareProjectTable(this IZennoPosterProjectModel project, string[] projectColumns,
+            string tblName = null, bool log = false, bool prune = false, bool rearrange = false)
+        {
+            var projectColumnsList = projectColumns.ToList();
+            project.PrepareProjectTable(projectColumnsList, tblName, log, prune, rearrange);
+        }
+
+        public static void PrepareProjectTable(this IZennoPosterProjectModel project, List<string> projectColumns = null, string tblName = null, bool log = false, bool prune = false, bool rearrange = false)
+        {
+            var tableStructure = project.TblForProject(projectColumns);
+            if (string.IsNullOrEmpty(tblName)) tblName = project.Var("projectTable");
+            project.TblAdd(tableStructure, tblName, log: log);
+            project.ClmnAdd(tableStructure, tblName, log: log);
+            project.AddRange(tblName,log:log);
+            if (prune) project.ClmnPrune(tableStructure,tblName, log: log);
+            if (rearrange) project.ClmnRearrange(tableStructure,tblName, log: log);
+        }
         
         #region  COLUMNS
         public static bool ClmnExist(this IZennoPosterProjectModel project, string clmnName, string tblName, bool log = false)
