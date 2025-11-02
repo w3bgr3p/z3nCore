@@ -71,6 +71,14 @@ namespace z3nCore
             if (string.IsNullOrEmpty(range)) return false;
             return Regex.IsMatch(range, @"^[\d\s,\-]+$");
         }
+
+        private static string TableName(this IZennoPosterProjectModel project, string tableName)
+        {
+            if (string.IsNullOrEmpty(tableName)) 
+                return project.ProjectTable();
+            return tableName;
+        }
+
         #endregion
         
         #region GET PUBLIC
@@ -450,9 +458,9 @@ namespace z3nCore
 
         }
 
-        public static void ClmnAdd(this IZennoPosterProjectModel project, string clmnName, string tblName,  bool log = false, string defaultValue = "TEXT DEFAULT ''")
+        public static void ClmnAdd(this IZennoPosterProjectModel project, string clmnName, string tblName = null,  bool log = false, string defaultValue = "TEXT DEFAULT ''")
         {
-
+            tblName =  project.TableName(tblName);
             var current = project.TblColumns(tblName, log: log);
             if (!current.Contains(clmnName))
             {

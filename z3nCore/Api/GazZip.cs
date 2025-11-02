@@ -49,14 +49,14 @@ namespace z3nCore
 
         private void PreCheck(string rpc, decimal value)
         {
-            decimal fee = 0.0002m;
+            decimal fee = 0.00005m;
             string key = _project.DbKey("evm");
             var accountAddress = key.ToEvmAddress(); 
             var native = W3bTools.EvmNative(rpc, accountAddress);
             
             if (native < value + fee)
             {
-                _project.warn( $"!no balance over [{value} + {fee}]ETH on {rpc}");
+                _project.warn( $"!balance is low [{native-value}]ETH on {rpc}");
             }
             
         }
@@ -79,7 +79,7 @@ namespace z3nCore
                 string dataEncoded = chainTo;
                 txHash = new Tx(_project).SendTx(rpc, "0x391E7C679d29bD940d63be94AD22A25d25b5A604", dataEncoded, value, key, 2, 3);
                 Thread.Sleep(1000);
-                _project.Variables["blockchainHash"].Value = txHash;
+                _project.Var("blockchainHash", txHash);
             }
             catch (Exception ex) { _project.SendWarningToLog($"{ex.Message}", true); throw; }
 

@@ -149,9 +149,11 @@ namespace z3nCore
         public static string ProjectName(this IZennoPosterProjectModel project)
         {
             var path = project.Var("projectScript");
-            if (string.IsNullOrEmpty(path)) throw new Exception("projectScript no defined");
-            string name = ProjectName(project.Variables["projectScript"].Value);
-
+            //if (string.IsNullOrEmpty(path)) throw new Exception("projectScript no defined");
+            bool fromPath = !string.IsNullOrEmpty(path);
+            string name = fromPath? ProjectName(path): ProjectName(project.Name);
+            //if (string.IsNullOrEmpty(path))project.Var("projectScript",project.Name);
+            //string name = ProjectName(project.Variables["projectScript"].Value);
             project.Var("projectName", name);
             return name;
         }

@@ -214,7 +214,25 @@ namespace z3nCore
                     _instance.ActiveTab.Navigate($"https://x.com/{profile}", "");
             }
         }
-        
+        public void Retry()
+{
+_project.Deadline();
+Thread.Sleep(2000);
+while (true)
+{
+	_project.Deadline(60);
+	if (!_instance.ActiveTab.FindElementByAttribute("button", "innertext", "Retry", "regexp", 0).IsVoid)
+	{
+		_project.log("pageFuckedUp Retry...");
+		_instance.HeClick(("button", "innertext", "Retry", "regexp", 0), emu:1);
+		Thread.Sleep(5000);
+		continue;
+	}
+	break;
+}
+
+
+}
         
         public string GetState()
         {
@@ -272,6 +290,7 @@ namespace z3nCore
         public void LoginWithToken(string token = null)
         {
             if (string.IsNullOrEmpty(token)) token = _token;
+            //var token = _token;
             string jsCode =
                 _project.ExecuteMacro(
                     $"document.cookie = \"auth_token={token}; domain=.x.com; path=/; expires=${DateTimeOffset.UtcNow.AddYears(1).ToString("R")}; Secure\";\r\nwindow.location.replace(\"https://x.com\")");
@@ -573,7 +592,7 @@ namespace z3nCore
                     }
                     else
                     {
-                        throw new Exception($"wrong account: expected[{_login}] catched:[{userdata}]");
+                        throw new Exception("wrong account");
                     }
                 case "AuthV1SignIn":
                     _instance.HeClick(("allow", "id"));
@@ -860,12 +879,11 @@ namespace z3nCore
 
 
         }
+
         public string GetCurrentEmail()
         {
 
             _instance.Go("https://x.com/settings/email");
-
-        
             try
             {
                 _instance.HeSet(("current_password", "name"), _pass, deadline: 1);
@@ -875,12 +893,10 @@ namespace z3nCore
 
             string email = _instance.HeGet(("current_email", "name"), atr:"value");
             return email.ToLower();
-
         }
        
         
         #endregion
-
         #region IntentLinks
 
         public void FollowByLink(string screen_name)
@@ -903,7 +919,7 @@ namespace z3nCore
             _instance.HeGet(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
             _instance.JsClick("[data-testid='confirmationSheetConfirm']");
         }
-        public void LiketByLink(string tweet_id)
+        public void LikeByLink(string tweet_id)
         {
             _instance.Go($"https://x.com/intent/like?tweet_id={tweet_id}");
             _instance.HeGet(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
@@ -968,6 +984,51 @@ namespace z3nCore
             LoadCreds();
         }
         
+        public void Tweet()
+        {
+            if(!_instance.ActiveTab.URL.Contains(_login))
+                _instance.HeClick(("*", "data-testid", "AppTabBar_Profile_Link", "regexp",0));
+
+            try
+            {
+                int tryes = 5;
+                gen:
+                tryes--;
+                if (tryes == 0) throw new Exception("generation problem");
+
+                GenerateJson("tweet");
+                string tweet = _project.Json.statement;
+
+                if (tweet.Length > 280)
+                {
+                    _log.Warn($"Regenerating (tryes: {tryes}) (Exceed 280char) : {tweet}");
+                    goto gen;
+                }
+                
+		
+                _instance.HeClick(("a", "data-testid", "SideNav_NewTweet_Button", "regexp", 0));
+                _instance.HeClick(("div", "class", "notranslate\\ public-DraftEditor-content", "regexp", 0),delay:2);
+                _instance.CtrlV(tweet);
+                
+                _instance.HeClick(("button", "data-testid", "tweetButton", "regexp", 0),delay:2);
+                try
+                {
+                    var toast = _instance.HeGet(("*", "data-testid", "toast", "regexp", 0));
+                    _project.log(toast);
+                }
+                catch (Exception ex)
+                {
+                    _log.Warn(ex.Message,thrw:true);
+                }
+                
+            }
+            catch (Exception ex)
+            {
+                _log.Warn(ex.Message,thrw:true);
+            }
+
+        }
         #endregion
     }
+
 }

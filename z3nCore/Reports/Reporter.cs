@@ -101,7 +101,7 @@ namespace z3nCore
             if (toDb)
             {
                 string dbUpdate = FormatSuccessForDb(successData);
-                _project.DbUpd($"status = 'relaxing', last = '{dbUpdate}'");
+                _project.DbUpd($"status = 'idle', last = '{dbUpdate}'");
             }
 
             return logReport;

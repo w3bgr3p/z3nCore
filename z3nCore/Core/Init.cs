@@ -185,11 +185,8 @@ public class Init
                 goto SetInstance;
             }
             _instance.CloseExtraTabs(true);
-
-            foreach (string task in _project.Variables["cfgToDo"].Value.Split(','))
-                _project.Lists["toDo"].Add(task.Trim());
             
-            _logger.Send($"{browserType} started in {_project.Age<string>()} ");
+            _logger.Send($"{browserType} started");
         }
         
         public bool RunProject(List<string> additionalVars = null, bool add = true)
@@ -274,7 +271,9 @@ public class Init
         {
             DisableLogs();
             _SAFU();
+                //if (string.IsNullOrEmpty()
             string fileName = System.IO.Path.GetFileName(_project.Variables["projectScript"].Value);
+            
             string sessionId = _project.SetSessionId();
             string projectName = _project.ProjectName();
             string projectTable = _project.ProjectTable();
