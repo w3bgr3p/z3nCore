@@ -270,6 +270,7 @@ namespace z3nCore
         {
             _project.log("getting state");
             _idle.Sleep();
+            if (!_instance.ActiveTab.FindElementByAttribute("span", "innertext", "Continue\\ in\\ Browser", "regexp", 0).IsVoid) return "appDetected";
             if (!_instance.ActiveTab.FindElementByAttribute("section", "aria-label", "User\\ area", "regexp", 0).IsVoid) return "logged";
             if (!_instance.ActiveTab.FindElementByAttribute("div", "innertext", "Are\\ you\\ human\\?", "regexp", 0).IsVoid) return "capctha";
             if (!_instance.ActiveTab.FindElementByAttribute("input:text", "autocomplete", "one-time-code", "regexp", 0).IsVoid) return "input_otp";
@@ -288,8 +289,9 @@ namespace z3nCore
             bool credentialsUsed = false;
 
             _instance.Go("https://discord.com/channels/@me");
-
+            _project.Deadline();
         start:
+        _project.Deadline(60);
             state = null;
             while (string.IsNullOrEmpty(state))
             {
@@ -312,6 +314,11 @@ namespace z3nCore
                     _log.Send($"Token auth failed, using credentials: login={_login}");
                     credentialsUsed = true;
                     InputCredentials();
+                    goto start;
+                    
+                case "appDetected":
+                    _log.Send("appDetected ");
+                    _instance.HeClick(("span", "innertext", "Continue\\ in\\ Browser", "regexp", 0));
                     goto start;
                     
                 case "capctha":

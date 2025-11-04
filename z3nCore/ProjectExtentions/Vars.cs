@@ -99,8 +99,9 @@ namespace z3nCore
         }
         public static int VarCounter(this IZennoPosterProjectModel project, string varName, int input)
         {
-            project.Variables[$"{varName}"].Value = (int.Parse(project.Variables[$"{varName}"].Value) + input).ToString();
-            return int.Parse(project.Variables[varName].Value);
+            var counter = project.Int(varName) + input;
+            project.Var(varName, counter);
+            return counter;
         }
         public static decimal VarsMath(this IZennoPosterProjectModel project, string varA, string operation, string varB, string resultVar = null)
         {
