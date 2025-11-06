@@ -1115,6 +1115,7 @@ public class Init
     {
         public static void LaunchBrowser(this IZennoPosterProjectModel project, Instance instance, string browserToLaunch = "Chromium")
         {
+            project.ObsoleteCode("project.RunBrowser");
             var browser = instance.BrowserType;
             var brw = new Init(project,instance, true);
             if (browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium && browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.ChromiumFromZB)
@@ -1128,7 +1129,16 @@ public class Init
             new Init(project, instance).InitVariables(author);
         }
 
-        
+        public static void RunBrowser(this IZennoPosterProjectModel project, Instance instance, string browserToLaunch = "Chromium")
+        {
+            var browser = instance.BrowserType;
+            var brw = new Init(project,instance, true);
+            if (browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium && browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.ChromiumFromZB)
+            {	
+                brw.PrepareInstance(browserToLaunch);
+            }
+        }
+
         
     }
 

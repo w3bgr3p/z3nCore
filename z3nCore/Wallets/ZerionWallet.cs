@@ -105,6 +105,7 @@ namespace z3nCore
             //var address = GetActive();
             _instance.CloseExtraTabs();
             _instance.UseFullMouseEmulation = em;
+            _project.Var("addressEvm",address);
             _logger.Send($"launched with: {address}",show:true);
             return address;
         }
