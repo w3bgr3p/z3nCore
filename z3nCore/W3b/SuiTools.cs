@@ -67,7 +67,6 @@ namespace z3nCore.W3b
                 }
             }
         }
-
         public async Task<decimal> GetSuiTokenBalance(string coinType, string rpc, string address, string proxy = "", bool log = false)
         {
             if (string.IsNullOrEmpty(rpc)) rpc = "https://fullnode.mainnet.sui.io";

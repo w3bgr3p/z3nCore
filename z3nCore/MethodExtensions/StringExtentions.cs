@@ -12,6 +12,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json.Linq;
 using System.Collections.Specialized;
+using Svg;
 
 namespace z3nCore
 {
@@ -19,6 +20,17 @@ namespace z3nCore
     {
 
         #region CRYPTO
+        public static string NormalizeAddress(this string address)
+        {
+            if (string.IsNullOrEmpty(address))
+                return address;
+            
+            if (!address.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                return "0x" + address;
+            
+            return address;
+        }
+
         public static string GetTxHash(this string link)
         {
             string hash;
@@ -229,6 +241,26 @@ namespace z3nCore
         }
 
         #endregion
+        
+        public static void SaveSvgStringToImage(this string svgContent, string pathToScreen)
+        {
+            var svgDocument = SvgDocument.FromSvg<SvgDocument>(svgContent);
+            using (var bitmap = svgDocument.Draw())
+            {
+                bitmap.Save(pathToScreen);
+            }
+        }
+        
+        public static string SvgToBase64(this string svgContent)
+        {
+            var svgDocument = SvgDocument.FromSvg<SvgDocument>(svgContent);
+            using (var bitmap = svgDocument.Draw())
+            using (var ms = new System.IO.MemoryStream())
+            {
+                bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                return Convert.ToBase64String(ms.ToArray());
+            }
+        }
         
         public static string Regx(this string input, string pattern)
         {

@@ -194,8 +194,6 @@ namespace z3nCore
     {
         
         
-        
-        
         public static void SaveSvgStringToImage(string svgContent, string pathToScreen)
         {
             var svgDocument = SvgDocument.FromSvg<SvgDocument>(svgContent);

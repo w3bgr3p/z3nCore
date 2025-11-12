@@ -901,31 +901,59 @@ while (true)
 
         public void FollowByLink(string screen_name)
         {
+            Tab tab = _instance.NewTab("twitter");
+            
             _instance.Go($"https://x.com/intent/follow?screen_name={screen_name}");
+            _idle.Sleep();
             _instance.HeGet(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
             _instance.JsClick("[data-testid='confirmationSheetConfirm']");
+            _idle.Sleep();
+            tab.Close();
             //_instance.HeClick(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
         }
         public void QuoteByLink(string tweeturl)
         {
+            Tab tab = _instance.NewTab("twitter");
             string text = Uri.EscapeDataString(tweeturl);
             _instance.Go($"https://x.com/intent/post?text={text}");
+            _idle.Sleep();
             _instance.HeGet(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
             _instance.JsClick("[data-testid='confirmationSheetConfirm']");
+            _idle.Sleep();
+            tab.Close();
         }
         public void RetweetByLink(string tweet_id)
         {
+            Tab tab = _instance.NewTab("twitter");
             _instance.Go($"https://x.com/intent/retweet?tweet_id={tweet_id}");
+            _idle.Sleep();
             _instance.HeGet(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
             _instance.JsClick("[data-testid='confirmationSheetConfirm']");
+            _idle.Sleep();
+            tab.Close();
         }
         public void LikeByLink(string tweet_id)
         {
+            Tab tab = _instance.NewTab("twitter");
             _instance.Go($"https://x.com/intent/like?tweet_id={tweet_id}");
+            _idle.Sleep();
             _instance.HeGet(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
             _instance.JsClick("[data-testid='confirmationSheetConfirm']");
+            _idle.Sleep();
+            tab.Close();
         }
-
+        public void ReplyByLink(string tweet_id, string text)
+        {
+            Tab tab = _instance.NewTab("twitter");
+            string escapedText = Uri.EscapeDataString(text);
+            _instance.Go($"https://x.com/intent/post?in_reply_to={tweet_id}&text={escapedText}");
+            _idle.Sleep();
+            _instance.HeGet(("button", "data-testid", "tweetButton", "regexp", 0));
+            _instance.JsClick("[data-testid='tweetButton']");
+            _idle.Sleep();
+            tab.Close();
+            
+        }
         #endregion
 
         #region Old & obsolete

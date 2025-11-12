@@ -13,7 +13,7 @@ using ZennoLab.InterfacesLibrary.Enums.Log;
 namespace z3nCore
 {
     
-public class Init
+    public class Init
     {
         #region Fields & Constructor
         
@@ -37,111 +37,6 @@ public class Init
 
         #region Public API - Main Entry Points
 
-        public void InitProject(string author = "w3bgr3p", string[] customQueries = null)
-        {
-            //_SAFU();
-            InitVariables(author);
-            BuildNewDatabase();
-
-            _project.TblPrepareDefault(log: _log);
-            var allQueries = ToDoQueries();
-            
-            if (customQueries != null)
-                foreach (var query in customQueries) 
-                    allQueries.Add(query);
-
-            if (allQueries.Count > 0) 
-                MakeAccList(allQueries);
-            else 
-                _logger.Send($"unsupported SQLFilter: [{_project.Variables["wkMode"].Value}]", thrw: true);
-        }
-        
-        public void PrepareProject(bool log = false) 
-        {
-            bool forced = !string.IsNullOrEmpty(_project.Var("acc0Forced"));
-            
-            string acc;
-            
-            if (forced) { 
-                if (log) _logger.Send($"Using forced account: {_project.Var("acc0Forced")}");
-                _project.Var("acc0", _project.Var("acc0Forced")); 
-                acc = _project.Var("acc0Forced");
-                _project.GSetAcc(force: true); 
-                goto run; 
-            }
-            if (_project.Var("wkMode") == "UpdBalance")
-            {
-                return;
-            }
-    
-            getAcc:
-            
-            _logger.Send("BusyList: " + string.Join(" | ", _project.GGetBusyList()));
-            
-            acc = "";
-            try 
-            { 
-                acc = GetAccByMode();
-                if (string.IsNullOrEmpty(acc))
-                {
-                    _logger.Warn("accounts list is empty");
-                    return;
-                }
-                var currentState = _project.GVar($"acc{acc}");
-                _logger.Send($"trying to set [{currentState}] => [check]");
-                if (currentState == "")
-                {
-                    
-                    _project.GVar($"acc{acc}", "check");
-                    _logger.Send($"accin G = {_project.GVar($"acc{acc}")}");
-                }
-                else
-                {
-                    _logger.Send($"acc{acc} busy with {currentState}");
-                    goto getAcc; 
-                }
-            } 
-            catch (Exception ex) 
-            { 
-                _project.SendWarningToLog(ex.Message, true); 
-                throw; 
-            }
-            try 
-            { 
-                
-                BlockchainFilter(); 
-                SocialFilter(); 
-            } 
-            catch (Exception ex)
-            { 
-                _project.GVar($"acc{acc}", "");
-                _logger.Warn($"acc{acc} Filter failed: {ex.Message}");
-                goto getAcc; 
-            }
-            _logger.Send($"running...");
-            run: 
-            try { 
-                _logger.Send("Preparing instance");
-                PrepareInstance(); 
-                _logger.Send("Instance prepared successfully");
-            } catch (Exception ex) 
-            { 
-                _project.GVar($"acc{acc}", "");
-                _logger.Warn($"acc{acc} Instance preparation: {ex.Message}");
-                goto getAcc; 
-            }
-
-            var pn = _project.ProjectName();
-            _project.GVar($"acc{acc}", pn);
-
-            var listAccounts = _project.Lists["accs"];
-            int accountsLeft;
-            lock (listAccounts)
-            {
-                accountsLeft = listAccounts.Count;
-            }
-            _logger.Send($"running {pn} with acc{acc}.  [{accountsLeft}] accounts left in que", show: true);
-        }
         
         public void PrepareInstance(string browserToLaunch = null, bool getscore = false)
         {
@@ -591,213 +486,7 @@ public class Init
         }
         
         #endregion
-
-        #region Account Management
-
-        private List<string> ToDoQueries(string toDo = null, string defaultRange = null, string defaultDoFail = null, string customCondition = null)
-        {
-            string tableName = _project.ProjectTable();
-            string nowIso = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
-
-            if (string.IsNullOrEmpty(toDo)) 
-                toDo = _project.Variables["cfgToDo"].Value;
-            var taskIds = toDo.Split(',').Select(t => t.Trim()).Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
-
-            string customTask = _project.Var("customTask");
-            if (!string.IsNullOrEmpty(customTask))
-                taskIds.Add(customTask);
-
-            if (string.IsNullOrEmpty(customCondition)) 
-                customCondition = _project.Variables["customCondition"].Value;
-
-            var queries = new List<(string taskId, string query)>();
-            foreach (string taskId in taskIds)
-            {
-                string range = defaultRange ?? _project.Variables["range"].Value;
-                string doFail = defaultDoFail ?? _project.Variables["doFail"].Value;
-                string failCondition = doFail != "True" ? "AND status NOT LIKE '%fail%'" : "";
-                string customConditionPart = "";
-                if (!string.IsNullOrEmpty(customCondition)) 
-                    customConditionPart = "\n	AND " + customCondition;
-
-                _project.ClmnAdd(taskId, tableName);
-
-                string query = $@"SELECT {Quote("id")} 
-                FROM {Quote(tableName)} 
-                WHERE {Quote("id")} in ({range}) {failCondition} 
-                AND {Quote("status")} NOT LIKE '%skip%' 
-                AND ({Quote(taskId)} < '{nowIso}' OR {Quote(taskId)} = ''){customConditionPart}";
-
-                queries.Add((taskId, query));
-            }
-
-            var result = queries
-                .OrderBy(x => DateTime.TryParseExact(x.taskId, "yyyy-MM-ddTHH:mm:ss.fffZ", 
-                    CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, 
-                    out DateTime parsed) ? parsed : DateTime.MinValue)
-                .Select(x => x.query)
-                .ToList();
-            
-            return result;
-        }
-
-        private void MakeAccList(List<string> dbQueries)
-        {
-            if (!string.IsNullOrEmpty(_project.Variables["acc0Forced"].Value))
-            {
-                var forced = _project.Variables["acc0Forced"].Value;
-                var listAccounts = _project.Lists["accs"];
-                lock (listAccounts)
-                {
-                    listAccounts.Clear();
-                    listAccounts.Add(forced);
-                }
-                _logger.Send($@"manual mode on with {forced}");
-                return;
-            }
-
-            var allAccounts = new HashSet<string>();
-            foreach (var query in dbQueries)
-            {
-                try
-                {
-                    var accsByQuery = _project.DbQ(query, log: _log).Trim();
-                    if (!string.IsNullOrWhiteSpace(accsByQuery))
-                    {
-                        var accounts = accsByQuery.Split('·').Select(x => x.Trim().TrimStart(','));
-                        allAccounts.UnionWith(accounts);
-                    }
-                }
-                catch
-                {
-                    _logger.Send($"{query}");
-                }
-            }
-
-            if (allAccounts.Count == 0)
-            {
-                _project.Variables["noAccsToDo"].Value = "True";
-                _logger.Send($"♻ noAccountsAvailable by {dbQueries.Count} querie(s)");
-                return;
-            }
-            _logger.Send($"Initial accounts: [{string.Join(", ", allAccounts)}]");
-            FilterAccList(allAccounts);
-        }
-
-        private void FilterAccList(HashSet<string> allAccounts)
-        {
-            var reqSocials = _project.Var("requiredSocial");
-
-            if (!string.IsNullOrEmpty(reqSocials))
-            {
-                string[] demanded = reqSocials.Split(',');
-                _logger.Send($"Filtering by socials: [{string.Join(", ", demanded)}]");
-
-                foreach (string social in demanded)
-                {
-                    string tableName = $"_{social.Trim().ToLower()}";
-                    var notOK = _project.SqlGet($"id", tableName, log: _log, where: "status LIKE '%suspended%' OR status LIKE '%restricted%' OR status LIKE '%ban%' OR status LIKE '%CAPTCHA%' OR status LIKE '%applyed%' OR status LIKE '%Verify%' OR login = ''")
-                        .Split('·')
-                        .Select(x => x.Trim())
-                        .Where(x => !string.IsNullOrEmpty(x));
-                    allAccounts.ExceptWith(notOK);
-                    _logger.Send($"After {social} filter: [{string.Join("|", allAccounts)}]");
-                }
-            }
-            var listAccounts = _project.Lists["accs"];
-            lock (listAccounts)
-            {
-                listAccounts.Clear();
-                listAccounts.AddRange(allAccounts);
-            }
-            _logger.Send($"final list [{string.Join("|", allAccounts)}]");
-        }
-
-        private bool ChooseSingleAcc(bool oldest = false)
-        {
-            var listAccounts = _project.Lists["accs"];
-
-            lock (listAccounts)
-            {
-                if (listAccounts.Count == 0)
-                {
-                    _project.Variables["noAccsToDo"].Value = "True";
-                    var busy = _project.GGetBusyList();
-                    _logger.Warn($"♻ noAccountsAvailable for work\nBusyList: {string.Join(" | ", busy)}", show: true,
-                        color: LogColor.Turquoise);
-                    return false;
-                }
-                int randomAccount;
-                if (oldest)
-                {
-                    randomAccount = 0;
-                }
-                else
-                {
-                    lock (_randomLock)
-                    {
-                        randomAccount = _random.Next(0, listAccounts.Count);
-                    }
-                }
-                string acc0 = listAccounts[randomAccount];
-                _project.Var("acc0", acc0);
-                listAccounts.RemoveAt(randomAccount);
-                _logger.Send($"chosen: [acc{acc0}] left: [{listAccounts.Count}]");
-                return true;
-            }
-        }
-
-        private string GetAccByMode()
-        {
-            string mode = _project.Var("wkMode");
-            
-            var listAccounts = _project.Lists["accs"];
-            string accountsSnapshot;
-            lock (listAccounts)
-            {
-                accountsSnapshot = string.Join(", ", listAccounts);
-            }
-            _logger.Send($"Mode: {mode}. Choosing new acc from: {accountsSnapshot}");
-            
-            switch (mode)
-            {
-                case "UpdBalance":
-                    _project.Var("acc0", 0);
-                    _project.Var("cfgBrowser", "WithoutBrowser");
-                    return _project.Var("acc0");
-                case "Cooldown":
-                    if (!ChooseSingleAcc())
-                    {
-                        _project.Var("acc0", string.Empty);
-                        _project.Var("TimeToChill", "True");
-                    }
-                    break;
-                case "Oldest":
-                    if (!ChooseSingleAcc(true))
-                    {
-                        _project.Var("acc0", string.Empty);
-                        _project.Var("TimeToChill", "True");
-                    }
-                    break;
-                case "NewRandom":
-                    string toSet = _project.DbGetRandom("proxy, webgl", "_instance", log: false, acc: true);
-                    string acc0 = toSet.Split('¦')[0];
-                    _project.Var("accRnd", Rnd.RndHexString(64));
-                    _project.Var("acc0", acc0);
-                    _project.Var("pathProfileFolder", Path.Combine(_project.Var("profiles_folder"), "accounts", "profilesFolder", _project.Var("accRnd")));
-                    break;
-                default:
-                    throw new Exception($"Unknown mode: {mode}");
-            }
-
-            if (string.IsNullOrEmpty(_project.Var("acc0"))) //Default
-            {
-                _logger.Send($"acc0 is empty. Check {_project.Var("wkMode")} conditions maiby it's TimeToChill", thrw: true);
-            }
-            return _project.Var("acc0");
-        }
         
-        #endregion
 
         #region Filters & Validation
 
@@ -1110,25 +799,139 @@ public class Init
         #endregion
     }
 
+    
+    
+    
+    
+    public static class AccountManager
+    {
+        public static void ChooseAccountByCondition(this IZennoPosterProjectModel project, 
+            string condition, 
+            string sortByTaskAge = null,
+            bool useRange = true,
+            bool filterTwitter = false, 
+            bool filterDiscord = false, 
+            
+            bool debugLog = false)
+        {
+            if (!string.IsNullOrEmpty(project.Var("acc0Forced")))
+            {
+                project.Var("acc0", project.Var("acc0Forced"));
+                return;
+            }
+            var rng = project.Var("range");
+            var fullCondition = useRange ? $"{condition} AND id in ({rng})" : condition;
+            var tableName = project.ProjectTable();
+            
+            List<string> accounts;
+            
+            if (!string.IsNullOrEmpty(sortByTaskAge))
+            {
+                var selectColumns = $"id, {sortByTaskAge}";
+                var orderBy = $"CASE WHEN {sortByTaskAge} = '' OR {sortByTaskAge} IS NULL THEN '9999-12-31' ELSE {sortByTaskAge} END ASC";
+                var query = $"SELECT {selectColumns} FROM {tableName} WHERE {fullCondition} ORDER BY {orderBy}";
+                
+                var rawData = project.DbQ(query, log: debugLog);
+                
+                var accountsWithDates = rawData.Split('·')
+                    .Where(row => !string.IsNullOrWhiteSpace(row))
+                    .Select(row => 
+                    {
+                        var parts = row.Split('|');
+                        var id = parts[0];
+                        var dateStr = parts.Length > 1 ? parts[1] : "";
+                        
+                        DateTime date;
+                        if (!DateTime.TryParseExact(dateStr, 
+                            "yyyy-MM-ddTHH:mm:ss.fffZ", 
+                            CultureInfo.InvariantCulture, 
+                            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, 
+                            out date))
+                        {
+                            date = DateTime.MaxValue;
+                        }
+                        
+                        return new { Id = id, Date = date };
+                    })
+                    .OrderBy(x => x.Date)
+                    .Select(x => x.Id)
+                    .ToList();
+                
+                accounts = accountsWithDates;
+            }
+            else
+            {
+                accounts = project.DbGetLines("id", log: debugLog, where: fullCondition)
+                    .Where(acc => !string.IsNullOrWhiteSpace(acc))
+                    .ToList();
+            }
+            
+            if (!accounts.Any())
+            {
+                project.warn($"no accounts by condition {condition}");
+                return;
+            }
+            
+            project.ListSync("accs", accounts);
+            
+            if (filterTwitter)
+            {
+                if (!project.FilterBySocial("twitter", condition))
+                    return;
+            }
+            
+            if (filterDiscord)
+            {
+                if (!project.FilterBySocial("discord", condition))
+                    return;
+            }
+            
+            accounts = project.Lists["accs"].ToList();
+            
+            var acc0 = !string.IsNullOrEmpty(sortByTaskAge) 
+                ? accounts.First()
+                : project.RndFromList("accs", true);
+            
+            project.Var("acc0", acc0);
+            
+            if (!string.IsNullOrEmpty(sortByTaskAge))
+                project.Lists["accs"].Remove(acc0);
+            
+            var left = project.Lists["accs"].Count;
+            project.DbUpd($"status = 'working...'");
+            project.SendToLog($"{left} accs left by condition {condition}", LogType.Info, true, LogColor.Gray);
+        }
+
+        private static bool FilterBySocial(this IZennoPosterProjectModel project, string socialName, string originalCondition = "")
+        {
+            var accs = project.ListSync("accs");
+            var filtered = new HashSet<string>(
+                project.DbGetLines("id", $"_{socialName.ToLower()}", where: @"status = 'ok'")
+            );
+
+            var combined = accs
+                .Where(acc => filtered.Contains(acc))
+                .ToList();
+            
+            if (!combined.Any())
+            {
+                var conditionInfo = string.IsNullOrEmpty(originalCondition) ? "" : $" by condition {originalCondition}";
+                project.warn($"no accounts{conditionInfo} after filtering {socialName}");
+                return false;
+            }
+            
+            project.ListSync("accs", combined);
+            return true;
+        }
+    }
 
     public static partial class ProjectExtensions
     {
-        public static void LaunchBrowser(this IZennoPosterProjectModel project, Instance instance, string browserToLaunch = "Chromium")
-        {
-            project.ObsoleteCode("project.RunBrowser");
-            var browser = instance.BrowserType;
-            var brw = new Init(project,instance, true);
-            if (browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium && browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.ChromiumFromZB)
-            {	
-                brw.PrepareInstance(browserToLaunch);
-            }
-        }
-
+        
         public static void InitVariables(this IZennoPosterProjectModel project,Instance instance, string author = "w3bgr3p")
         {
             new Init(project, instance).InitVariables(author);
         }
-
         public static void RunBrowser(this IZennoPosterProjectModel project, Instance instance, string browserToLaunch = "Chromium")
         {
             var browser = instance.BrowserType;
@@ -1138,7 +941,6 @@ public class Init
                 brw.PrepareInstance(browserToLaunch);
             }
         }
-
         
     }
 

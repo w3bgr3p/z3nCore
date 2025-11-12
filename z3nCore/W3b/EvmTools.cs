@@ -218,6 +218,7 @@ namespace z3nCore.W3b
         //new
         public async Task<string> Native(string rpc, string address)
         {
+            address = address.NormalizeAddress();
             string jsonBody = $@"{{ ""jsonrpc"": ""2.0"", ""method"": ""eth_getBalance"", ""params"": [""{address}"", ""latest""], ""id"": 1 }}";
 
             using (var client = new HttpClient())
@@ -243,6 +244,8 @@ namespace z3nCore.W3b
         }
         public async Task<string> Erc20(string tokenContract, string rpc, string address)
         {
+            tokenContract = tokenContract.NormalizeAddress();
+            address = address.NormalizeAddress();
             string data = "0x70a08231000000000000000000000000" + address.Replace("0x", "");
             string jsonBody = $@"{{ ""jsonrpc"": ""2.0"", ""method"": ""eth_call"", ""params"": [{{ ""to"": ""{tokenContract}"", ""data"": ""{data}"" }}, ""latest""], ""id"": 1 }}";
 
@@ -269,6 +272,8 @@ namespace z3nCore.W3b
         }
         public async Task<string> Erc721(string tokenContract, string rpc, string address)
         {
+            tokenContract = tokenContract.NormalizeAddress();
+            address = address.NormalizeAddress();
             string data = "0x70a08231000000000000000000000000" + address.Replace("0x", "").ToLower();
             string jsonBody = $@"{{ ""jsonrpc"": ""2.0"", ""method"": ""eth_call"", ""params"": [{{ ""to"": ""{tokenContract}"", ""data"": ""{data}"" }}, ""latest""], ""id"": 1 }}";
 
@@ -293,6 +298,8 @@ namespace z3nCore.W3b
         }
         public async Task<string> Erc1155(string tokenContract, string tokenId, string rpc, string address)
         {
+            tokenContract = tokenContract.NormalizeAddress();
+            address = address.NormalizeAddress();
             string data = "0x00fdd58e" + address.Replace("0x", "").ToLower().PadLeft(64, '0') + BigInteger.Parse(tokenId).ToString("x").PadLeft(64, '0');
             string jsonBody = $@"{{ ""jsonrpc"": ""2.0"", ""method"": ""eth_call"", ""params"": [{{ ""to"": ""{tokenContract}"", ""data"": ""{data}"" }}, ""latest""], ""id"": 1 }}";
 
@@ -320,6 +327,7 @@ namespace z3nCore.W3b
 
         public async Task<string> Nonce(string rpc, string address, string proxy = "", bool log = false)
         {
+            address = address.NormalizeAddress();
             string jsonBody = $@"{{ ""jsonrpc"": ""2.0"", ""method"": ""eth_getTransactionCount"", ""params"": [""{address}"", ""latest""], ""id"": 1 }}";
 
             HttpClient client;

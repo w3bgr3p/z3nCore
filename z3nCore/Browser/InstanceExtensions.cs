@@ -288,7 +288,32 @@ namespace z3nCore
 
                 string jsCode = $@"
                 (function() {{
-                    var element = document.querySelector(""{escapedSelector}"");
+                    function findElement(selector) {{
+                        // Сначала пытаемся найти в обычном DOM
+                        let element = document.querySelector(selector);
+                        if (element) return element;
+                        
+                        // Если не нашли, ищем во всех shadow roots
+                        function searchInShadowRoots(root) {{
+                            // Проверяем текущий уровень
+                            let el = root.querySelector(selector);
+                            if (el) return el;
+                            
+                            // Ищем все элементы с shadowRoot
+                            let allElements = root.querySelectorAll('*');
+                            for (let elem of allElements) {{
+                                if (elem.shadowRoot) {{
+                                    let found = searchInShadowRoots(elem.shadowRoot);
+                                    if (found) return found;
+                                }}
+                            }}
+                            return null;
+                        }}
+                        
+                        return searchInShadowRoots(document);
+                    }}
+                    
+                    var element = findElement(""{escapedSelector}"");
                     if (!element) {{
                         throw new Error(""Элемент не найден по селектору: {escapedSelector}"");
                     }}
@@ -303,7 +328,8 @@ namespace z3nCore
                         bubbles: true,
                         cancelable: true,
                         view: window,
-                        button: 0
+                        button: 0,
+                        composed: true  // важно для shadow DOM
                     }});
                     element.dispatchEvent(clickEvent);
                     

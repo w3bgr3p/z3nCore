@@ -178,13 +178,13 @@ namespace z3nCore
             }
             return fallback.Substring(0, Math.Min(fallback.Length, max));
         }
-        public static string RndInvite(this IZennoPosterProjectModel project,  object limit = null, bool log = false)
+        public static string RndInvite(this IZennoPosterProjectModel project, object limit = null, string inviteColumn = "refcode", bool log = false)
         {
             string refCode = project.Variables["cfgRefCode"].Value;
 
             if (string.IsNullOrEmpty(refCode))
             {
-                string whereClause = "TRIM(refcode) != ''";
+                string whereClause = $"TRIM({inviteColumn}) != ''";
     
                 if (limit != null)
                 {
@@ -201,7 +201,7 @@ namespace z3nCore
                 }
     
                 whereClause += " ORDER BY RANDOM() LIMIT 1";
-                refCode = project.SqlGet("refcode", log: log, where: whereClause);
+                refCode = project.SqlGet(inviteColumn, log: log, where: whereClause);
                 project.Variables["cfgRefCode"].Value = refCode;
             }
 

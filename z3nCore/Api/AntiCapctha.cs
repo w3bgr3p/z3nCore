@@ -5,11 +5,12 @@ using Newtonsoft.Json.Linq;
 using System.Net.Http;
 using Newtonsoft.Json;
 using System.Text;
-
+using ZennoLab.CommandCenter;
+using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore.Api
 {
-        public class AntiCaptcha
+    public class AntiCaptcha
     {
         private readonly string _apiKey;
         private readonly string _apiUrl = "https://api.anti-captcha.com";
@@ -173,4 +174,41 @@ namespace z3nCore.Api
         }
     }
 
+    public static partial class CaptchaExtensions
+    {
+        public static string SolveHeWithAntiCaptcha(this HtmlElement he, IZennoPosterProjectModel project)
+        {
+            var api_key = project.DbGet("apikey", "_api", where:"id = 'anticaptcha'");
+            var solver = new AntiCaptcha(api_key);
+            
+            var bitmap = he.DrawAsBitmap(false);
+            string base64;
+            using (var ms = new System.IO.MemoryStream())
+            {
+                bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                base64 =  Convert.ToBase64String(ms.ToArray());
+            }
+            
+
+            string result = solver.SolveCaptchaFromBase64(base64);
+            return result;
+        }
+
+        public static string SolveCaptchaFromUrl(IZennoPosterProjectModel project , string url, string proxy = "+")
+        {
+            var api_key = project.DbGet("apikey", "_api", where:"id = 'anticaptcha'");
+            var solver = new AntiCaptcha(api_key);
+            var req = new NetHttp(project, true);
+            req.GET(url, proxy, parse:true);
+            var svg = project.Json.captcha;
+            string base64 = svg.SvgToBase64();
+            string result = solver.SolveCaptchaFromBase64(base64);
+            return result;
+        }
+
+
+
+    }
+    
+    
 }

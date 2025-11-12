@@ -55,7 +55,7 @@ namespace z3nCore
         public string SendTx(string chainRpc, string contractAddress, string encodedData, object value, string walletKey, int txType = 2, int speedup = 1, bool debug = false)
         {
             var report = new StringBuilder();
-            
+            contractAddress = contractAddress.NormalizeAddress();
             try
             {
                 if (string.IsNullOrEmpty(chainRpc))
@@ -416,8 +416,9 @@ namespace z3nCore
                 "Поддерживаемые типы: decimal, int, long, double, float, BigInteger, HexBigInteger, string (hex)"
             );
         }
-        public string Approve(string contract, string spender, string amount, string rpc, bool debug = false)
+        public string Approve(string contractAddress, string spender, string amount, string rpc, bool debug = false)
         {
+            contractAddress = contractAddress.NormalizeAddress();
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             string key = _project.DbKey("evm");
 
@@ -457,7 +458,7 @@ namespace z3nCore
 
             try
             {
-                txHash = SendTx(rpc, contract, encoded, 0, key, 0, 3, debug:debug);
+                txHash = SendTx(rpc, contractAddress, encoded, 0, key, 0, 3, debug:debug);
                 try
                 {
                     _project.Variables["blockchainHash"].Value = txHash;
@@ -474,11 +475,12 @@ namespace z3nCore
                 throw;
             }
 
-            _logger.Send($"[APPROVE] {contract} for spender {spender} with amount {amount}...");
+            _logger.Send($"[APPROVE] {contractAddress} for spender {spender} with amount {amount}...");
             return txHash;
         }
         public string Wrap(string contract, decimal value, string rpc , bool debug = false)
         {
+            contract = contract.NormalizeAddress();
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             string key = _project.DbKey("evm");
 
@@ -515,6 +517,7 @@ namespace z3nCore
         }
         public string SendNative(string to, decimal amount, string rpc, bool debug = false)
         {
+            
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             string key = _project.DbKey("evm");
             string txHash = null;
@@ -542,6 +545,7 @@ namespace z3nCore
         }
         public string SendErc20(string contract, string to, decimal amount, string rpc, bool debug = false)
         {
+            contract = contract.NormalizeAddress();
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
             string key = _project.DbKey("evm");
             string txHash = null;
@@ -576,6 +580,7 @@ namespace z3nCore
         }
         public string SendErc721(string contract, string to, BigInteger tokenId, string rpc, bool debug = false)
         {
+            contract = contract.NormalizeAddress();
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
 
             string txHash = null;
@@ -609,9 +614,7 @@ namespace z3nCore
         }
         
         #endregion
-        
 
-        
     }
     
 }

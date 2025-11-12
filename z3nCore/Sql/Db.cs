@@ -115,6 +115,13 @@ namespace z3nCore
             if (string.IsNullOrWhiteSpace(tableName)) tableName = project.Var("projectTable");
             
             var userInfo = json.JsonToDic();
+            
+            if (userInfo.ContainsKey("id"))
+            {
+                userInfo["_id"] = userInfo["id"];
+                userInfo.Remove("id");
+            }
+            
             var columns = new List<string>();
             var updString = new StringBuilder();
             
