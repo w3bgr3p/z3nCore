@@ -25,6 +25,8 @@ using System.Text;
 
 namespace z3nCore
 {
+    
+    
     public class AntiCaptchaImageSolver
     {
         private readonly string _apiKey;
@@ -193,7 +195,121 @@ namespace z3nCore
     public static class Test
     {
         
-        
+        public static string _JsClick(this Instance instance, string selector, double delayX = 1.0)
+		{
+		    try
+		    {
+		        string escapedSelector = selector
+		            .Replace("\\", "\\\\")
+		            .Replace("\"", "\\\"");
+		
+		        string jsCode = $@"
+		        (function() {{
+		            function findElement(selector) {{
+		                // Сначала пытаемся найти в обычном DOM
+		                let element = document.querySelector(selector);
+		                if (element) return element;
+		                
+		                // Если не нашли, ищем во всех shadow roots
+		                function searchInShadowRoots(root) {{
+		                    // Проверяем текущий уровень
+		                    let el = root.querySelector(selector);
+		                    if (el) return el;
+		                    
+		                    // Ищем все элементы с shadowRoot
+		                    let allElements = root.querySelectorAll('*');
+		                    for (let elem of allElements) {{
+		                        if (elem.shadowRoot) {{
+		                            let found = searchInShadowRoots(elem.shadowRoot);
+		                            if (found) return found;
+		                        }}
+		                    }}
+		                    return null;
+		                }}
+		                
+		                return searchInShadowRoots(document);
+		            }}
+		            
+		            var element = findElement(""{escapedSelector}"");
+		            if (!element) {{
+		                throw new Error(""Элемент не найден по селектору: {escapedSelector}"");
+		            }}
+		            
+		            element.scrollIntoView({{ block: 'center' }});
+		            
+		            if (element.focus) {{
+		                element.focus();
+		            }}
+		            
+		            var clickEvent = new MouseEvent('click', {{
+		                bubbles: true,
+		                cancelable: true,
+		                view: window,
+		                button: 0,
+		                composed: true  // важно для shadow DOM
+		            }});
+		            element.dispatchEvent(clickEvent);
+		            
+		            return 'Click successful';
+		        }})();
+		        ";
+		
+		        string result = instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
+		        return result;
+		    }
+		    catch (Exception ex)
+		    {
+		        return $"Error: {ex.Message}";
+		    }
+		}
+		
+		
+
+     public static string _JsClickShadow(this Instance instance, string hostSelector, string shadowSelector, double delayX = 1.0)
+		{
+		    try
+		    {
+		        string escapedHost = hostSelector.Replace("\\", "\\\\").Replace("\"", "\\\"");
+		        string escapedShadow = shadowSelector.Replace("\\", "\\\\").Replace("\"", "\\\"");
+		
+		        string jsCode = $@"
+		        (function() {{
+		            var host = document.querySelector(""{escapedHost}"");
+		            if (!host || !host.shadowRoot) {{
+		                throw new Error(""Shadow host не найден: {escapedHost}"");
+		            }}
+		            
+		            var element = host.shadowRoot.querySelector(""{escapedShadow}"");
+		            if (!element) {{
+		                throw new Error(""Элемент не найден в shadow root: {escapedShadow}"");
+		            }}
+		            
+		            element.scrollIntoView({{ block: 'center' }});
+		            
+		            if (element.focus) {{
+		                element.focus();
+		            }}
+		            
+		            var clickEvent = new MouseEvent('click', {{
+		                bubbles: true,
+		                cancelable: true,
+		                view: window,
+		                button: 0,
+		                composed: true
+		            }});
+		            element.dispatchEvent(clickEvent);
+		            
+		            return 'Click successful';
+		        }})();
+		        ";
+		
+		        return instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
+		    }
+		    catch (Exception ex)
+		    {
+		        return $"Error: {ex.Message}";
+		    }
+		}
         public static void SaveSvgStringToImage(string svgContent, string pathToScreen)
         {
             var svgDocument = SvgDocument.FromSvg<SvgDocument>(svgContent);

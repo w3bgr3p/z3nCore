@@ -119,23 +119,27 @@ namespace z3nCore
         }
         
         //new
-        public static string HeGet(this Instance instance, object obj, string method = "", int deadline = 10, string atr = "innertext", int delay = 1, string comment = "", bool thrw = true, bool thr0w = true)
+        public static string HeGet(this Instance instance, object obj, string method = "", int deadline = 10, string atr = "innertext", int delay = 1, bool thrw = true, bool thr0w = true, bool waitTillVoid = false)
         {
-            //if (!thr0w) 
             DateTime functionStart = DateTime.Now;
             string lastExceptionMessage = "";
 
+            if (!thr0w)
+            {
+                thrw = thr0w;
+            }
+    
             while (true)
             {
                 if ((DateTime.Now - functionStart).TotalSeconds > deadline)
                 {
-                    if (method == "!")
+                    if (waitTillVoid)
                     {
                         return null;
                     }
-                    else if (thr0w)
+                    else if (thrw)
                     {
-                        throw new ElementNotFoundException($"{comment} not found in {deadline}s: {lastExceptionMessage}");
+                        throw new ElementNotFoundException($"not found in {deadline}s: {lastExceptionMessage}");
                     }
                     else
                     {
@@ -146,9 +150,9 @@ namespace z3nCore
                 try
                 {
                     HtmlElement he = instance.GetHe(obj, method);
-                    if (method == "!")
+                    if (waitTillVoid)
                     {
-                        throw new Exception($"{comment} element detected when it should not be: {atr}='{he.GetAttribute(atr)}'");
+                        throw new Exception($"element detected when it should not be: {atr}='{he.GetAttribute(atr)}'");
                     }
                     else
                     {
@@ -159,17 +163,17 @@ namespace z3nCore
                 catch (Exception ex)
                 {
                     lastExceptionMessage = ex.Message;
-                    if (method == "!" && ex.Message.Contains("no element by"))
+                    if (waitTillVoid && ex.Message.Contains("no element by"))
                     {
                         // Элемент не найден — это нормально, продолжаем ждать
                     }
-                    else if (method != "!")
+                    else if (!waitTillVoid)
                     {
                         // Обычное поведение: элемент не найден, записываем ошибку и ждём
                     }
                     else
                     {
-                        // Неожиданная ошибка при method = "!", пробрасываем её
+                        // Неожиданная ошибка при waitTillVoid, пробрасываем её
                         throw;
                     }
                 }
@@ -177,11 +181,55 @@ namespace z3nCore
                 Thread.Sleep(500);
             }
         }
+        public static string HeCatch(this Instance instance, object obj, string method = "", int deadline = 10, string atr = "innertext", int delay = 1)
+        {
+            DateTime functionStart = DateTime.Now;
+            string lastExceptionMessage = "";
+
+
+            while (true)
+            {
+                if ((DateTime.Now - functionStart).TotalSeconds > deadline)
+                {
+                    // Timeout - элемент не появился, всё хорошо
+                    return null;
+                }
+
+                try
+                {
+                    HtmlElement he = instance.GetHe(obj, method);
+                    // Элемент найден - это ПЛОХО, выбрасываем исключение
+                    throw new Exception($"error detected: {atr}='{he.GetAttribute(atr)}'");
+                }
+                catch (Exception ex)
+                {
+                    lastExceptionMessage = ex.Message;
+                    if (ex.Message.Contains("no element by"))
+                    {
+                        // Элемент не найден - это хорошо, продолжаем ждать
+                    }
+                    else
+                    {
+                        // Это реальная ошибка или наше исключение "element detected"
+                        throw;
+                    }
+                }
+
+                Thread.Sleep(500);
+            }
+        }
+
+        
         public static void HeClick(this Instance instance, object obj, string method = "", int deadline = 10, double delay = 1, string comment = "", bool thrw = true , bool thr0w = true, int emu = 0)
         {
             bool emuSnap = instance.UseFullMouseEmulation;
             if (emu > 0) instance.UseFullMouseEmulation = true;
             if (emu < 0) instance.UseFullMouseEmulation = false;
+            
+            if (!thr0w)
+            {
+                thrw = thr0w;
+            }
             
             DateTime functionStart = DateTime.Now;
             string lastExceptionMessage = "";
@@ -190,7 +238,7 @@ namespace z3nCore
             {
                 if ((DateTime.Now - functionStart).TotalSeconds > deadline)
                 {
-                    if (thr0w) throw new TimeoutException($"{comment} not found in {deadline}s: {lastExceptionMessage}");
+                    if (thrw) throw new TimeoutException($"{comment} not found in {deadline}s: {lastExceptionMessage}");
                     else return;
                 }
 
@@ -244,11 +292,15 @@ namespace z3nCore
             DateTime functionStart = DateTime.Now;
             string lastExceptionMessage = "";
 
+            if (!thr0w)
+            {
+                thrw = thr0w;
+            }
             while (true)
             {
                 if ((DateTime.Now - functionStart).TotalSeconds > deadline)
                 {
-                    if (thr0w) throw new TimeoutException($"{comment} not found in {deadline}s: {lastExceptionMessage}");
+                    if (thrw) throw new TimeoutException($"{comment} not found in {deadline}s: {lastExceptionMessage}");
                     else return;
                 }
 

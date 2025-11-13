@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using ZennoLab.InterfacesLibrary.ProjectModel;
-using System.Globalization;
 
 namespace z3nCore
 {
@@ -114,24 +113,30 @@ namespace z3nCore
         {
             if (string.IsNullOrWhiteSpace(tableName)) tableName = project.Var("projectTable");
             
-            var userInfo = json.JsonToDic();
+            var dataDic = json.JsonToDic();
+            project.DicToDb(dataDic);
+
+        }
+        public static void DicToDb(this IZennoPosterProjectModel project, Dictionary<string,string> dataDic, string tableName = null, bool log = false, bool thrw = false)
+        {
+            if (string.IsNullOrWhiteSpace(tableName)) tableName = project.Var("projectTable");
             
-            if (userInfo.ContainsKey("id"))
+            if (dataDic.ContainsKey("id"))
             {
-                userInfo["_id"] = userInfo["id"];
-                userInfo.Remove("id");
+                dataDic["_id"] = dataDic["id"];
+                dataDic.Remove("id");
             }
             
             var columns = new List<string>();
             var updString = new StringBuilder();
             
-            foreach(var p in userInfo)
+            foreach(var p in dataDic)
             {
                 columns.Add(p.Key);
             }
             project.ClmnAdd(project.TblForProject(columns), tableName);
             
-            foreach(var p in userInfo)
+            foreach(var p in dataDic)
             {
                 updString.Append($"{p.Key} = '{p.Value.Replace("'","")}',");
             }
@@ -141,7 +146,7 @@ namespace z3nCore
 
         public static void DbUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, string key = "id", object acc = null, string where = "")
         {
-            try { project.Var("lastQuery", toUpd); } catch (Exception Ex){ project.SendWarningToLog(Ex.Message, true); }
+            try { project.Var("lastQuery", toUpd); } catch (Exception ex){ project.SendWarningToLog(ex.Message, true); }
             project.SqlUpd(toUpd, tableName, log, thrw, key, acc, where);
 
         }
