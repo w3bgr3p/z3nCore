@@ -234,10 +234,16 @@ public static partial class ProjectExtensions
         if (System.Text.RegularExpressions.Regex.IsMatch(callerName, @"^M[a-f0-9]{32}$")) callerName = project.Name;
         new Logger(project,persistent:false).Send(toLog, callerName, show: show, thrw: thrw, toZp: toZp);
     }
-    public static void warn(this IZennoPosterProjectModel project, string toLog, [CallerMemberName] string callerName = "", bool show = true, bool thrw = false, bool toZp = true)
+    public static void warn(this IZennoPosterProjectModel project, string toLog, bool thrw = false, [CallerMemberName] string callerName = "", bool show = true,  bool toZp = true)
     {
         new Logger(project).Warn(toLog, callerName, show: show, thrw: thrw, toZp: toZp);
     }
+    public static void warn(this IZennoPosterProjectModel project, Exception ex, bool thrw = false, [CallerMemberName] string callerName = "", bool show = true,  bool toZp = true)
+    {
+        new Logger(project).Warn(ex.Message, callerName, show: show, thrw: thrw, toZp: toZp);
+    }
+
+    
     internal static void ObsoleteCode(this IZennoPosterProjectModel project, string newName = "unknown")
     {
         try
