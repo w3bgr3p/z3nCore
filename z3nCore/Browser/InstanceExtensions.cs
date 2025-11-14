@@ -50,7 +50,7 @@ namespace z3nCore
                     HtmlElement he = instance.ActiveTab.FindElementById(value);
                     if (he.IsVoid)
                     {
-                        throw new Exception($"No element by id='{value}'");
+                        throw new Exception($"no element by id='{value}'");
                     }
                     return he;
                 }
@@ -59,7 +59,7 @@ namespace z3nCore
                     HtmlElement he = instance.ActiveTab.FindElementByName(value);
                     if (he.IsVoid)
                     {
-                        throw new Exception($"No element by name='{value}'");
+                        throw new Exception($"no element by name='{value}'");
                     }
                     return he;
                 }
@@ -97,7 +97,7 @@ namespace z3nCore
                             he = instance.ActiveTab.FindElementByAttribute(tag, attribute, pattern, mode, index - 1);
                             if (he.IsVoid)
                             {
-                                throw new Exception($"No element by: tag='{tag}', attribute='{attribute}', pattern='{pattern}', mode='{mode}'");
+                                throw new Exception($"no element by: tag='{tag}', attribute='{attribute}', pattern='{pattern}', mode='{mode}'");
                             }
                             return he;
                         }
@@ -109,7 +109,7 @@ namespace z3nCore
                     HtmlElement he = instance.ActiveTab.FindElementByAttribute(tag, attribute, pattern, mode, pos);
                     if (he.IsVoid)
                     {
-                        throw new Exception($"No element by: tag='{tag}', attribute='{attribute}', pattern='{pattern}', mode='{mode}', pos={pos}");
+                        throw new Exception($"no element by: tag='{tag}', attribute='{attribute}', pattern='{pattern}', mode='{mode}', pos={pos}");
                     }
                     return he;
                 }
