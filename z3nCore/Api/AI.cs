@@ -8,11 +8,11 @@ namespace z3nCore.Api
 {
     public class AI
     {
-        protected readonly IZennoPosterProjectModel _project;
+        private readonly IZennoPosterProjectModel _project;
         private readonly Logger _logger;
-        private protected string _apiKey;
-        private protected string _url;
-        private protected string _model;
+        private string _apiKey;
+        private string _url;
+        private string _model;
 
         public AI(IZennoPosterProjectModel project, string provider, string model = null, bool log = false)
         {
@@ -42,7 +42,7 @@ namespace z3nCore.Api
             }
         }
 
-        public string Query(string systemContent, string userContent, string aiModel = "rnd", bool log = false)
+        public string Query(string systemContent, string userContent, string aiModel = "rnd", bool log = false, double temperature_ = 0.8, double top_p_ = 0.9, double top_k_ = 0, int presence_penalty_ = 0,int frequency_penalty_ = 1)
         {
             if (_model != null) aiModel = _model;
             if (aiModel == "rnd") aiModel = ZennoLab.Macros.TextProcessing.Spintax("{deepseek-ai/DeepSeek-R1-0528|meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8|Qwen/Qwen3-235B-A22B-FP8|meta-llama/Llama-3.2-90B-Vision-Instruct|Qwen/Qwen2.5-VL-32B-Instruct|google/gemma-3-27b-it|meta-llama/Llama-3.3-70B-Instruct|mistralai/Devstral-Small-2505|mistralai/Magistral-Small-2506|deepseek-ai/DeepSeek-R1-Distill-Llama-70B|netease-youdao/Confucius-o1-14B|nvidia/AceMath-7B-Instruct|deepseek-ai/DeepSeek-R1-Distill-Qwen-32B|mistralai/Mistral-Large-Instruct-2411|microsoft/phi-4|bespokelabs/Bespoke-Stratos-32B|THUDM/glm-4-9b-chat|CohereForAI/aya-expanse-32b|openbmb/MiniCPM3-4B|mistralai/Ministral-8B-Instruct-2410|ibm-granite/granite-3.1-8b-instruct}", false);
@@ -63,12 +63,12 @@ namespace z3nCore.Api
                         content = userContent
                     }
                 },
-                temperature = 0.8,
-                top_p = 0.9,
-                top_k = 0,
+                temperature = temperature_,
+                top_p = top_p_,
+                top_k = top_k_,
                 stream = false,
-                presence_penalty = 0,
-                frequency_penalty = 1
+                presence_penalty = presence_penalty_,
+                frequency_penalty = frequency_penalty_
             };
 
             string jsonBody = Newtonsoft.Json.JsonConvert.SerializeObject(requestBody, Newtonsoft.Json.Formatting.None);

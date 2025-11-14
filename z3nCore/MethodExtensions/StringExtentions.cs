@@ -225,19 +225,30 @@ namespace z3nCore
             if (string.IsNullOrWhiteSpace(input))
                 throw new Exception($"input isNullOrEmpty");
 
-            input = input.Trim().StartsWith("0x") ? input.Substring(2) : input;
-            
-            if (Regex.IsMatch(input, @"^[0-9a-fA-F]{64}$"))
+            input = input.Trim();
+    
+            // Проверка на Bech32 (suiprivkey)
+            if (input.StartsWith("suiprivkey1"))
+                return "keySui";
+    
+            // Убираем 0x если есть
+            string cleanInput = input.StartsWith("0x") ? input.Substring(2) : input;
+    
+            // EVM приватный ключ (64 hex символа)
+            if (Regex.IsMatch(cleanInput, @"^[0-9a-fA-F]{64}$"))
                 return "keyEvm";
-
+    
+            // Solana приватный ключ (Base58, 87-88 символов)
             if (Regex.IsMatch(input, @"^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{87,88}$"))
                 return "keySol";
-
+            
+    
+            // Мнемоника (12 или 24 слова)
             var words = input.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (words.Length == 12 || words.Length == 24)
                 return "seed";
-            
-            throw new Exception ($"not recognized as any key or seed {input}");
+    
+            throw new Exception($"not recognized as any key or seed {input}");
         }
 
         #endregion

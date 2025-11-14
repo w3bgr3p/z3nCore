@@ -11,7 +11,6 @@ using z3nCore.Utilities;
 using System.Threading.Tasks;
 using System.Net.Http;
 using Org.BouncyCastle.Crypto.Engines;
-using Svg;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Text;
@@ -26,309 +25,106 @@ using System.Text;
 namespace z3nCore
 {
     
-    
-    public class AntiCaptchaImageSolver
+    public class AI_
     {
-        private readonly string _apiKey;
-        private readonly string _apiUrl = "https://api.anti-captcha.com";
-        private readonly HttpClient _httpClient;
+        protected readonly IZennoPosterProjectModel _project;
+        private readonly Logger _logger;
+        private protected string _apiKey;
+        private protected string _url;
+        private protected string _model;
 
-        public AntiCaptchaImageSolver(string apiKey)
+        public AI_(IZennoPosterProjectModel project, string provider, string model = null, bool log = false)
         {
-            _apiKey = apiKey;
-            _httpClient = new HttpClient();
-            _httpClient.Timeout = TimeSpan.FromMinutes(5);
+            _project = project;
+            _logger = new Logger(project, log: log, classEmoji: "AI");
+            SetProvider(provider);
+            _model = model;
         }
 
-        /// <summary>
-        /// Решает капчу с изображения
-        /// </summary>
-        /// <param name="imagePath">Путь к файлу изображения</param>
-        /// <param name="numeric">0 - любые символы, 1 - только цифры, 2 - любые буквы кроме цифр</param>
-        /// <param name="minLength">Минимальная длина ответа (0 - без ограничений)</param>
-        /// <param name="maxLength">Максимальная длина ответа (0 - без ограничений)</param>
-        /// <param name="phrase">Требуется ли пробел в ответе</param>
-        /// <param name="caseSensitive">Учитывать ли регистр</param>
-        /// <param name="math">Математическая операция</param>
-        /// <returns>Текст с капчи</returns>
-        public string SolveCaptcha(
-            string imagePath,
-            int numeric = 0,
-            int minLength = 0,
-            int maxLength = 0,
-            bool phrase = false,
-            bool caseSensitive = true,
-            bool math = false)
+        private void SetProvider(string provider)
         {
-            // Читаем файл и конвертируем в base64
-            byte[] imageBytes = File.ReadAllBytes(imagePath);
-            string base64Image = Convert.ToBase64String(imageBytes);
 
-            return SolveCaptchaFromBase64(base64Image, numeric, minLength, maxLength, phrase, caseSensitive, math);
-        }
-
-        /// <summary>
-        /// Решает капчу из base64 строки
-        /// </summary>
-        public string SolveCaptchaFromBase64(
-            string base64Image,
-            int numeric = 0,
-            int minLength = 0,
-            int maxLength = 0,
-            bool phrase = false,
-            bool caseSensitive = true,
-            bool math = false)
-        {
-            // Создаем задачу
-            int taskId = CreateTask(base64Image, numeric, minLength, maxLength, phrase, caseSensitive, math);
-
-            // Ждем результат
-            return GetTaskResult(taskId);
-        }
-
-        /// <summary>
-        /// Создает задачу на решение капчи
-        /// </summary>
-        private int CreateTask(
-            string base64Image,
-            int numeric,
-            int minLength,
-            int maxLength,
-            bool phrase,
-            bool caseSensitive,
-            bool math)
-        {
-            var taskData = new
+            switch (provider)
             {
-                clientKey = _apiKey,
-                task = new
+                case "perplexity":
+                    _url = "https://api.perplexity.ai/chat/completions";
+                    _apiKey = _project.SqlGet("apikey", "_api", where: $"key = '{provider}'");
+                    break;
+                case "aiio":
+                    _url = "https://api.intelligence.io.solutions/api/v1/chat/completions";
+                    _apiKey = _project.SqlGet("api", "__aiio");
+                    if (string.IsNullOrEmpty(_apiKey))
+                        throw new Exception($"aiio key not found for {_project.Var("acc0")}");
+                    break;
+                default:
+                    throw new Exception($"unknown provider {provider}");
+            }
+        }
+
+        public string Query(string systemContent, string userContent, string aiModel = "rnd", bool log = false, double temperature_ = 0.8, double top_p_ = 0.9, double top_k_ = 0, int presence_penalty_ = 0,int frequency_penalty_ = 1)
+        {
+            if (_model != null) aiModel = _model;
+            if (aiModel == "rnd") aiModel = ZennoLab.Macros.TextProcessing.Spintax("{deepseek-ai/DeepSeek-R1-0528|meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8|Qwen/Qwen3-235B-A22B-FP8|meta-llama/Llama-3.2-90B-Vision-Instruct|Qwen/Qwen2.5-VL-32B-Instruct|google/gemma-3-27b-it|meta-llama/Llama-3.3-70B-Instruct|mistralai/Devstral-Small-2505|mistralai/Magistral-Small-2506|deepseek-ai/DeepSeek-R1-Distill-Llama-70B|netease-youdao/Confucius-o1-14B|nvidia/AceMath-7B-Instruct|deepseek-ai/DeepSeek-R1-Distill-Qwen-32B|mistralai/Mistral-Large-Instruct-2411|microsoft/phi-4|bespokelabs/Bespoke-Stratos-32B|THUDM/glm-4-9b-chat|CohereForAI/aya-expanse-32b|openbmb/MiniCPM3-4B|mistralai/Ministral-8B-Instruct-2410|ibm-granite/granite-3.1-8b-instruct}", false);
+            _logger.Send(aiModel);
+            var requestBody = new
+            {
+                model = aiModel, 
+                messages = new[]
                 {
-                    type = "ImageToTextTask",
-                    body = base64Image,
-                    phrase = phrase,
-                    @case = caseSensitive,
-                    numeric = numeric,
-                    math = math,
-                    minLength = minLength,
-                    maxLength = maxLength
-                }
+                    new
+                    {
+                        role = "system",
+                        content = systemContent
+                    },
+                    new
+                    {
+                        role = "user",
+                        content = userContent
+                    }
+                },
+                temperature = temperature_,
+                top_p = top_p_,
+                top_k = top_k_,
+                stream = false,
+                presence_penalty = presence_penalty_,
+                frequency_penalty = frequency_penalty_
             };
 
-            string jsonRequest = JsonConvert.SerializeObject(taskData);
-            var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
+            string jsonBody = Newtonsoft.Json.JsonConvert.SerializeObject(requestBody, Newtonsoft.Json.Formatting.None);
 
-            var response = _httpClient.PostAsync($"{_apiUrl}/createTask", content).Result;
-            string responseText = response.Content.ReadAsStringAsync().Result;
-
-            var jsonResponse = JObject.Parse(responseText);
-
-            int errorId = jsonResponse["errorId"].Value<int>();
-            if (errorId != 0)
+            string[] headers = new string[]
             {
-                string errorCode = jsonResponse["errorCode"]?.Value<string>() ?? "UNKNOWN_ERROR";
-                string errorDescription = jsonResponse["errorDescription"]?.Value<string>() ?? "Unknown error";
-                throw new Exception($"Ошибка создания задачи: [{errorCode}] {errorDescription}");
-            }
-
-            return jsonResponse["taskId"].Value<int>();
-        }
-
-        /// <summary>
-        /// Получает результат решения капчи
-        /// </summary>
-        private string GetTaskResult(int taskId, int maxAttempts = 60)
-        {
-            var requestData = new
-            {
-                clientKey = _apiKey,
-                taskId = taskId
+                "Content-Type: application/json",
+                $"Authorization: Bearer {_apiKey}"
             };
 
-            string jsonRequest = JsonConvert.SerializeObject(requestData);
+            string response = _project.POST(_url, jsonBody, "", headers, log);
+            _logger.Send($"Full response: {response}");
 
-            for (int attempt = 0; attempt < maxAttempts; attempt++)
+            try
             {
-                Thread.Sleep(3000); // Ждем 3 секунды между запросами
-
-                var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
-                var response = _httpClient.PostAsync($"{_apiUrl}/getTaskResult", content).Result;
-                string responseText = response.Content.ReadAsStringAsync().Result;
-
-                var jsonResponse = JObject.Parse(responseText);
-
-                int errorId = jsonResponse["errorId"].Value<int>();
-                if (errorId != 0)
-                {
-                    string errorCode = jsonResponse["errorCode"]?.Value<string>() ?? "UNKNOWN_ERROR";
-                    string errorDescription = jsonResponse["errorDescription"]?.Value<string>() ?? "Unknown error";
-                    throw new Exception($"Ошибка получения результата: [{errorCode}] {errorDescription}");
-                }
-
-                string status = jsonResponse["status"].Value<string>();
-
-                if (status == "ready")
-                {
-                    return jsonResponse["solution"]["text"].Value<string>();
-                }
-
-                if (status == "processing")
-                {
-                    continue; // Капча еще решается
-                }
-
-                throw new Exception($"Неизвестный статус задачи: {status}");
+                var jsonResponse = Newtonsoft.Json.Linq.JObject.Parse(response);
+                string Text = jsonResponse["choices"][0]["message"]["content"].ToString();
+                _logger.Send(Text);
+                return Text;
             }
-
-            throw new TimeoutException($"Не удалось получить результат за {maxAttempts * 3} секунд");
+            catch (Exception ex)
+            {
+                _logger.Send($"!W Error parsing response: {ex.Message}");
+                throw;
+            }
         }
 
-        /// <summary>
-        /// Освобождает ресурсы
-        /// </summary>
-        public void Dispose()
-        {
-            _httpClient?.Dispose();
-        }
+
     }
+    
+    
+    
     
     
     public static class Test
     {
         
-        public static string _JsClick(this Instance instance, string selector, double delayX = 1.0)
-		{
-		    try
-		    {
-		        string escapedSelector = selector
-		            .Replace("\\", "\\\\")
-		            .Replace("\"", "\\\"");
-		
-		        string jsCode = $@"
-		        (function() {{
-		            function findElement(selector) {{
-		                // Сначала пытаемся найти в обычном DOM
-		                let element = document.querySelector(selector);
-		                if (element) return element;
-		                
-		                // Если не нашли, ищем во всех shadow roots
-		                function searchInShadowRoots(root) {{
-		                    // Проверяем текущий уровень
-		                    let el = root.querySelector(selector);
-		                    if (el) return el;
-		                    
-		                    // Ищем все элементы с shadowRoot
-		                    let allElements = root.querySelectorAll('*');
-		                    for (let elem of allElements) {{
-		                        if (elem.shadowRoot) {{
-		                            let found = searchInShadowRoots(elem.shadowRoot);
-		                            if (found) return found;
-		                        }}
-		                    }}
-		                    return null;
-		                }}
-		                
-		                return searchInShadowRoots(document);
-		            }}
-		            
-		            var element = findElement(""{escapedSelector}"");
-		            if (!element) {{
-		                throw new Error(""Элемент не найден по селектору: {escapedSelector}"");
-		            }}
-		            
-		            element.scrollIntoView({{ block: 'center' }});
-		            
-		            if (element.focus) {{
-		                element.focus();
-		            }}
-		            
-		            var clickEvent = new MouseEvent('click', {{
-		                bubbles: true,
-		                cancelable: true,
-		                view: window,
-		                button: 0,
-		                composed: true  // важно для shadow DOM
-		            }});
-		            element.dispatchEvent(clickEvent);
-		            
-		            return 'Click successful';
-		        }})();
-		        ";
-		
-		        string result = instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
-		        return result;
-		    }
-		    catch (Exception ex)
-		    {
-		        return $"Error: {ex.Message}";
-		    }
-		}
-		
-		
-
-     public static string _JsClickShadow(this Instance instance, string hostSelector, string shadowSelector, double delayX = 1.0)
-		{
-		    try
-		    {
-		        string escapedHost = hostSelector.Replace("\\", "\\\\").Replace("\"", "\\\"");
-		        string escapedShadow = shadowSelector.Replace("\\", "\\\\").Replace("\"", "\\\"");
-		
-		        string jsCode = $@"
-		        (function() {{
-		            var host = document.querySelector(""{escapedHost}"");
-		            if (!host || !host.shadowRoot) {{
-		                throw new Error(""Shadow host не найден: {escapedHost}"");
-		            }}
-		            
-		            var element = host.shadowRoot.querySelector(""{escapedShadow}"");
-		            if (!element) {{
-		                throw new Error(""Элемент не найден в shadow root: {escapedShadow}"");
-		            }}
-		            
-		            element.scrollIntoView({{ block: 'center' }});
-		            
-		            if (element.focus) {{
-		                element.focus();
-		            }}
-		            
-		            var clickEvent = new MouseEvent('click', {{
-		                bubbles: true,
-		                cancelable: true,
-		                view: window,
-		                button: 0,
-		                composed: true
-		            }});
-		            element.dispatchEvent(clickEvent);
-		            
-		            return 'Click successful';
-		        }})();
-		        ";
-		
-		        return instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
-		    }
-		    catch (Exception ex)
-		    {
-		        return $"Error: {ex.Message}";
-		    }
-		}
-        public static void SaveSvgStringToImage(string svgContent, string pathToScreen)
-        {
-            var svgDocument = SvgDocument.FromSvg<SvgDocument>(svgContent);
-            using (var bitmap = svgDocument.Draw())
-            {
-                bitmap.Save(pathToScreen);
-            }
-        }
-        
-        public static string SvgToBase64(string svgContent)
-        {
-            var svgDocument = SvgDocument.FromSvg<SvgDocument>(svgContent);
-            using (var bitmap = svgDocument.Draw())
-            using (var ms = new System.IO.MemoryStream())
-            {
-                bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                return Convert.ToBase64String(ms.ToArray());
-            }
-        }
         
     }
 
