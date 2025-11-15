@@ -15,12 +15,13 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore.W3b
 {
-    internal  class SuiTools
+    internal class SuiTools
     {
         public async Task<decimal> GetSuiBalance(string rpc, string address, string proxy = "", bool log = false)
         {
             if (string.IsNullOrEmpty(rpc)) rpc = "https://fullnode.mainnet.sui.io";
-            string jsonBody = $@"{{ ""jsonrpc"": ""2.0"", ""method"": ""suix_getBalance"", ""params"": [""{address}"", ""0x2::sui::SUI""], ""id"": 1 }}";
+            string jsonBody =
+                $@"{{ ""jsonrpc"": ""2.0"", ""method"": ""suix_getBalance"", ""params"": [""{address}"", ""0x2::sui::SUI""], ""id"": 1 }}";
 
             HttpClient client;
             if (!string.IsNullOrEmpty(proxy))
@@ -58,7 +59,8 @@ namespace z3nCore.W3b
                         var body = await response.Content.ReadAsStringAsync();
                         var json = JObject.Parse(body);
                         string mist = json["result"]?["totalBalance"]?.ToString() ?? "0";
-                        decimal balance = decimal.Parse(mist, CultureInfo.InvariantCulture) / 1000000000m; // 9 decimals for SUI
+                        decimal balance =
+                            decimal.Parse(mist, CultureInfo.InvariantCulture) / 1000000000m; // 9 decimals for SUI
                         if (log) Console.WriteLine($"NativeBal: [{balance}] by {rpc} ({address})");
                         return balance;
                     }
@@ -75,10 +77,13 @@ namespace z3nCore.W3b
                 }
             }
         }
-        public async Task<decimal> GetSuiTokenBalance(string coinType, string rpc, string address, string proxy = "", bool log = false)
+
+        public async Task<decimal> GetSuiTokenBalance(string coinType, string rpc, string address, string proxy = "",
+            bool log = false)
         {
             if (string.IsNullOrEmpty(rpc)) rpc = "https://fullnode.mainnet.sui.io";
-            string jsonBody = $@"{{ ""jsonrpc"": ""2.0"", ""method"": ""suix_getBalance"", ""params"": [""{address}"", ""{coinType}""], ""id"": 1 }}";
+            string jsonBody =
+                $@"{{ ""jsonrpc"": ""2.0"", ""method"": ""suix_getBalance"", ""params"": [""{address}"", ""{coinType}""], ""id"": 1 }}";
 
             HttpClient client;
             if (!string.IsNullOrEmpty(proxy))
@@ -116,7 +121,9 @@ namespace z3nCore.W3b
                         var body = await response.Content.ReadAsStringAsync();
                         var json = JObject.Parse(body);
                         string mist = json["result"]?["totalBalance"]?.ToString() ?? "0";
-                        decimal balance = decimal.Parse(mist, CultureInfo.InvariantCulture) / 1000000m; // Assuming 6 decimals for tokens
+                        decimal balance =
+                            decimal.Parse(mist, CultureInfo.InvariantCulture) /
+                            1000000m; // Assuming 6 decimals for tokens
                         if (log) Console.WriteLine($"{address}: {balance} TOKEN ({coinType})");
                         return balance;
                     }
@@ -134,7 +141,7 @@ namespace z3nCore.W3b
             }
         }
     }
-    
+
     public static class SuiKeyGen
     {
         public static SuiKeys Generate(string mnemonic, string passphrase = "", string path = "m/44'/784'/0'/0'/0'")
@@ -196,9 +203,9 @@ namespace z3nCore.W3b
         private static uint[] ParsePath(string path)
         {
             return path.Substring(2)
-                     .Split('/')
-                     .Select(x => (uint.Parse(x.TrimEnd('\'')) | 0x80000000u))
-                     .ToArray();
+                .Split('/')
+                .Select(x => (uint.Parse(x.TrimEnd('\'')) | 0x80000000u))
+                .ToArray();
         }
 
         private static byte[] HmacSha512(byte[] key, byte[] data)
@@ -208,14 +215,14 @@ namespace z3nCore.W3b
         }
 
         public static string ToHex(byte[] b) => BitConverter.ToString(b).Replace("-", "").ToLower();
-        
+
         public static string ToSuiPrivateKey(byte[] privateKey32)
         {
             // Формат: flag (0x00 для Ed25519) + 32 байта приватного ключа
             byte[] data = new byte[33];
             data[0] = 0x00; // Ed25519 flag
             Buffer.BlockCopy(privateKey32, 0, data, 1, 32);
-            
+
             return Bech32.Encode("suiprivkey", data);
         }
     }
@@ -231,6 +238,11 @@ namespace z3nCore.W3b
         public string PrivateKeyBech32 => SuiKeyGen.ToSuiPrivateKey(Priv32);
     }
 
+}
+
+namespace z3nCore
+{
+    using W3b;
     public static partial class W3bTools
     {
         public static decimal SuiNative(string rpc, string address)
@@ -345,4 +357,5 @@ namespace z3nCore.W3b
         }
         
     }
+    
 }

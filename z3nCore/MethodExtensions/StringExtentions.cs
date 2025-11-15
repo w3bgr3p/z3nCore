@@ -456,6 +456,37 @@ namespace z3nCore
 
         }
 
+        public static string GetFileNameFromUrl(string input, bool withExtension = false)
+        {
+            try
+            {
+                // Пробуем найти URL в строке
+                var urlMatch = Regex.Match(input, @"(?:src|href)=[""']?([^""'\s>]+)", RegexOptions.IgnoreCase);
+                var url = urlMatch.Success ? urlMatch.Groups[1].Value : input;
+
+                // Извлекаем последний сегмент (имя файла)
+                var fileMatch = Regex.Match(url, @"([^/\\?#]+)(?:\?[^/]*)?$");
+                if (fileMatch.Success)
+                {
+                    var fileName = fileMatch.Groups[1].Value;
+            
+                    // Если нужно с расширением - возвращаем как есть
+                    if (withExtension)
+                    {
+                        return fileName;
+                    }
+            
+                    // Удаляем расширение
+                    return Regex.Replace(fileName, @"\.[^.]+$", "");
+                }
+
+                return input;
+            }
+            catch
+            {
+                return input;
+            }
+        }
         public static string ConvertUrl(this string url, bool oneline = false)
         {
             if (string.IsNullOrEmpty(url))

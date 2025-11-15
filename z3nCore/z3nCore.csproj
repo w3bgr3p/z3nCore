@@ -163,7 +163,7 @@
     <Compile Include="Sql\Sql.cs" />
     <Compile Include="Sql\SQLite.cs" />
     <Compile Include="Requests\Requests.cs" />
-    <Compile Include="Wallets\Zerion.cs" />
+    <Compile Include="Wallets\SuietWallet.cs" />
     <Compile Include="Wallets\ZerionWallet.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
