@@ -247,6 +247,8 @@ namespace z3nCore
             var words = input.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (words.Length == 12 || words.Length == 24)
                 return "seed";
+            
+            return "undefined";
     
             throw new Exception($"not recognized as any key or seed {input}");
         }

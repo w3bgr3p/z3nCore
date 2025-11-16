@@ -31,7 +31,7 @@ namespace z3nCore
             {"Opbnb", "https://opbnb-mainnet-rpc.bnbchain.org"},
             {"Polygon", "https://polygon-rpc.com"},
 
-            {"Sepolia", "https://ethereum-sepolia-rpc.publicnode.com"},
+            {"Sepolia", "https://eth-sepolia.api.onfinality.io/public"},
             {"MonadTestnet", "https://testnet-rpc.monad.xyz"},
             {"Aptos", "https://fullnode.mainnet.aptoslabs.com/v1"},
             {"Movement", "https://mainnet.movementnetwork.xyz/v1"},
