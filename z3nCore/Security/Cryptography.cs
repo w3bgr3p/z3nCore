@@ -38,7 +38,7 @@ namespace z3nCore
             var keyArray = HexStringToByteArray(hashKey ? HashMD5(key) : key);
             var toEncryptArray = HexStringToByteArray(hash);
 
-            using (var aes = new AesCryptoServiceProvider  // ✅ С using!
+            using (var aes = new AesCryptoServiceProvider  
                    {
                        Key = keyArray,
                        Mode = CipherMode.ECB,
@@ -48,7 +48,7 @@ namespace z3nCore
                 var cTransform = aes.CreateDecryptor();
                 var resultArray = cTransform.TransformFinalBlock(toEncryptArray, 0, toEncryptArray.Length);
         
-                aes.Clear();  // Опционально, но безопасно
+                aes.Clear();  
                 return Encoding.UTF8.GetString(resultArray);
             }
         }
@@ -90,12 +90,13 @@ namespace z3nCore
         }
         public static string HashMD5(string phrase)
         {
-            if (phrase == null)
-                return null;
+            if (phrase == null) return null;
             var encoder = new UTF8Encoding();
-            var md5Hasher = new MD5CryptoServiceProvider();
-            var hashedDataBytes = md5Hasher.ComputeHash(encoder.GetBytes(phrase));
-            return ByteArrayToHexString(hashedDataBytes);
+            using (var md5Hasher = new MD5CryptoServiceProvider())  // ← добавить using
+            {
+                var hashedDataBytes = md5Hasher.ComputeHash(encoder.GetBytes(phrase));
+                return ByteArrayToHexString(hashedDataBytes);
+            }
         }
     }
     public static class Bech32

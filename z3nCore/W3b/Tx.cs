@@ -76,6 +76,7 @@ namespace z3nCore
                     var chainIdTask = web3.Eth.ChainId.SendRequestAsync();
                     chainIdTask.Wait();
                     chainId = (int)chainIdTask.Result.Value;
+
                 }
                 catch (Exception ex)
                 {

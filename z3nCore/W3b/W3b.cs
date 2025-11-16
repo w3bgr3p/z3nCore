@@ -30,6 +30,8 @@ namespace z3nCore
             headers.Add("x-cg-pro-api-key", apiKey);
         }
     
+        
+        
         public async Task<string> CoinInfo(string CGid = "ethereum")
         {
             var request = new HttpRequestMessage
@@ -97,11 +99,11 @@ namespace z3nCore
                 throw new Exception(ex.Message + $"\n{method}");
             }
         }
-        public static decimal PriceById(string CGid = "ethereum", [CallerMemberName] string callerName = "")
+        public static async Task<decimal> PriceByIdAsync(string CGid = "ethereum", [CallerMemberName] string callerName = "")
         {
             try
             {
-                string result = new CoinGecco().CoinInfo(CGid).GetAwaiter().GetResult();
+                string result = await new CoinGecco().CoinInfo(CGid);
 
                 var json = JObject.Parse(result);
                 JToken usdPriceToken = json["market_data"]?["current_price"]?["usd"];
@@ -123,6 +125,12 @@ namespace z3nCore
                     method = $"{callingMethod.DeclaringType.Name}.{callerName}";
                 throw new Exception(ex.Message + $"\n{method}");
             }
+        }
+        public static decimal PriceById(string CGid = "ethereum", [CallerMemberName] string callerName = "")
+        {
+            return Task.Run(async () => 
+                await PriceByIdAsync(CGid, callerName).ConfigureAwait(false)
+            ).GetAwaiter().GetResult();
         }
 
     }
@@ -208,14 +216,12 @@ namespace z3nCore
 
 
     public static partial class W3bTools 
-    
     {
-        
-        public static decimal CGPrice(string CGid = "ethereum",[CallerMemberName] string callerName = "")
+        public static async Task<decimal> CGPriceAsync(string CGid = "ethereum", [CallerMemberName] string callerName = "")
         {
             try
             {
-                string result = new CoinGecco().CoinInfo(CGid).GetAwaiter().GetResult();
+                string result = await new CoinGecco().CoinInfo(CGid);
 
                 var json = JObject.Parse(result);
                 JToken usdPriceToken = json["market_data"]?["current_price"]?["usd"];
@@ -238,11 +244,20 @@ namespace z3nCore
                 throw new Exception(ex.Message + $"\n{method}");
             }
         }
-        public static decimal DSPrice(string contract = "So11111111111111111111111111111111111111112", string chain = "solana",[CallerMemberName] string callerName = "")
+
+        public static decimal CGPrice(string CGid = "ethereum", [CallerMemberName] string callerName = "")
+        {
+            return Task.Run(async () => 
+                await CGPriceAsync(CGid, callerName).ConfigureAwait(false)
+            ).GetAwaiter().GetResult();
+        }
+        
+        
+        public static async Task<decimal> DSPriceAsync(string contract = "So11111111111111111111111111111111111111112", string chain = "solana", [CallerMemberName] string callerName = "")
         {
             try
             {
-                string result = new DexScreener().CoinInfo(contract, chain).GetAwaiter().GetResult();
+                string result = await new DexScreener().CoinInfo(contract, chain);
 
                 var json = JArray.Parse(result);
                 JToken priceToken = json.FirstOrDefault()?["priceNative"];
@@ -263,6 +278,13 @@ namespace z3nCore
                     method = $"{callingMethod.DeclaringType.Name}.{callerName}";
                 throw new Exception(ex.Message + $"\n{method}");
             }
+        }
+
+        public static decimal DSPrice(string contract = "So11111111111111111111111111111111111111112", string chain = "solana", [CallerMemberName] string callerName = "")
+        {
+            return Task.Run(async () => 
+                await DSPriceAsync(contract, chain, callerName).ConfigureAwait(false)
+            ).GetAwaiter().GetResult();
         }
         public static decimal OKXPrice(this IZennoPosterProjectModel project, string tiker)
         {
