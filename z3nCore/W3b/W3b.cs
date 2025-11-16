@@ -20,11 +20,34 @@ namespace z3nCore
     {
 
         private readonly string _apiKey = "CG-TJ3DRjP93bTSCto6LiPbMgaV";
+    
+        // ПРАВИЛЬНО: один клиент на весь класс
+        private static readonly HttpClient _sharedClient = new HttpClient();
+    
         private void AddHeaders(HttpRequestHeaders headers, string apiKey)
         {
             headers.Add("accept", "application/json");
             headers.Add("x-cg-pro-api-key", apiKey);
         }
+    
+        public async Task<string> CoinInfo(string CGid = "ethereum")
+        {
+            var request = new HttpRequestMessage
+            {
+                Method = HttpMethod.Get,
+                RequestUri = new Uri($"https://api.coingecko.com/api/v3/coins/{CGid}")
+            };
+            AddHeaders(request.Headers, _apiKey); 
+
+            using (var response = await _sharedClient.SendAsync(request))
+            {
+                response.EnsureSuccessStatusCode();
+                var body = await response.Content.ReadAsStringAsync();
+                return body;
+            }
+        }
+        
+        
         private static string IdByTiker(string tiker)
         {
             switch (tiker)
@@ -37,23 +60,6 @@ namespace z3nCore
                     return "solana";
                 default:
                     throw new Exception($"unknown tiker {tiker}");
-            }
-        }
-        public async Task<string> CoinInfo(string CGid = "ethereum")
-        {
-            var client = new HttpClient();
-            var request = new HttpRequestMessage
-            {
-                Method = System.Net.Http.HttpMethod.Get,
-                RequestUri = new Uri($"https://api.coingecko.com/api/v3/coins/{CGid}")
-            };
-            AddHeaders(request.Headers, _apiKey); 
-
-            using (var response = await client.SendAsync(request))
-            {
-                response.EnsureSuccessStatusCode();
-                var body = await response.Content.ReadAsStringAsync();
-                return body;
             }
         }
         public async Task<string> TokenByAddress(string CGid = "ethereum")

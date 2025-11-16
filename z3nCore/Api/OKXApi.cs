@@ -355,6 +355,8 @@ namespace z3nCore
             return balanceList;
         }
 
+        
+        
         public void OKXWithdraw(string toAddress, string currency, string chain, decimal amount, decimal fee, string proxy = null, bool log = false)
         {
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;

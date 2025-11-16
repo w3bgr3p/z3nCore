@@ -38,18 +38,19 @@ namespace z3nCore
             var keyArray = HexStringToByteArray(hashKey ? HashMD5(key) : key);
             var toEncryptArray = HexStringToByteArray(hash);
 
-            var aes = new AesCryptoServiceProvider
+            using (var aes = new AesCryptoServiceProvider  // ✅ С using!
+                   {
+                       Key = keyArray,
+                       Mode = CipherMode.ECB,
+                       Padding = PaddingMode.PKCS7
+                   })
             {
-                Key = keyArray,
-                Mode = CipherMode.ECB,
-                Padding = PaddingMode.PKCS7
-            };
-
-            var cTransform = aes.CreateDecryptor();
-            var resultArray = cTransform.TransformFinalBlock(toEncryptArray, 0, toEncryptArray.Length);
-
-            aes.Clear();
-            return Encoding.UTF8.GetString(resultArray);
+                var cTransform = aes.CreateDecryptor();
+                var resultArray = cTransform.TransformFinalBlock(toEncryptArray, 0, toEncryptArray.Length);
+        
+                aes.Clear();  // Опционально, но безопасно
+                return Encoding.UTF8.GetString(resultArray);
+            }
         }
         private static string ByteArrayToHexString(byte[] inputArray)
         {

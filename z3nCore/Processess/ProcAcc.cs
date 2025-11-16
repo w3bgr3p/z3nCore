@@ -412,22 +412,34 @@ namespace z3nCore.Utilities
         public static List<int> zbe1()
         {
             var zProcesses = new List<int>();
-            string[] processNames = new[] {  "zbe1" }; 
+            string[] processNames = new[] { "zbe1" }; 
             var allProcs = new List<System.Diagnostics.Process>();
-            foreach (var processName in processNames)
+    
+            try
             {
-                allProcs.AddRange(System.Diagnostics.Process.GetProcessesByName(processName));
-            }
+                foreach (var processName in processNames)
+                {
+                    allProcs.AddRange(System.Diagnostics.Process.GetProcessesByName(processName));
+                }
 
-            if (allProcs.Count > 0)
+                if (allProcs.Count > 0)
+                {
+                    foreach (var proc in allProcs)
+                    {
+                        zProcesses.Add(proc.Id);
+                    }
+                }
+        
+                return zProcesses;
+            }
+            finally
             {
+                // ОБЯЗАТЕЛЬНО освобождаем все Process объекты
                 foreach (var proc in allProcs)
                 {
-                    zProcesses.Add(proc.Id);
-                    
+                    proc?.Dispose();
                 }
             }
-            return zProcesses;
         }
         
         /// <summary>

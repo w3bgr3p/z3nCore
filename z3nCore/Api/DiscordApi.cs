@@ -61,12 +61,12 @@ namespace z3nCore.Api
                 string result;
                 if (assignRole)
                 {
-                    result = _http.PUT(url, "", proxyString: null, headers: headers, callerName: callerName);
+                    result = _http.PUT(url, "", proxyString: null, headers: headers);
                     Thread.Sleep(1000);
                 }
                 else
                 {
-                    result = _http.DELETE(url, proxyString: null, headers: headers, callerName: callerName);
+                    result = _http.DELETE(url, proxyString: null, headers: headers);
                     Thread.Sleep(1000);
                 }
 

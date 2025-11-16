@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.Enums.Http;
@@ -6,78 +8,73 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
 {
-   
+
     public static class Requests
     {
         private static readonly object LockObject = new object();
+        
         public static string GET(
             this IZennoPosterProjectModel project,
             string url,
             string proxy = "",
             string[] headers = null,
             bool log = false,
+            bool parse = false,
             bool parseJson = false,
-            int deadline = 15,
-            bool thrw = false)
+            int deadline = 30,
+            bool thrw = false,
+            bool useNetHttp = false)  
         {
             if (project == null) throw new ArgumentNullException(nameof(project));
+            if (parseJson)
+            {
+                parse = parseJson;
+                project.warn("using obsolete parameter \"parseJson\", change to   \"parse\" ASAP");
+            }
+
             var logger = new Logger(project, log, classEmoji: "↑↓");
             string debugProxy = proxy;
-            
-            if (headers == null)
-            {
-                try
-                {
-                    headers = project.Var("headers").Split('\n');
-                }
-                catch { }
-            }
-            
+
             try
             {
-                string fullResponse;
-                lock (LockObject)
+                string body;
+                int statusCode;
+
+                if (useNetHttp)
                 {
-                    string proxyString = ParseProxy(project, proxy, logger);
-                    
-                    fullResponse = ZennoPoster.HTTP.Request(
-                        HttpMethod.GET,
-                        url,
-                        "",
-                        "application/json",
-                        proxyString,
-                        "UTF-8",
-                        ResponceType.HeaderAndBody,
-                        deadline * 1000,
-                        "",
-                        project.Profile.UserAgent,
-                        true,
-                        5,
-                        headers,
-                        "",
-                        false,
-                        false,
-                        project.Profile.CookieContainer);
+                    body = ExecuteGetViaNetHttp(
+                        project, 
+                        url, 
+                        proxy, 
+                        headers, 
+                        deadline, 
+                        thrw, 
+                        logger, 
+                        out statusCode);
+                }
+                else
+                {
+                    body = ExecuteGetViaZennoPoster(
+                        project, 
+                        url, 
+                        proxy, 
+                        headers, 
+                        deadline, 
+                        logger, 
+                        out statusCode);
                 }
 
-                // Парсим ответ: извлекаем статус и body
-                int statusCode;
-                string body;
-                ParseResponse(fullResponse, out statusCode, out body);
-
-                // Логируем статус если включен log
                 if (log)
                 {
                     LogStatus(logger, statusCode, url, debugProxy);
                     logger.Send($"response: [{body}]");
                 }
 
-                // Проверяем статус код
                 if (statusCode < 200 || statusCode >= 300)
                 {
                     string errorMessage = FormatErrorMessage(statusCode, body);
                     logger.Send($"!W HTTP Error: [{errorMessage}] url:[{url}] proxy:[{debugProxy}]");
-                    
+
                     if (thrw)
                     {
                         throw new Exception(errorMessage);
@@ -85,8 +82,7 @@ namespace z3nCore
                     return errorMessage;
                 }
 
-                // Парсим JSON если нужно и статус успешный
-                if (parseJson)
+                if (parse)
                 {
                     ParseJson(project, body, logger);
                 }
@@ -96,11 +92,12 @@ namespace z3nCore
             catch (Exception e)
             {
                 string errorMessage = $"Error: {e.Message}";
-                logger.Send($"!W RequestErr: [{e.Message}] url:[{url}] (proxy: [{debugProxy})]");
+                logger.Send($"!W RequestErr: [{e.Message}] url:[{url}] (proxy: [{debugProxy}])");
                 if (thrw) throw;
                 return errorMessage;
             }
         }
+
 
         public static string POST(
             this IZennoPosterProjectModel project,
@@ -109,43 +106,52 @@ namespace z3nCore
             string proxy = "",
             string[] headers = null,
             bool log = false,
+            bool parse = false,
             bool parseJson = false,
-            int deadline = 15,
-            bool thrw = false)
+            int deadline = 30,
+            bool thrw = false,
+            bool useNetHttp = false) 
         {
+            if (project == null) throw new ArgumentNullException(nameof(project));
+            if (parseJson)
+            {
+                parse = parseJson;
+                project.warn("using obsolete parameter \"parseJson\", change to   \"parse\" ASAP");
+            }
+
             var logger = new Logger(project, log, classEmoji: "↑↓");
             string debugProxy = proxy;
 
             try
             {
-                string fullResponse;
-                lock (LockObject)
+                string responseBody;
+                int statusCode;
+
+                if (useNetHttp)
                 {
-                    string proxyString = ParseProxy(project, proxy, logger);
-                    headers = BuildHeaders(project, headers);
-                    fullResponse = ZennoPoster.HTTP.Request(
-                        HttpMethod.POST,
+                    responseBody = ExecutePostViaNetHttp(
+                        project,
                         url,
                         body,
-                        "application/json",
-                        proxyString,
-                        "UTF-8",
-                        ResponceType.HeaderAndBody,
-                        deadline * 1000,
-                        "",
-                        project.Profile.UserAgent,
-                        true,
-                        5,
+                        proxy,
                         headers,
-                        "",
-                        false,
-                        true,
-                        project.Profile.CookieContainer);
+                        deadline,
+                        thrw,
+                        logger,
+                        out statusCode);
                 }
-
-                int statusCode;
-                string responseBody;
-                ParseResponse(fullResponse, out statusCode, out responseBody);
+                else
+                {
+                    responseBody = ExecutePostViaZennoPoster(
+                        project,
+                        url,
+                        body,
+                        proxy,
+                        headers,
+                        deadline,
+                        logger,
+                        out statusCode);
+                }
 
                 if (log)
                 {
@@ -157,7 +163,7 @@ namespace z3nCore
                 {
                     string errorMessage = FormatErrorMessage(statusCode, responseBody);
                     logger.Send($"!W HTTP Error: [{errorMessage}] url:[{url}] proxy:[{debugProxy}]");
-                    
+
                     if (thrw)
                     {
                         throw new Exception(errorMessage);
@@ -165,7 +171,7 @@ namespace z3nCore
                     return errorMessage;
                 }
 
-                if (parseJson)
+                if (parse)
                 {
                     ParseJson(project, responseBody, logger);
                 }
@@ -175,25 +181,265 @@ namespace z3nCore
             catch (Exception e)
             {
                 string errorMessage = $"Error: {e.Message}";
-                logger.Send($"!W RequestErr: [{e.Message}] url:[{url}] (proxy: [{debugProxy})]");
+                logger.Send($"!W RequestErr: [{e.Message}] url:[{url}] (proxy: [{debugProxy}])");
                 if (thrw) throw;
                 return errorMessage;
             }
         }
 
+
+        private static string ExecuteGetViaZennoPoster(
+            IZennoPosterProjectModel project,
+            string url,
+            string proxy,
+            string[] headers,
+            int deadline,
+            Logger logger,
+            out int statusCode)
+        {
+            string fullResponse;
+            
+            lock (LockObject)
+            {
+                string proxyString = ParseProxy(project, proxy, logger);
+
+                if (headers == null)
+                {
+                    try
+                    {
+                        headers = project.Var("headers").Split('\n');
+                    }
+                    catch { }
+                }
+
+                fullResponse = ZennoPoster.HTTP.Request(
+                    HttpMethod.GET,
+                    url,
+                    "",
+                    "application/json",
+                    proxyString,
+                    "UTF-8",
+                    ResponceType.HeaderAndBody,
+                    deadline * 1000,
+                    "",
+                    project.Profile.UserAgent,
+                    true,
+                    5,
+                    headers,
+                    "",
+                    false,
+                    false,
+                    project.Profile.CookieContainer);
+            }
+
+            string body;
+            ParseResponse(fullResponse, out statusCode, out body);
+            return body;
+        }
+
+
+        private static string ExecuteGetViaNetHttp(
+            IZennoPosterProjectModel project,
+            string url,
+            string proxy,
+            string[] headers,
+            int deadline,
+            bool thrw,
+            Logger logger,
+            out int statusCode)
+        {
+            var netHttp = new NetHttp(project, log: false);
+
+            Dictionary<string, string> headersDic = null;
+            if (headers != null && headers.Length > 0)
+            {
+                headersDic = ConvertHeadersToDictionary(headers);
+            }
+            else
+            {
+                try
+                {
+                    var headersArray = project.Var("headers").Split('\n');
+                    headersDic = ConvertHeadersToDictionary(headersArray);
+                }
+                catch { }
+            }
+
+
+            string response = netHttp.GET(
+                url,
+                proxy,
+                headersDic,
+                parse: false,
+                deadline: deadline,
+                throwOnFail: false 
+            );
+            
+            statusCode = TryParseStatusFromNetHttpResponse(response);
+
+            return response;
+        }
+        
+        private static string ExecutePostViaZennoPoster(
+            IZennoPosterProjectModel project,
+            string url,
+            string body,
+            string proxy,
+            string[] headers,
+            int deadline,
+            Logger logger,
+            out int statusCode)
+        {
+            string fullResponse;
+
+            lock (LockObject)
+            {
+                string proxyString = ParseProxy(project, proxy, logger);
+                headers = BuildHeaders(project, headers);
+
+                fullResponse = ZennoPoster.HTTP.Request(
+                    HttpMethod.POST,
+                    url,
+                    body,
+                    "application/json",
+                    proxyString,
+                    "UTF-8",
+                    ResponceType.HeaderAndBody,
+                    deadline * 1000,
+                    "",
+                    project.Profile.UserAgent,
+                    true,
+                    5,
+                    headers,
+                    "",
+                    false,
+                    true,
+                    project.Profile.CookieContainer);
+            }
+
+            string responseBody;
+            ParseResponse(fullResponse, out statusCode, out responseBody);
+            return responseBody;
+        }
+
+
+        private static string ExecutePostViaNetHttp(
+            IZennoPosterProjectModel project,
+            string url,
+            string body,
+            string proxy,
+            string[] headers,
+            int deadline,
+            bool thrw,
+            Logger logger,
+            out int statusCode)
+        {
+            var netHttp = new NetHttp(project, log: false);
+
+            Dictionary<string, string> headersDic = null;
+            if (headers != null && headers.Length > 0)
+            {
+                headersDic = ConvertHeadersToDictionary(headers);
+            }
+            else
+            {
+                try
+                {
+                    var headersArray = project.Var("headers").Split('\n');
+                    headersDic = ConvertHeadersToDictionary(headersArray);
+                }
+                catch { }
+            }
+
+            string response = netHttp.POST(
+                url,
+                body,
+                proxy,
+                headersDic,
+                parse: false,
+                deadline: deadline,
+                throwOnFail: false
+            );
+
+            statusCode = TryParseStatusFromNetHttpResponse(response);
+
+            return response;
+        }
+
+
+        private static Dictionary<string, string> ConvertHeadersToDictionary(string[] headersArray)
+        {
+            var forbiddenHeaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "authority", "method", "path", "scheme",
+                "host", "content-length", "connection", "upgrade",
+                "proxy-connection", "transfer-encoding"
+            };
+
+            var headersDic = new Dictionary<string, string>();
+
+            if (headersArray == null) return headersDic;
+
+            foreach (var header in headersArray)
+            {
+                if (string.IsNullOrWhiteSpace(header)) continue;
+                if (header.StartsWith(":")) continue;
+
+                var colonIndex = header.IndexOf(':');
+                if (colonIndex == -1) continue;
+
+                var key = header.Substring(0, colonIndex).Trim();
+                var value = header.Substring(colonIndex + 1).Trim();
+
+                if (forbiddenHeaders.Contains(key)) continue;
+
+                headersDic[key] = value;
+            }
+
+            return headersDic;
+        }
+
+
+        private static int TryParseStatusFromNetHttpResponse(string response)
+        {
+            if (string.IsNullOrEmpty(response))
+                return 0;
+
+            if (response.Contains("!!!"))
+            {
+                var parts = response.Split(new[] { "!!!" }, StringSplitOptions.None);
+                if (parts.Length > 0)
+                {
+                    int code;
+                    if (int.TryParse(parts[0].Trim(), out code))
+                    {
+                        return code;
+                    }
+                }
+            }
+
+            if (response.StartsWith("Error:") || response.StartsWith("Ошибка:"))
+            {
+                return 0;
+            }
+
+            return 200;
+        }
+
         private static string FormatErrorMessage(int statusCode, string body)
         {
             string statusText = GetStatusText(statusCode);
-            
+
             string bodyPreview = body.Length > 100 ? body.Substring(0, 100) + "..." : body;
-            
+
             if (string.IsNullOrWhiteSpace(body))
             {
                 return $"{statusCode} {statusText}";
             }
-            
+
             return $"{statusCode} {statusText}: {bodyPreview}";
         }
+
         private static string GetStatusText(int statusCode)
         {
             switch (statusCode)
@@ -216,6 +462,7 @@ namespace z3nCore
                     return "Unknown Error";
             }
         }
+
         private static void ParseResponse(string fullResponse, out int statusCode, out string body)
         {
             statusCode = 200; // По умолчанию
@@ -237,7 +484,7 @@ namespace z3nCore
                 }
 
                 string statusLine = fullResponse.Substring(0, firstLineEnd);
-                
+
                 string[] parts = statusLine.Split(' ');
                 if (parts.Length >= 2)
                 {
@@ -256,7 +503,7 @@ namespace z3nCore
                 body = fullResponse.Trim();
             }
         }
-        
+
         private static void LogStatus(Logger logger, int statusCode, string url, string proxy)
         {
             if (statusCode >= 200 && statusCode < 300)
@@ -281,16 +528,14 @@ namespace z3nCore
             }
         }
 
-
         private static string[] BuildHeaders(IZennoPosterProjectModel project, string[] headers = null)
         {
-            if (headers == null ||  headers.Length == 0)
+            if (headers == null || headers.Length == 0)
             {
-                return  project.Var("headers").Split('\n');
+                return project.Var("headers").Split('\n');
             }
             else return headers;
         }
-        
 
         private static string ParseProxy(IZennoPosterProjectModel project, string proxyString, Logger logger = null)
         {
@@ -344,39 +589,41 @@ namespace z3nCore
             catch (Exception ex)
             {
                 logger?.Send($"[!W JSON parsing error: {ex.Message}] [{json}]");
-                 
             }
         }
 
-        public static void SetProxy(this IZennoPosterProjectModel project,  Instance instance, string proxyString = null)
+        /// <summary>
+        /// Установить и проверить прокси в Instance
+        /// </summary>
+        public static void SetProxy(this IZennoPosterProjectModel project, Instance instance, string proxyString = null)
         {
-
             string proxy = ParseProxy(project, proxyString);
 
             if (string.IsNullOrEmpty(proxy)) throw new Exception("!W EMPTY Proxy");
+            
             long uTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             string ipLocal = project.GET($"http://api.ipify.org/");
 
             while (DateTimeOffset.UtcNow.ToUnixTimeSeconds() - uTime < 60)
             {
-                instance.SetProxy(proxy, true, true, true, true); Thread.Sleep(2000);
+                instance.SetProxy(proxy, true, true, true, true);
+                Thread.Sleep(2000);
+                
                 string ipProxy = project.GET($"http://api.ipify.org/", proxy);
                 project.log($"local:[{ipLocal}]?proxyfied:[{ipProxy}]");
                 project.Variables["ip"].Value = ipProxy;
                 project.Variables["proxy"].Value = proxy;
+                
                 if (ipLocal != ipProxy) return;
             }
+            
             project.log("!W badProxy");
             throw new Exception("!W badProxy");
         }
     }
 
-
     public static partial class ProjectExtensions
     {
-        
+        // Здесь могут быть дополнительные extension методы
     }
 }
-
-
-

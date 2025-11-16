@@ -34,24 +34,34 @@ namespace z3nCore.Utilities
             #region Step 1: Collect and Analyze Browser Processes
             
             var browserProcesses = new List<ProcessInfo>();
-            var allProcs = Process.GetProcessesByName("zbe1");
-            
-            foreach (var proc in allProcs)
+            Process[] allProcs = null;
+            try
             {
-                try
+                allProcs = Process.GetProcessesByName("zbe1");
+    
+                foreach (var proc in allProcs)
                 {
-                    var info = new ProcessInfo
+                    try
                     {
-                        Pid = proc.Id,
-                        Name = proc.ProcessName,
-                        MemoryMB = proc.WorkingSet64 / (1024 * 1024),
-                        RuntimeMinutes = (int)(DateTime.Now - proc.StartTime).TotalMinutes
-                    };
-                    browserProcesses.Add(info);
+                        var info = new ProcessInfo
+                        {
+                            Pid = proc.Id,
+                            Name = proc.ProcessName,
+                            MemoryMB = proc.WorkingSet64 / (1024 * 1024),
+                            RuntimeMinutes = (int)(DateTime.Now - proc.StartTime).TotalMinutes
+                        };
+                        browserProcesses.Add(info);
+                    }
+                    catch { }
                 }
-                catch
+            }
+            finally
+            {
+                // КРИТИЧЕСКИ ВАЖНО: освобождаем КАЖДЫЙ процесс
+                if (allProcs != null)
                 {
-                    // Процесс завершился - пропускаем
+                    foreach (var proc in allProcs)
+                        proc?.Dispose();
                 }
             }
 
@@ -281,6 +291,8 @@ namespace z3nCore.Utilities
                         proc?.Dispose();
                 }
             }
+            
+            
 
             log.Send($"Total browser processes: {browserProcesses.Count}");
 
