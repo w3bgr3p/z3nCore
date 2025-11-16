@@ -25,7 +25,7 @@ using System.Text;
 namespace z3nCore
 {
     
-    public class SuietWallet
+    public class SuietWallet_
     {
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
@@ -41,7 +41,7 @@ namespace z3nCore
         private readonly string _urlPopup = "chrome-extension://khpkpbbcccdmmclmpigdgddabeilkdpd/index.html";
         private readonly string _urlNetworks = "chrome-extension://khpkpbbcccdmmclmpigdgddabeilkdpd/index.html#/settings/network";
 
-        public SuietWallet(IZennoPosterProjectModel project, Instance instance, bool log = false, string key = null, string fileName = "Suiet-Sui-Wallet-Chrome.crx")
+        public SuietWallet_(IZennoPosterProjectModel project, Instance instance, bool log = false, string key = null, string fileName = "Suiet-Sui-Wallet-Chrome.crx")
         {
             _project = project;
             _instance = instance;

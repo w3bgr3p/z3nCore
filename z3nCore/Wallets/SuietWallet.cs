@@ -57,21 +57,11 @@ namespace z3nCore.Wallets
             _instance.HeSet(("input:password", "fulltagname", "input:password", "regexp", 0),passw);
             _instance.HeSet(("input:password", "fulltagname", "input:password", "regexp", 1),passw);
             _instance.HeClick(("button", "innertext", "Next", "regexp", 0));
-
-            var sourseIndex = source == "seed" ? 0 : 1; //0 - seed , 1 - key
-
-            _instance.HeClick(("div", "class", "rounded-2xl\\ cursor-pointer\\ hover:bg-hover\\ border\\ border-border\\ hover:border-zinc-200\\ transition", "regexp", sourseIndex));
             
-            if (source == "seed") {
-                _instance.HeClick(("secrets.0","id"));
-                var seed = _project.DbKey("seed");
-                _instance.CtrlV(seed);
-            }
-            else
-            {
-                var key = _project.DbKey("evm");
-                _instance.HeSet(("privateKey", "name"), key);
-            }
+            _instance.HeClick(("div", "class", "rounded-2xl\\ cursor-pointer\\ hover:bg-hover\\ border\\ border-border\\ hover:border-zinc-200\\ transition", "regexp", 1));
+            
+            string key = source == "seed" ? _project.DbKey("seed").SuiKey() : _project.DbKey("evm");
+            _instance.HeSet(("privateKey", "name"), key);
             _instance.HeClick(("button", "innertext", "Confirm\\ and\\ Import", "regexp", 0));
             var currentAddress =  _instance.HeGet(("a", "href", "https://pay.suiet.app/\\?wallet_address=", "regexp", 0), atr:"href").Replace("https://pay.suiet.app/?wallet_address=","");
         }
