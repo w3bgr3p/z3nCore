@@ -65,13 +65,15 @@ namespace z3nCore
                 if (browser && _project.Variables["acc0"].Value != "") //if browser					
                     SetBrowser(getscore:getscore);	
                 else
-                    new NetHttp(_project, false).CheckProxy();
+                {
+                    ProxySet();
+                }
             }
             catch (Exception ex)
             {
                 _instance.CloseAllTabs();
-                _project.log($"!W launchInstance Err {ex.Message}");
                 exCnt++;
+                _logger.Warn($"SetInstance failed: attempt={exCnt}/3, acc={_project.Variables["acc0"].Value}, error={ex.Message}");
                 if (exCnt > 3)
                 {
                     _project.GVar($"acc{_project.Variables["acc0"].Value}", "");
@@ -80,8 +82,6 @@ namespace z3nCore
                 goto SetInstance;
             }
             _instance.CloseExtraTabs(true);
-            
-            _logger.Send($"{browserType} started");
         }
         
         public bool RunProject(List<string> additionalVars = null, bool add = true)
@@ -107,7 +107,7 @@ namespace z3nCore
                 }
             }
 
-            _logger.Send($"running {pathZp}");
+            _logger.Send($"Execute project: path={pathZp}, vars={vars.Count}");
             
             var mapVars = new List<Tuple<string, string>>();
             if (vars != null)
@@ -148,8 +148,8 @@ namespace z3nCore
                 catch (Exception ex)
                 {
                     _instance.CloseAllTabs();
-                    _project.log($"!W {ex.Message}");
                     exCnt++;
+                    _logger.Warn($"LoadWallets failed: wallet={string.Join(",", wallets)}, attempt={exCnt}/3, error={ex.Message}");
                     if (exCnt > 3) throw;
                 }
             }
@@ -217,7 +217,7 @@ namespace z3nCore
             }
             catch (Exception ex)
             {
-                _project.SendWarningToLog(ex.Message);
+                _logger.Warn(ex.Message);
             }
         }
 
@@ -250,7 +250,7 @@ namespace z3nCore
                 }
                 catch (Exception ex)
                 {
-                    _project.log(ex.Message);
+                    _logger.Warn(ex.Message);
                     throw;
                 }
             }
@@ -265,7 +265,7 @@ namespace z3nCore
             mapVars.Add(new Tuple<string, string>("cfgPin", "cfgPin"));
             mapVars.Add(new Tuple<string, string>("DBpstgrPass", "DBpstgrPass"));
             try { _project.ExecuteProject(tempFilePath, mapVars, true, true, true); }
-            catch (Exception ex) { _project.SendWarningToLog(ex.Message, true); }
+            catch (Exception ex) { _logger.Warn(ex.Message); }
         }
 
         private void BuildNewDatabase()
@@ -287,7 +287,7 @@ namespace z3nCore
             }
             else
             {
-                _project.SendWarningToLog($"file {filePath} not found. Last version can be downloaded by link \nhttps://raw.githubusercontent.com/w3bgrep/z3nFarm/master/DbBuilder.zp");
+                _logger.Warn($"file {filePath} not found. Last version can be downloaded by link \nhttps://raw.githubusercontent.com/w3bgrep/z3nFarm/master/DbBuilder.zp");
             }
         }
         
@@ -317,7 +317,7 @@ namespace z3nCore
                     break;	
                 
                 default:
-                    _project.SendWarningToLog($"unknown browser config {cfgBrowser}");
+                    _logger.Warn($"unknown browser config {cfgBrowser}");
                     throw new Exception($"unknown browser config {cfgBrowser}");
             }
             
@@ -354,14 +354,14 @@ namespace z3nCore
                 
                 if (pid == 0)
                 {
-                    _logger.Send("Fast PID search failed, using fallback");
+                    _logger.Send("PID search fallback: fast method failed, using slow search");
                     pid = Utilities.ProcAcc.GetNewest(acc0);
                 }
         
                 port = _instance.Port;
             }
             _project.Variables["instancePort"].Value = $"port: {port}, pid: {pid}";
-            _logger.Send($"started {cfgBrowser} in  {_project.Variables["instancePort"].Value}");
+            _logger.Send($"Browser launched: type={cfgBrowser}, port={port}, pid={pid}, acc={acc0}");
             BindPid(pid,port);
             return pid.ToString();
         }
@@ -380,12 +380,12 @@ namespace z3nCore
             {
                 
             }
-            _logger.Send($"setting {instanceType}");
+            
             if (instanceType == "Chromium")
             {
                 string webGlData = _project.SqlGet("webgl", "_instance");
                 SetDisplay(webGlData);
-                bool goodProxy = new NetHttp(_project, log).ProxySet(_instance);
+                bool goodProxy = ProxySet();
                 if (strictProxy && !goodProxy) throw new Exception($"!E bad proxy");
                 var cookiePath = _project.PathCookies();
                 _project.Var("pathCookies", cookiePath);
@@ -400,16 +400,15 @@ namespace z3nCore
                     }
                     catch (Exception Ex)
                     {
-                        _logger.Send($"!W Fail to set cookies from file {cookiePath}");
+                        _logger.Warn($"Cookies set failed: source=database, path={cookiePath}, error={Ex.Message}");
                         try
                         {
-                            _logger.Send($"!E Fail to set cookies from db Err. {Ex.Message}");
                             cookies = File.ReadAllText(cookiePath);
                             _instance.SetCookie(cookies);
                         }
                         catch (Exception E)
                         {
-                            _logger.Send($"!W Fail to set cookies from file {cookiePath} {E.Message}");
+                            _logger.Warn($"Cookies set failed: source=file, path={cookiePath}, error={E.Message}");
                         }
                     }
             }
@@ -484,7 +483,31 @@ namespace z3nCore
                 _logger.Warn(ex.Message);
             }
         }
-        
+        private bool ProxySet( string proxyString = null)
+        {
+            
+            if (string.IsNullOrWhiteSpace(proxyString)) 
+                proxyString = _project.DbGet("proxy", "_instance");
+            if (string.IsNullOrWhiteSpace(proxyString))
+                throw new ArgumentException(proxyString);
+            
+            string ipLocal = _project.GET("http://api.ipify.org/", null);
+            string ipProxified = _project.GET("http://api.ipify.org/", proxyString, useNetHttp:true);
+
+            if (string.IsNullOrEmpty(ipProxified) || !System.Net.IPAddress.TryParse(ipProxified, out _))
+            {
+                _logger.Warn($"Proxy check failed: proxy={proxyString}, ip={ipProxified}");
+                return false;
+            }
+            if (ipProxified != ipLocal)
+            {
+                _instance.SetProxy(proxyString, true, true, true, true);
+                _logger.Send($"Proxy set: ip={ipProxified}, local={ipLocal}");
+                return true;
+            }
+            _logger.Warn($"Proxy matches local: proxy={proxyString}, ip={ipProxified}");
+            return false;
+        } 
         #endregion
         
 
@@ -520,7 +543,7 @@ namespace z3nCore
                 foreach (string chain in chains)
                 {
                     native = _project.EvmNative(Rpc.Get(chain), address);
-                    _project.SendInfoToLog($"{native}");
+                    _logger.Send($"{native}");
                     switch (chain)
                     {
                         case "bsc":
@@ -541,10 +564,10 @@ namespace z3nCore
                     }
                     var required = _project.Var("nativeBy") == "native" ? minNativeInUsd : _project.UsdToToken(minNativeInUsd, tiker, "OKX");
                     if (native >= required) { 			
-                        _logger.Send($"{address} have sufficient [{native}] native in {chain}", color: LogColor.Gray);
+                        _logger.Send($"Balance check passed: address={address}, chain={chain}, native={native}, required={required}", color: LogColor.Gray);
                         return;
                     }
-                    _logger.Warn($"no balance required: [{required}${tiker}] in  {chain}. native is [{native}] for {address}");
+                    _logger.Warn($"Insufficient balance: address={address}, chain={chain}, native={native}, required={required}{tiker}");
                 }
                 var toDb = $"- {DateTime.UtcNow:yyyy-MM-ddTHH:mm:ss.fffZ} 0\n";
                 toDb += $"no balance required: [{minNativeInUsd}] in chains {_project.Var("gateOnchainChain")}";
@@ -574,7 +597,7 @@ namespace z3nCore
                 {
                     if (status.Contains(word))
                     {
-                        string exMsg = $"{social} of {_project.Var("acc0")}: [{status}]";
+                        string exMsg = $"Social filter failed: social={social}, acc={_project.Var("acc0")}, status={status}";
                         _logger.Warn(exMsg);
                         throw new Exception(exMsg);
                     }
@@ -599,7 +622,7 @@ namespace z3nCore
                                       $"Executing assembly ({executingAssembly.Location}) version: {executingVersion}, " +
                                       $"Referenced assembly ({referencedAssembly.Location}) version: {referencedVersion}. " +
                                       $"Ensure both assemblies are the same version.";
-                _project.SendWarningToLog(errorMessage);
+                _logger.Warn(errorMessage);
             }
             
             string currentProcessPath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
@@ -738,7 +761,7 @@ namespace z3nCore
             {
                 try
                 {
-                    _project.SendWarningToLog("Primary strategy failed, using fallback: " + ex.Message);
+                    _logger.Warn("Primary strategy failed, using fallback: " + ex.Message);
                 }
                 catch { }
                 
@@ -868,7 +891,7 @@ namespace z3nCore
             
             if (!accounts.Any())
             {
-                project.warn($"no accounts by condition {condition}");
+                project.warn($"Account selection failed: condition={condition}, found=0");
                 return;
             }
             
@@ -899,7 +922,7 @@ namespace z3nCore
             
             var left = project.Lists["accs"].Count;
             project.DbUpd($"status = 'working...'");
-            project.SendToLog($"{left} accs left by condition {condition}", LogType.Info, true, LogColor.Gray);
+            project.SendToLog($"Account selected: acc={acc0}, remaining={left}, condition={condition}", LogType.Info, true, LogColor.Gray);
         }
 
         private static bool FilterBySocial(this IZennoPosterProjectModel project, string socialName, string originalCondition = "")
@@ -915,8 +938,8 @@ namespace z3nCore
             
             if (!combined.Any())
             {
-                var conditionInfo = string.IsNullOrEmpty(originalCondition) ? "" : $" by condition {originalCondition}";
-                project.warn($"no accounts{conditionInfo} after filtering {socialName}");
+                var conditionInfo = string.IsNullOrEmpty(originalCondition) ? "" : $", condition={originalCondition}";
+                project.warn($"Social filter failed: social={socialName}, found=0{conditionInfo}");
                 return false;
             }
             
@@ -932,15 +955,17 @@ namespace z3nCore
         {
             new Init(project, instance).InitVariables(author);
         }
-        public static void RunBrowser(this IZennoPosterProjectModel project, Instance instance, string browserToLaunch = "Chromium")
+        public static void RunBrowser(this IZennoPosterProjectModel project, Instance instance, string browserToLaunch = "Chromium", bool debug = false)
         {
             var browser = instance.BrowserType;
-            var brw = new Init(project,instance, true);
+            var brw = new Init(project,instance, false);
             if (browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium && browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.ChromiumFromZB)
             {	
                 brw.PrepareInstance(browserToLaunch);
             }
         }
+        
+        
         
     }
 

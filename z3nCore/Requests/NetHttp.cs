@@ -586,43 +586,8 @@ namespace z3nCore
             ).GetAwaiter().GetResult();
         }
 
-        /// <summary>
-        /// Проверка прокси (синхронная)
-        /// </summary>
-        public bool CheckProxy(string proxyString = null)
-        {
-            string ipLocal = GET("http://api.ipify.org/", null);
-            string ipProxified = GET("http://api.ipify.org/", proxyString);
 
-            if (ipProxified != ipLocal)
-            {
-                return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Установка прокси в Instance (синхронная)
-        /// </summary>
-        public bool ProxySet(Instance instance, string proxyString = null)
-        {
-            string ipLocal = GET("http://api.ipify.org/", null);
-            string ipProxified = GET("http://api.ipify.org/", proxyString);
-
-            if (string.IsNullOrEmpty(ipProxified) || !System.Net.IPAddress.TryParse(ipProxified, out _))
-            {
-                return false;
-            }
-
-            if (ipProxified != ipLocal)
-            {
-                instance.SetProxy(proxyString, true, true, true, true);
-                return true;
-            }
-
-            return false;
-        }
+        
     }
 
     /// <summary>
