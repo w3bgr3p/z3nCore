@@ -55,7 +55,7 @@ namespace z3nCore
         }
         private string TokenGet(bool saveToDb = false)
         {
-            var stats = new Traffic(_project,_instance).Get("https://discord.com/api/v9/science",  reload:true).RequestHeaders;
+            var stats = new Traffic(_project,_instance).FindTrafficElement("https://discord.com/api/v9/science",  reload:true).RequestHeaders;
             string patern = @"(?<=uthorization:\ ).*";
             string token = System.Text.RegularExpressions.Regex.Match(stats, patern).Value;
             _log.Send($"Token extracted: length={token?.Length ?? 0}, valid={!string.IsNullOrEmpty(token)}");

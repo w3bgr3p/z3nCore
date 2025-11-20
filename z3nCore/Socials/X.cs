@@ -63,9 +63,9 @@ namespace z3nCore
             bool secondTry = false;
             p0:
             _log.Send($"Creating Traffic object, secondTry: {secondTry}");
-            var traffic = new Traffic(_project, _instance).Snapshot();
+            var traffic = new Traffic(_project, _instance);
             _log.Send("Traffic snapshot created successfully");
-            var all = traffic.GetAll("UserByScreenName", strict: false);
+            var all = traffic.FindAllTrafficElements("UserByScreenName", strict: false);
             _log.Send($"Traffic elements count: {all.Count}");
             
             if (all.Count == 0 && !secondTry)
@@ -102,9 +102,9 @@ namespace z3nCore
             bool secondTry = false;
             p0:
             _log.Send($"Creating Traffic object, secondTry: {secondTry}");
-            var traffic = new Traffic(_project, _instance).Snapshot();
+            var traffic = new Traffic(_project, _instance);
             _log.Send("Traffic snapshot created successfully");
-            var all = traffic.GetAll("account/settings.json?", strict: false);
+            var all = traffic.FindAllTrafficElements("account/settings.json?", strict: false);
             _log.Send($"Traffic elements count: {all.Count}");
             
             if (all.Count == 0 && !secondTry)

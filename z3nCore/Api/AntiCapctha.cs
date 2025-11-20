@@ -12,7 +12,7 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore.Api
 {
-    public class AntiCaptcha : IDisposable  
+    public class AntiCaptcha : IDisposable
     {
         private readonly string _apiKey;
         private readonly string _apiUrl = "https://api.anti-captcha.com";
@@ -45,16 +45,17 @@ namespace z3nCore.Api
 
         public string SolveCaptchaFromBase64(
             string base64Image,
-            int numeric = 0,          
+            int numeric = 0,
             int minLength = 0,
             int maxLength = 0,
-            bool phrase = false,       
+            bool phrase = false,
             bool caseSensitive = true,
             bool math = false)
         {
             // ✅ Безопасная обертка для async метода
             return Task.Run(async () =>
-                await SolveCaptchaFromBase64Async(base64Image, numeric, minLength, maxLength, phrase, caseSensitive, math)
+                await SolveCaptchaFromBase64Async(base64Image, numeric, minLength, maxLength, phrase, caseSensitive,
+                        math)
                     .ConfigureAwait(false)
             ).GetAwaiter().GetResult();
         }
@@ -91,17 +92,18 @@ namespace z3nCore.Api
             byte[] imageBytes = File.ReadAllBytes(imagePath);
             string base64Image = Convert.ToBase64String(imageBytes);
 
-            return await SolveCaptchaFromBase64Async(base64Image, numeric, minLength, maxLength, phrase, caseSensitive, math);
+            return await SolveCaptchaFromBase64Async(base64Image, numeric, minLength, maxLength, phrase, caseSensitive,
+                math);
         }
 
         // ============== PRIVATE ASYNC  ==============
 
         private async Task<int> CreateTaskAsync(
             string base64Image,
-            int numeric,         
+            int numeric,
             int minLength,
             int maxLength,
-            bool phrase,          
+            bool phrase,
             bool caseSensitive,
             bool math)
         {
@@ -172,7 +174,7 @@ namespace z3nCore.Api
                 await Task.Delay(3000);
 
                 var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
-                
+
                 var response = await _httpClient.PostAsync($"{_apiUrl}/getTaskResult", content);
                 string responseText = await response.Content.ReadAsStringAsync();
 
@@ -222,7 +224,13 @@ namespace z3nCore.Api
             _httpClient?.Dispose();
         }
     }
+}
 
+
+
+namespace z3nCore
+{
+    using Api;
     public static partial class CaptchaExtensions
     {
         public static string SolveHeWithAntiCaptcha(this HtmlElement he, IZennoPosterProjectModel project)
@@ -243,7 +251,6 @@ namespace z3nCore.Api
                 return result;
             }
         }
-
         public static string SolveCaptchaFromUrl(IZennoPosterProjectModel project, string url, string proxy = "+")
         {
             var api_key = project.DbGet("apikey", "_api", where: "id = 'anticaptcha'");
@@ -259,6 +266,5 @@ namespace z3nCore.Api
             }
         }
     }
-    
     
 }

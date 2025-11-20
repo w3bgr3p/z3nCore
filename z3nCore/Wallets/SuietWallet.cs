@@ -69,9 +69,9 @@ namespace z3nCore.Wallets
             return adr;
         }
         
-        public void Sign()
+        public void Sign(int deadline = 10,  int delay = 3)
         {
-            _instance.HeClick(("button", "class", "_button--primary_", "regexp", 0));
+            _instance.HeClick(("button", "class", "_button--primary_", "regexp", 0),deadline: deadline, delay:delay);
         }
         
         

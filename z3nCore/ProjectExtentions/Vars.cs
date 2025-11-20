@@ -150,11 +150,25 @@ namespace z3nCore
         public static string ProjectName(this IZennoPosterProjectModel project)
         {
             var path = project.Var("projectScript");
-            //if (string.IsNullOrEmpty(path)) throw new Exception("projectScript no defined");
-            bool fromPath = !string.IsNullOrEmpty(path);
-            string name = fromPath? ProjectName(path): ProjectName(project.Name);
-            //if (string.IsNullOrEmpty(path))project.Var("projectScript",project.Name);
-            //string name = ProjectName(project.Variables["projectScript"].Value);
+    
+            if (string.IsNullOrEmpty(path))
+            {
+                var pathToFolder = project.Path;
+                var filename = project.Name;
+        
+                var actualFiles = Directory.GetFiles(pathToFolder, filename, SearchOption.TopDirectoryOnly);
+        
+                if (actualFiles.Length > 0)
+                {
+                    path = Path.GetFileName(actualFiles[0]); 
+                }
+                else
+                {
+                    path = project.Name; 
+                }
+            }
+    
+            string name = ProjectName(path);
             project.Var("projectName", name);
             return name;
         }
@@ -277,9 +291,6 @@ namespace z3nCore
             }
             return Path.Combine(project.PathProfiles(),"accounts","profilesFolder",acc0);
         }
-        
-        
-        
         
         
     }

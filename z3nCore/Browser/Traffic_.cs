@@ -42,13 +42,12 @@ namespace z3nCore
         /// Найти первый элемент трафика по URL (с ожиданием)
         /// </summary>
         /// <param name="url">URL или его часть для поиска</param>
-        /// <param name="strict">true = точное совпадение, false = содержит подстроку</param>
+        /// <param name="exactMatch">true = точное совпадение, false = содержит подстроку</param>
         /// <param name="timeoutSeconds">Таймаут ожидания в секундах</param>
         /// <param name="retryDelaySeconds">Задержка между попытками</param>
-        public TrafficElement FindTrafficElement(string url, bool strict = false, 
-            int timeoutSeconds = 15, int retryDelaySeconds = 1, bool reload = false)
+        public TrafficElement FindTrafficElement(string url, bool exactMatch = false, 
+            int timeoutSeconds = 15, int retryDelaySeconds = 1)
         {
-            if (reload) ReloadPage();
             _project.Deadline();
             _instance.UseTrafficMonitoring = true;
 
@@ -63,7 +62,7 @@ namespace z3nCore
 
                 if (_showLog) _logger.Send($"Attempt #{attemptNumber} searching URL: {url}");
 
-                var element = SearchInCache(url, strict);
+                var element = SearchInCache(url, exactMatch);
                 if (element != null)
                 {
                     if (_showLog) _logger.Send($"✓ Found traffic for: {url}");
@@ -81,8 +80,8 @@ namespace z3nCore
         /// Найти все элементы трафика по URL (без ожидания, работает с текущим кэшем)
         /// </summary>
         /// <param name="url">URL или его часть для поиска</param>
-        /// <param name="strict">true = точное совпадение, false = содержит подстроку</param>
-        public List<TrafficElement> FindAllTrafficElements(string url, bool strict = false)
+        /// <param name="exactMatch">true = точное совпадение, false = содержит подстроку</param>
+        public List<TrafficElement> FindAllTrafficElements(string url, bool exactMatch = false)
         {
             UpdateCacheIfNeeded();
 
@@ -90,7 +89,7 @@ namespace z3nCore
 
             foreach (var element in _cache)
             {
-                bool isMatch = strict 
+                bool isMatch = exactMatch 
                     ? element.Url == url 
                     : element.Url.Contains(url);
 
@@ -121,58 +120,58 @@ namespace z3nCore
         /// <summary>
         /// Получить тело ответа (response body) по URL
         /// </summary>
-        public string GetResponseBody(string url, bool strict = false, int timeoutSeconds = 15)
+        public string GetResponseBody(string url, bool exactMatch = false, int timeoutSeconds = 15)
         {
-            var element = FindTrafficElement(url, strict, timeoutSeconds);
+            var element = FindTrafficElement(url, exactMatch, timeoutSeconds);
             return element.ResponseBody;
         }
 
         /// <summary>
         /// Получить тело запроса (request body) по URL
         /// </summary>
-        public string GetRequestBody(string url, bool strict = false, int timeoutSeconds = 15)
+        public string GetRequestBody(string url, bool exactMatch = false, int timeoutSeconds = 15)
         {
-            var element = FindTrafficElement(url, strict, timeoutSeconds);
+            var element = FindTrafficElement(url, exactMatch, timeoutSeconds);
             return element.RequestBody;
         }
 
         /// <summary>
         /// Получить заголовок из запроса (request header)
         /// </summary>
-        public string GetRequestHeader(string url, string headerName, bool strict = false, 
+        public string GetRequestHeader(string url, string headerName, bool exactMatch = false, 
             int timeoutSeconds = 15)
         {
-            var element = FindTrafficElement(url, strict, timeoutSeconds);
+            var element = FindTrafficElement(url, exactMatch, timeoutSeconds);
             return element.GetRequestHeader(headerName);
         }
 
         /// <summary>
         /// Получить заголовок из ответа (response header)
         /// </summary>
-        public string GetResponseHeader(string url, string headerName, bool strict = false, 
+        public string GetResponseHeader(string url, string headerName, bool exactMatch = false, 
             int timeoutSeconds = 15)
         {
-            var element = FindTrafficElement(url, strict, timeoutSeconds);
+            var element = FindTrafficElement(url, exactMatch, timeoutSeconds);
             return element.GetResponseHeader(headerName);
         }
 
         /// <summary>
         /// Получить все заголовки запроса в виде словаря
         /// </summary>
-        public Dictionary<string, string> GetAllRequestHeaders(string url, bool strict = false, 
+        public Dictionary<string, string> GetAllRequestHeaders(string url, bool exactMatch = false, 
             int timeoutSeconds = 15)
         {
-            var element = FindTrafficElement(url, strict, timeoutSeconds);
+            var element = FindTrafficElement(url, exactMatch, timeoutSeconds);
             return element.GetAllRequestHeaders();
         }
 
         /// <summary>
         /// Получить все заголовки ответа в виде словаря
         /// </summary>
-        public Dictionary<string, string> GetAllResponseHeaders(string url, bool strict = false, 
+        public Dictionary<string, string> GetAllResponseHeaders(string url, bool exactMatch = false, 
             int timeoutSeconds = 15)
         {
-            var element = FindTrafficElement(url, strict, timeoutSeconds);
+            var element = FindTrafficElement(url, exactMatch, timeoutSeconds);
             return element.GetAllResponseHeaders();
         }
 
@@ -239,13 +238,13 @@ namespace z3nCore
             if (_showLog) _logger.Send($"Cache refreshed: {_cache.Count} elements");
         }
 
-        private TrafficElement SearchInCache(string url, bool strict)
+        private TrafficElement SearchInCache(string url, bool exactMatch)
         {
             UpdateCacheIfNeeded();
 
             foreach (var element in _cache)
             {
-                bool isMatch = strict 
+                bool isMatch = exactMatch 
                     ? element.Url == url 
                     : element.Url.Contains(url);
 
@@ -260,7 +259,7 @@ namespace z3nCore
 
             foreach (var element in _cache)
             {
-                bool isMatch = strict 
+                bool isMatch = exactMatch 
                     ? element.Url == url 
                     : element.Url.Contains(url);
 
@@ -425,7 +424,7 @@ namespace z3nCore
                 ReloadPage(delaySeconds);
             }
 
-            var element = FindTrafficElement(url, strict: strict, 
+            var element = FindTrafficElement(url, exactMatch: strict, 
                 timeoutSeconds: timeoutSeconds, retryDelaySeconds: delaySeconds);
 
             return new TrafficData(element);
@@ -457,7 +456,7 @@ namespace z3nCore
                 ReloadPage(delay);
             }
 
-            var element = FindTrafficElement(url, strict: false, 
+            var element = FindTrafficElement(url, exactMatch: false, 
                 timeoutSeconds: deadline, retryDelaySeconds: delay);
             
             var result = GetElementField(element, parametr);
@@ -492,10 +491,10 @@ namespace z3nCore
         /// <summary>
         /// [УСТАРЕЛО] Используйте FindAllTrafficElements()
         /// </summary>
-        [Obsolete("Используйте FindAllTrafficElements(url, strict) который возвращает List<TrafficElement>")]
+        [Obsolete("Используйте FindAllTrafficElements(url, exactMatch) который возвращает List<TrafficElement>")]
         public List<TrafficData> GetAll(string url, bool strict = false)
         {
-            var elements = FindAllTrafficElements(url, strict: strict);
+            var elements = FindAllTrafficElements(url, exactMatch: strict);
             return elements.Select(e => new TrafficData(e)).ToList();
         }
 
@@ -523,7 +522,7 @@ namespace z3nCore
                 ReloadPage();
             }
 
-            return GetRequestHeader(url, headerName, strict: false, timeoutSeconds: timeoutSeconds);
+            return GetRequestHeader(url, headerName, exactMatch: false, timeoutSeconds: timeoutSeconds);
         }
 
         /// <summary>
@@ -538,7 +537,7 @@ namespace z3nCore
                 ReloadPage();
             }
 
-            var element = FindTrafficElement(url, strict: strict, timeoutSeconds: deadline);
+            var element = FindTrafficElement(url, exactMatch: strict, timeoutSeconds: deadline);
 
             return new Dictionary<string, string>
             {
@@ -569,7 +568,7 @@ namespace z3nCore
                 ReloadPage();
             }
 
-            var element = FindTrafficElement(url, strict: false, timeoutSeconds: deadline);
+            var element = FindTrafficElement(url, exactMatch: false, timeoutSeconds: deadline);
             return GetElementField(element, parametr);
         }
 
@@ -656,10 +655,10 @@ namespace z3nCore
         /// Получить заголовки запроса и сохранить в переменную проекта
         /// </summary>
         public static void SaveRequestHeadersToVariable(this IZennoPosterProjectModel project, 
-            Instance instance, string url, bool strict = false, bool log = false)
+            Instance instance, string url, bool exactMatch = false, bool log = false)
         {
             var traffic = new Traffic(project, instance, log: log);
-            var element = traffic.FindTrafficElement(url, strict);
+            var element = traffic.FindTrafficElement(url, exactMatch);
             
             var cleanHeaders = new StringBuilder();
             foreach (string header in element.RequestHeaders.Split('\n'))
@@ -680,11 +679,11 @@ namespace z3nCore
         /// Получить заголовки и сохранить в переменную проекта и/или БД
         /// </summary>
         public static void CollectRequestHeaders(this IZennoPosterProjectModel project, 
-            Instance instance, string url, bool strict = false, 
+            Instance instance, string url, bool exactMatch = false, 
             bool saveToVariable = true, bool saveToDatabase = true, bool log = false)
         {
             var traffic = new Traffic(project, instance, log: log);
-            var element = traffic.FindTrafficElement(url, strict);
+            var element = traffic.FindTrafficElement(url, exactMatch);
             
             var cleanHeaders = new StringBuilder();
             int headerCount = 0;

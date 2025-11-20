@@ -62,21 +62,21 @@ namespace z3nCore
             string url = _commands["delete"] + _auth;//$"https://api.firstmail.ltd/v1/mail/delete?username={_login} &password={_pass}";
             string additional = seen ? "seen=true" : null;
             url += additional;
-            string result = _project.GET(url,_proxy, _headers, parseJson:true);
+            string result = _project.GET(url,_proxy, _headers, parse:true);
             return result;
         }
         public string GetOne(string email)
         {
             string url = _commands["getOne"] + _auth;
             //string url = $"https://api.firstmail.ltd/v1/mail/one?username={_login}&password={_pass}";
-            string result = _project.GET(url,_proxy, _headers, parseJson:true);
+            string result = _project.GET(url,_proxy, _headers, parse:true);
             return result;
         }
         public string GetAll(string email)
         {
             string url = _commands["getAll"] + _auth;
             //string url = $"https://api.firstmail.ltd/v1/get/messages?username={_login} &password={_pass}";
-            string result = _project.GET(url,_proxy, _headers, parseJson:true);
+            string result = _project.GET(url,_proxy, _headers, parse:true);
             return result;
         }
         
