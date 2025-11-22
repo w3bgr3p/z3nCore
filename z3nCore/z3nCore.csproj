@@ -160,6 +160,7 @@
     <Compile Include="Socials\Discord.cs" />
     <Compile Include="Sql\PostgreSQL.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Sql\Sql.cs" />
     <Compile Include="Sql\SQLite.cs" />
     <Compile Include="Wallets\SuietWallet.cs" />
     <Compile Include="Wallets\ZerionWallet.cs" />
