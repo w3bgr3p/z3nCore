@@ -139,7 +139,8 @@ namespace z3nCore
                     }
                     else if (thrw)
                     {
-                        throw new ElementNotFoundException($"not found in {deadline}s: {lastExceptionMessage}");
+                        string url = instance.ActiveTab.URL;
+                        throw new ElementNotFoundException($"not found in {deadline}s: {lastExceptionMessage}. URL is: {url}");
                     }
                     else
                     {
@@ -322,10 +323,31 @@ namespace z3nCore
                 Thread.Sleep(500);
             }
         }
-        public static void HeDrop(this Instance instance, Func<ZennoLab.CommandCenter.HtmlElement> elementSearch)
+        public static void HeDrop(this Instance instance, object obj, string method = "", int deadline = 10,   bool thrw = true)
         {
-            HtmlElement he = elementSearch();
-            HtmlElement heParent = he.ParentElement; heParent.RemoveChild(he);
+            DateTime functionStart = DateTime.Now;
+            string lastExceptionMessage = "";
+
+            while (true)
+            {
+                if ((DateTime.Now - functionStart).TotalSeconds > deadline)
+                {
+                    if (thrw) throw new TimeoutException($" not found in {deadline}s: {lastExceptionMessage}");
+                    else return;
+                }
+                try
+                {
+                    HtmlElement he = instance.GetHe(obj, method);
+                    HtmlElement heParent = he.ParentElement; heParent.RemoveChild(he);
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    lastExceptionMessage = ex.Message;
+                }
+                Thread.Sleep(500);
+            }
+           
         }
 
         //js
@@ -472,67 +494,7 @@ namespace z3nCore
             }
         }
 
-        //cf
-        public static void ClFlv2(this Instance instance)
-        {
-            //!!!OLD METHOD WILL BE DEPRECATED SOON!!! use "instance.CFSolve" instead 
-            
-            Random rnd = new Random(); string strX = ""; string strY = ""; Thread.Sleep(3000);
-            HtmlElement he1 = instance.ActiveTab.FindElementById("cf-turnstile");
-            HtmlElement he2 = instance.ActiveTab.FindElementByAttribute("div", "outerhtml", "<div><input type=\"hidden\" name=\"cf-turnstile-response\"", "regexp", 4);
-            if (he1.IsVoid && he2.IsVoid) return;
-            else if (!he1.IsVoid)
-            {
-                strX = he1.GetAttribute("leftInbrowser"); strY = he1.GetAttribute("topInbrowser");
-            }
-            else if (!he2.IsVoid)
-            {
-                strX = he2.GetAttribute("leftInbrowser"); strY = he2.GetAttribute("topInbrowser");
-            }
-
-            int rndX = rnd.Next(23, 26); int x = (int.Parse(strX) + rndX);
-            int rndY = rnd.Next(27, 31); int y = (int.Parse(strY) + rndY);
-            Thread.Sleep(rnd.Next(4, 5) * 1000);
-            instance.WaitFieldEmulationDelay();
-            instance.Click(x, x, y, y, "Left", "Normal");
-            Thread.Sleep(rnd.Next(3, 4) * 1000);
-
-        }
-        public static string ClFl(this Instance instance, int deadline = 60, bool strict = false)
-        {
-            //!!!OLD METHOD WILL BE DEPRECATED SOON!!! use "instance.CFToken" instead 
-            DateTime timeout = DateTime.Now.AddSeconds(deadline);
-            while (true)
-            {
-                if (DateTime.Now > timeout) throw new Exception($"!W CF timeout");
-                Random rnd = new Random();
-
-                Thread.Sleep(rnd.Next(3, 4) * 1000);
-
-                var token = instance.HeGet(("cf-turnstile-response", "name"), atr: "value");
-                if (!string.IsNullOrEmpty(token)) return token;
-
-                string strX = ""; string strY = "";
-
-                try
-                {
-                    var cfBox = instance.GetHe(("cf-turnstile", "id"));
-                    strX = cfBox.GetAttribute("leftInbrowser"); strY = cfBox.GetAttribute("topInbrowser");
-                }
-                catch
-                {
-                    var cfBox = instance.GetHe(("div", "outerhtml", "<div><input type=\"hidden\" name=\"cf-turnstile-response\"", "regexp", 4));
-                    strX = cfBox.GetAttribute("leftInbrowser"); strY = cfBox.GetAttribute("topInbrowser");
-                }
-
-                int x = (int.Parse(strX) + rnd.Next(23, 26));
-                int y = (int.Parse(strY) + rnd.Next(27, 31));
-                instance.Click(x, x, y, y, "Left", "Normal");
-
-            }
-        }
-
-
+        
 
         public static void ClearShit(this Instance instance, string domain)
         {
@@ -542,9 +504,6 @@ namespace z3nCore
             Thread.Sleep(500);
             instance.ActiveTab.Navigate("about:blank", "");
         }
-
-
-
         public static void CloseExtraTabs(this Instance instance, bool blank = false, int tabToKeep = 1)
         {
             for (; ; ) { try { instance.AllTabs[tabToKeep].Close(); Thread.Sleep(1000); } catch { break; } }
@@ -594,5 +553,20 @@ namespace z3nCore
 
     }
 
-    
+    public static partial class Fallback
+    {
+        public static void ClFlv2(this Instance instance)
+        {
+            instance.CFSolve();
+        }
+        public static string ClFl(this Instance instance, int deadline = 60, bool strict = false)
+        {
+           return instance.CFToken();
+        }
+
+        
+        
+    }
+
+
 }

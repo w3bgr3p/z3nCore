@@ -112,6 +112,7 @@
     <Compile Include="Reports\Accountant.cs" />
     <Compile Include="Reports\DailyReport.cs" />
     <Compile Include="Reports\Reporter.cs" />
+    <Compile Include="Requests\Requests.cs" />
     <Compile Include="Security\Cryptography.cs" />
     <Compile Include="Security\ISAFU.cs" />
     <Compile Include="Socials\X.cs" />
@@ -128,6 +129,7 @@
     <Compile Include="W3b\EvmTools.cs" />
     <Compile Include="W3b\SolTools.cs" />
     <Compile Include="W3b\SuiTools.cs" />
+    <Compile Include="Wallets\AuroWallet.cs" />
     <Compile Include="Wallets\Keplr.cs" />
     <Compile Include="Browser\InstanceExtensions.cs" />
     <Compile Include="ProjectExtentions\Rnd.cs" />
@@ -137,7 +139,6 @@
     <Compile Include="Socials\Guild.cs" />
     <Compile Include="Sql\dSql.cs" />
     <Compile Include="W3b\Rpc.cs" />
-    <Compile Include="W3b\W3bLegacy.cs" />
     <Compile Include="W3b\W3b.cs" />
     <Compile Include="Socials\GitHub.cs" />
     <Compile Include="Sql\Db.cs" />
@@ -161,9 +162,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Sql\Sql.cs" />
     <Compile Include="Sql\SQLite.cs" />
-    <Compile Include="Requests\Requests.cs" />
     <Compile Include="Wallets\SuietWallet.cs" />
     <Compile Include="Wallets\ZerionWallet.cs" />
+    <Compile Include="_projects\_Zeko.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="ValidateZennoPosterDllPath" BeforeTargets="BeforeBuild">
@@ -232,8 +233,5 @@
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Connected Services\" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="_projects\" />
   </ItemGroup>
 </Project>

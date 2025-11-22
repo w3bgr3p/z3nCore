@@ -828,13 +828,60 @@ namespace z3nCore
     
     public static class AccountManager
     {
-        public static void ChooseAccountByCondition(this IZennoPosterProjectModel project, 
-            string condition, 
+        private static List<string> ParseRangeGroups(string accRange)
+        {
+            if (string.IsNullOrEmpty(accRange))
+                throw new Exception("accRange is null or empty");
+
+            var groups = new List<string>();
+
+            // Check if we have priority groups (separated by :)
+            if (accRange.Contains(":"))
+            {
+                var priorityGroups = accRange.Split(':');
+                foreach (var group in priorityGroups)
+                {
+                    groups.Add(ParseSingleRange(group.Trim()));
+                }
+            }
+            else
+            {
+                // Single range, backward compatibility
+                groups.Add(ParseSingleRange(accRange));
+            }
+
+            return groups;
+        }
+
+        private static string ParseSingleRange(string rangeStr)
+        {
+            if (rangeStr.Contains(","))
+            {
+                // Already comma-separated list
+                return rangeStr;
+            }
+            else if (rangeStr.Contains("-"))
+            {
+                // Range format like "1-100"
+                var parts = rangeStr.Split('-').Select(int.Parse).ToArray();
+                int start = parts[0];
+                int end = parts[1];
+                return string.Join(",", Enumerable.Range(start, end - start + 1));
+            }
+            else
+            {
+                // Single number
+                return rangeStr;
+            }
+        }
+
+        public static void ChooseAccountByCondition(this IZennoPosterProjectModel project,
+            string condition,
             string sortByTaskAge = null,
             bool useRange = true,
-            bool filterTwitter = false, 
-            bool filterDiscord = false, 
-            
+            bool filterTwitter = false,
+            bool filterDiscord = false,
+
             bool debugLog = false)
         {
             if (!string.IsNullOrEmpty(project.Var("acc0Forced")))
@@ -842,89 +889,119 @@ namespace z3nCore
                 project.Var("acc0", project.Var("acc0Forced"));
                 return;
             }
-            var rng = project.Var("range");
-            var fullCondition = useRange ? $"{condition} AND id in ({rng})" : condition;
+
             var tableName = project.ProjectTable();
-            
-            List<string> accounts;
-            
-            if (!string.IsNullOrEmpty(sortByTaskAge))
+
+            // Parse priority groups from cfgAccRange
+            List<string> rangeGroups = new List<string>();
+            if (useRange)
             {
-                var selectColumns = $"id, {sortByTaskAge}";
-                var orderBy = $"CASE WHEN {sortByTaskAge} = '' OR {sortByTaskAge} IS NULL THEN '9999-12-31' ELSE {sortByTaskAge} END ASC";
-                var query = $"SELECT {selectColumns} FROM {tableName} WHERE {fullCondition} ORDER BY {orderBy}";
-                
-                var rawData = project.DbQ(query, log: debugLog);
-                
-                var accountsWithDates = rawData.Split('·')
-                    .Where(row => !string.IsNullOrWhiteSpace(row))
-                    .Select(row => 
-                    {
-                        var parts = row.Split('|');
-                        var id = parts[0];
-                        var dateStr = parts.Length > 1 ? parts[1] : "";
-                        
-                        DateTime date;
-                        if (!DateTime.TryParseExact(dateStr, 
-                            "yyyy-MM-ddTHH:mm:ss.fffZ", 
-                            CultureInfo.InvariantCulture, 
-                            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, 
-                            out date))
-                        {
-                            date = DateTime.MaxValue;
-                        }
-                        
-                        return new { Id = id, Date = date };
-                    })
-                    .OrderBy(x => x.Date)
-                    .Select(x => x.Id)
-                    .ToList();
-                
-                accounts = accountsWithDates;
+                var cfgAccRange = project.Var("cfgAccRange");
+                rangeGroups = ParseRangeGroups(cfgAccRange);
             }
             else
             {
-                accounts = project.DbGetLines("id", log: debugLog, where: fullCondition)
-                    .Where(acc => !string.IsNullOrWhiteSpace(acc))
-                    .ToList();
+                rangeGroups.Add(null); // Single iteration without range
             }
-            
-            if (!accounts.Any())
+
+            // Try each priority group in order
+            foreach (var rangeGroup in rangeGroups)
             {
-                project.warn($"Account selection failed: condition={condition}, found=0");
+                var fullCondition = useRange
+                    ? $"{condition} AND id in ({rangeGroup})"
+                    : condition;
+
+                List<string> accounts;
+
+                if (!string.IsNullOrEmpty(sortByTaskAge))
+                {
+                    var selectColumns = $"id, {sortByTaskAge}";
+                    var orderBy = $"CASE WHEN {sortByTaskAge} = '' OR {sortByTaskAge} IS NULL THEN '9999-12-31' ELSE {sortByTaskAge} END ASC";
+                    var query = $"SELECT {selectColumns} FROM {tableName} WHERE {fullCondition} ORDER BY {orderBy}";
+
+                    var rawData = project.DbQ(query, log: debugLog);
+
+                    var accountsWithDates = rawData.Split('·')
+                        .Where(row => !string.IsNullOrWhiteSpace(row))
+                        .Select(row =>
+                        {
+                            var parts = row.Split('|');
+                            var id = parts[0];
+                            var dateStr = parts.Length > 1 ? parts[1] : "";
+
+                            DateTime date;
+                            if (!DateTime.TryParseExact(dateStr,
+                                "yyyy-MM-ddTHH:mm:ss.fffZ",
+                                CultureInfo.InvariantCulture,
+                                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                                out date))
+                            {
+                                date = DateTime.MaxValue;
+                            }
+
+                            return new { Id = id, Date = date };
+                        })
+                        .OrderBy(x => x.Date)
+                        .Select(x => x.Id)
+                        .ToList();
+
+                    accounts = accountsWithDates;
+                }
+                else
+                {
+                    accounts = project.DbGetLines("id", log: debugLog, where: fullCondition)
+                        .Where(acc => !string.IsNullOrWhiteSpace(acc))
+                        .ToList();
+                }
+
+                if (!accounts.Any())
+                {
+                    // No accounts found in this group, try next priority group
+                    continue;
+                }
+
+                project.ListSync("accs", accounts);
+
+                if (filterTwitter)
+                {
+                    if (!project.FilterBySocial("twitter", condition))
+                        continue; // Try next group
+                }
+
+                if (filterDiscord)
+                {
+                    if (!project.FilterBySocial("discord", condition))
+                        continue; // Try next group
+                }
+
+                accounts = project.Lists["accs"].ToList();
+
+                if (!accounts.Any())
+                {
+                    // After filtering, no accounts left, try next group
+                    continue;
+                }
+
+                var acc0 = !string.IsNullOrEmpty(sortByTaskAge)
+                    ? accounts.First()
+                    : project.RndFromList("accs", true);
+
+                project.Var("acc0", acc0);
+
+                if (!string.IsNullOrEmpty(sortByTaskAge))
+                    project.Lists["accs"].Remove(acc0);
+
+                var left = project.Lists["accs"].Count;
+                project.DbUpd($"status = 'working...'");
+                project.SendToLog($"Account selected: acc={acc0}, remaining={left}, condition={condition}", LogType.Info, true, LogColor.Gray);
+
+                // Successfully found account, exit
                 return;
             }
-            
-            project.ListSync("accs", accounts);
-            
-            if (filterTwitter)
-            {
-                if (!project.FilterBySocial("twitter", condition))
-                    return;
-            }
-            
-            if (filterDiscord)
-            {
-                if (!project.FilterBySocial("discord", condition))
-                    return;
-            }
-            
-            accounts = project.Lists["accs"].ToList();
-            
-            var acc0 = !string.IsNullOrEmpty(sortByTaskAge) 
-                ? accounts.First()
-                : project.RndFromList("accs", true);
-            
-            project.Var("acc0", acc0);
-            
-            if (!string.IsNullOrEmpty(sortByTaskAge))
-                project.Lists["accs"].Remove(acc0);
-            
-            var left = project.Lists["accs"].Count;
-            project.DbUpd($"status = 'working...'");
-            project.SendToLog($"Account selected: acc={acc0}, remaining={left}, condition={condition}", LogType.Info, true, LogColor.Gray);
-        }
 
+            // No accounts found in any priority group
+            project.warn($"Account selection failed: condition={condition}, found=0 in all priority groups");
+        }
         private static bool FilterBySocial(this IZennoPosterProjectModel project, string socialName, string originalCondition = "")
         {
             var accs = project.ListSync("accs");
