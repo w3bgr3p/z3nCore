@@ -164,7 +164,6 @@
     <Compile Include="Sql\SQLite.cs" />
     <Compile Include="Wallets\SuietWallet.cs" />
     <Compile Include="Wallets\ZerionWallet.cs" />
-    <Compile Include="_projects\_Zeko.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="ValidateZennoPosterDllPath" BeforeTargets="BeforeBuild">
@@ -233,5 +232,8 @@
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Connected Services\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="_projects\" />
   </ItemGroup>
 </Project>
