@@ -323,7 +323,7 @@ namespace z3nCore.W3b
         /// <summary>
         /// Альтернативный метод через Transaction Block (если unsafe_paySui не работает)
         /// </summary>
-        private async Task<string> SendViaTransactionBlock(string rpc, string from, string to, 
+        private Task<string> SendViaTransactionBlock(string rpc, string from, string to, 
             long amountInMist, string gasCoinId, byte[] privateKey)
         {
             // TODO: Реализовать через sui_moveCall и Transaction Block
