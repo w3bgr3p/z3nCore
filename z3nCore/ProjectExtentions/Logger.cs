@@ -10,6 +10,14 @@ using z3nCore;
 
 namespace z3nCore
 {
+    public enum LogLevel
+    {
+        Debug = 0,
+        Info = 1,
+        Warning = 2,
+        Error = 3,
+        Off = 99
+    }
     public class Logger
     {
         private readonly IZennoPosterProjectModel _project;
@@ -17,8 +25,10 @@ namespace z3nCore
         private string _emoji = null;
         private readonly bool _persistent;
         private readonly long _t0;
+        
+        
 
-        public Logger(IZennoPosterProjectModel project, bool log = false, string classEmoji = null, bool persistent = true)
+        public Logger(IZennoPosterProjectModel project, bool log = false, string classEmoji = null, bool persistent = true, LogLevel logLevel = LogLevel.Info)
         {
             _project = project;
             _logShow = log || _project.Var("debug") == "True";

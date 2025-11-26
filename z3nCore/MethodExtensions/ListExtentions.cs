@@ -6,23 +6,35 @@ namespace z3nCore
 {
     public static class ListExtensions
     {
-        private static readonly Random _random = new Random();
-        public static object RndFromList(this List<string> list)
+        [ThreadStatic]
+        private static Random _random;
+        
+        private static Random Random => _random ?? (_random = new Random());
+
+        public static T Rnd<T>(this IList<T> list, bool remove = false)
         {
-            if (list.Count == 0) throw new ArgumentNullException(nameof(list), "List is empty");
-            int index = _random.Next(0, list.Count);
-            return list[index];
-            
+            if (list.Count == 0) 
+                throw new InvalidOperationException("List is empty");
+
+            var index = Random.Next(list.Count); // ← используй property Random, не _random!
+            var result = list[index];
+            if (remove) list.RemoveAt(index);
+            return result;
         }
     }
     
     public static partial class ProjectExtensions
     {
-        private static readonly Random _random = new Random();
 
         public static string RndFromList(this IZennoPosterProjectModel project, string listName, bool remove = false)
         {
-            var list = project.Lists[listName];
+            var localList = project.ListSync(listName);
+            
+            var item = localList.Rnd(remove);
+            if (remove)
+                project.ListSync(listName, localList);
+            return item;
+            /*
             if (list.Count == 0) 
                 throw new ArgumentNullException(nameof(list), "List is empty");
             
@@ -35,6 +47,7 @@ namespace z3nCore
             localList.RemoveAt(index);
             project.ListSync(listName,localList);
             return item;
+            */
         }
         public static List<string> ListSync(this IZennoPosterProjectModel project, string listName)
         {

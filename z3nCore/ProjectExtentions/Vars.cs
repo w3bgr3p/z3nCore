@@ -216,7 +216,12 @@ namespace z3nCore
             if (string.IsNullOrEmpty(accRange)) accRange = project.Variables["cfgAccRange"].Value;
             if (string.IsNullOrEmpty(accRange))
                 throw new Exception("range is not provided by input or project setting [cfgAccRange]");
-
+            
+            if (accRange.Contains(":"))
+            {
+                accRange = accRange.Split(':')[0];
+            }
+            
             int rangeS, rangeE;
             string range;
 

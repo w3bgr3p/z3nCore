@@ -100,7 +100,7 @@ namespace z3nCore.Wallets
 
 
             var minaAddress =  _instance.HeGet(("p", "class", "sc-lhsSio\\ kRdHCj", "regexp", 0));
-            _project.DbUpd($"address = '{minaAddress}'");
+            _project.DbUpd($"mina_address = '{minaAddress}'");
             _project.Var("minaAddress",minaAddress);
             _log.Send($"started with {minaAddress}");
             _instance.CloseExtraTabs();
@@ -132,7 +132,6 @@ namespace z3nCore.Wallets
                 default:
                     break;
             }
-
         }
         public void Unlock()
         {
