@@ -8,7 +8,7 @@ using z3nCore.Utilities;
 namespace z3nCore
 {
 
-    public class Discord
+   public class Discord
     {
         #region Members & constructor
         private readonly IZennoPosterProjectModel _project;
@@ -38,9 +38,7 @@ namespace z3nCore
             var emu = _instance.UseFullMouseEmulation;
             _instance.UseFullMouseEmulation = false;
             
-            // --- START NEW LOGIC ---
             bool isTokenValid = false;
-            // Проверяем токен через API до загрузки страницы
             if (!string.IsNullOrEmpty(_token))
             {
                 try 
@@ -58,7 +56,6 @@ namespace z3nCore
             {
                  _log.Send("No token to validate, will use credentials.");
             }
-            // --- END NEW LOGIC ---
 
             bool tokenUsed = false;
             bool credentialsUsed = false;
@@ -68,25 +65,19 @@ namespace z3nCore
             
         start:
             _project.Deadline(60);
-            state = null;
-            while (string.IsNullOrEmpty(state))
-            {
-                state = GetState();
-            }
+            state = GetState();
             
             _log.Send($"Page state detected: {state}, tokenValid={isTokenValid}, tokenUsed={tokenUsed}");
 
-            // Пытаемся инжектить токен только если он прошел проверку API и мы на странице логина
             if (isTokenValid && !tokenUsed && state == "input_credentials")
             {
                 _log.Send("API confirmed token is valid. Attempting injection...");
                 TokenSet();
                 tokenUsed = true;
                 goto start;
-            } else if (state == "appDetected") 
+            } 
+            else if (state == "appDetected") 
             {
-                 // Если приложение обнаружено, просто кликаем продолжить, 
-                 // токен может быть подхвачен, если нет - попадем в input_credentials на след итерации
                  _log.Send("appDetected ");
                 _instance.HeClick(("span", "innertext", "Continue\\ in\\ Browser", "regexp", 0));
                 goto start;
@@ -116,7 +107,6 @@ namespace z3nCore
                     var account = _instance.ActiveTab.FindElementByAttribute("div", "class", "avatarWrapper__", "regexp", 0).FirstChild.GetAttribute("aria-label");
                     _log.Send($"logged with {account}");
                     
-                    // Если мы зашли НЕ по старому токену (то есть использовали логин/пасс или старый токен был невалиден)
                     if (credentialsUsed || !isTokenValid)
                     {
                         TokenGet(true);
@@ -177,7 +167,7 @@ namespace z3nCore
                 _log.Send("Captcha detected, solving...");
                 _project.CapGuru();
                 Thread.Sleep(5000);
-                _project.Deadline(60);
+                _project.Deadline(180);
                 goto capcha;
             }
             
@@ -195,17 +185,29 @@ namespace z3nCore
         }
         public string GetState(bool log = false)
         {
-            _project.log("getting state");
-            _idle.Sleep();
-            if (!_instance.ActiveTab.FindElementByAttribute("span", "innertext", "Continue\\ in\\ Browser", "regexp", 0).IsVoid) return "appDetected";
-            if (!_instance.ActiveTab.FindElementByAttribute("section", "aria-label", "User\\ area", "regexp", 0).IsVoid) return "logged";
-            if (!_instance.ActiveTab.FindElementByAttribute("div", "innertext", "Are\\ you\\ human\\?", "regexp", 0).IsVoid) return "capctha";
-            if (!_instance.ActiveTab.FindElementByAttribute("input:text", "autocomplete", "one-time-code", "regexp", 0).IsVoid) return "input_otp";
-            var helperText = _instance.ActiveTab.FindElementByAttribute("div", "class", "helperTextContainer__", "regexp", 0).InnerText;
-            if (helperText != "") return helperText;
-            if (!_instance.ActiveTab.FindElementByAttribute("input:text", "aria-label", "Email or Phone Number", "text", 0).IsVoid) return "input_credentials";
+            string state = null;
+            _project.Deadline();
+            while (string.IsNullOrEmpty(state))
+            {
+                _project.Deadline(180);
+                _idle.Sleep();
             
-            return "";
+                if (!_instance.ActiveTab.FindElementByAttribute("span", "innertext", "Continue\\ in\\ Browser", "regexp", 0).IsVoid) 
+                    state = "appDetected";
+                else if (!_instance.ActiveTab.FindElementByAttribute("section", "aria-label", "User\\ area", "regexp", 0).IsVoid) 
+                    state = "logged";
+                else if (!_instance.ActiveTab.FindElementByAttribute("div", "innertext", "Are\\ you\\ human\\?", "regexp", 0).IsVoid) 
+                    state = "capctha";
+                else if (!_instance.ActiveTab.FindElementByAttribute("input:text", "autocomplete", "one-time-code", "regexp", 0).IsVoid) 
+                    state = "input_otp";
+                else if (_instance.ActiveTab.FindElementByAttribute("div", "class", "helperTextContainer__", "regexp", 0).InnerText != "") 
+                    state = _instance.ActiveTab.FindElementByAttribute("div", "class", "helperTextContainer__", "regexp", 0).InnerText;
+                else if (!_instance.ActiveTab.FindElementByAttribute("input:text", "aria-label", "Email or Phone Number", "text", 0).IsVoid) 
+                    state = "input_credentials";
+                
+            }
+            return state;
+            
         }
         public string Load_(bool log = false)
         {
@@ -414,17 +416,19 @@ namespace z3nCore
         public Dictionary<string, string> GetMe(bool updateDb = false)
         {
             _idle.Sleep();
-            string response = _project.GET("https://discord.com/api/v9/users/@me", "+",BuildHeaders(), log:true, parse:true);
+            string response = _project.GET("https://discord.com/api/v9/users/@me", "+",BuildHeaders());
+            if (response.Contains("{\"message\":")) 
+                throw new Exception(response);
             var dict = response.JsonToDic();
             if  (updateDb) _project.JsonToDb(response, "__discord");
             return dict;
         }
         
-        private bool TokenValidate(string token = null)
+        public bool TokenValidate(string token = null)
         {
             if( string.IsNullOrEmpty(token)) token = _token;
             _idle.Sleep();
-            string response = _project.GET("https://discord.com/api/v9/users/@me", "+",BuildHeaders(), log:true, parse:true);
+            string response = _project.GET("https://discord.com/api/v9/users/@me", "+",BuildHeaders(), parse:true);
             if (response.Contains("401: Unauthorized")) return false;
             if (response.Contains("username")) return true;
             throw new Exception($"uncknown response: {response}");
@@ -434,7 +438,7 @@ namespace z3nCore
         {
             var myUserId = _project.DbGet("_id", "__discord");
             _idle.Sleep();
-            string response = _project.GET($"https://discord.com/api/v9/guilds/{guildId}/members/{myUserId}", "+",BuildHeaders(), log:true, parse:true);
+            string response = _project.GET($"https://discord.com/api/v9/guilds/{guildId}/members/{myUserId}", "+",BuildHeaders(), parse:true);
 
             var roles = new List<string>();
             var json = _project.Json;
@@ -457,7 +461,7 @@ namespace z3nCore
         public Dictionary<string, string> GetRolesNamesForGuild(string guildId)
         {
             _idle.Sleep();
-            string response = _project.GET($"https://discord.com/api/v9/guilds/{guildId}/roles", "+", BuildHeaders(), log:true, parse:true);
+            string response = _project.GET($"https://discord.com/api/v9/guilds/{guildId}/roles", "+", BuildHeaders(),  parse:true);
 
             var roles = new Dictionary<string, string>();
             var json = _project.Json;
@@ -491,12 +495,11 @@ namespace z3nCore
             }
             return namedRoles;
         }
-
-
+        
         public Dictionary<string, string> GetServers(string guildId)
         {
             _idle.Sleep();
-            string response = _project.GET("https://discord.com/api/v9/users/@me/guilds", "+",BuildHeaders(), log:true, parse:true);
+            string response = _project.GET("https://discord.com/api/v9/users/@me/guilds", "+",BuildHeaders(), parse:true);
 
             var servers = new Dictionary<string, string>();
             var json = _project.Json;

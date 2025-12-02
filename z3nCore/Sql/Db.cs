@@ -533,7 +533,26 @@ namespace z3nCore
                 }
             }
         }
- 
+        public static void ClmnPrune(this IZennoPosterProjectModel project, string tblName, bool log = false)
+        {
+            var current = project.TblColumns(tblName, log: log);
+    
+            foreach (var column in current)
+            {
+                string quotedColumn = Quote(column);
+                string quotedTable = Quote(tblName);
+        
+                string countQuery = $"SELECT COUNT(*) FROM {quotedTable} WHERE {quotedColumn} != '' AND {quotedColumn} IS NOT NULL";
+                string result = project.DbQ(countQuery, log: log);
+        
+                int count = int.Parse(result);
+        
+                if (count == 0)
+                {
+                    project.ClmnDrop(column, tblName, log: log);
+                }
+            }
+        }
         public static void ClmnPrune(this IZennoPosterProjectModel project, Dictionary<string, string> tableStructure, string tblName,  bool log = false)
         {
             var current = project.TblColumns(tblName, log: log);

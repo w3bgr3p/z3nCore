@@ -7,10 +7,31 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
 {
-    public static class Time
+    
+    
+    public class Time
     {
-        private static readonly object LockObject = new object();
+        public class Deadline
+        {
+            private long Init { get; set; }
 
+            public Deadline()
+            {
+                Init = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            }
+
+            public int Check(int limitSec)
+            {
+                long currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                int difference = (int)(currentTime - Init);
+                if (difference > limitSec) 
+                    throw new Exception($"Deadline Exception: {limitSec}s");
+                return difference;
+            }
+        }
+
+
+        private static readonly object LockObject = new object();
         public static string Now(string format = "unix") // unix|iso
         {
             lock (LockObject)
@@ -49,7 +70,6 @@ namespace z3nCore
             else
                 throw new ArgumentException($"unexpected format {o}");
         }
-        
         public static long Elapsed(long startTime = 0, bool useMs = false)
         {
             if (startTime != 0)
@@ -67,14 +87,6 @@ namespace z3nCore
             }
         }
         
-        #region obsolete
-
-        public static string cd(object input = null, string o = "unix")
-        {
-            return Cd(input, o);
-        }
-        #endregion
-
     }
 
     public static partial class ProjectExtensions

@@ -874,14 +874,15 @@ namespace z3nCore
             bool useRange = true,
             bool filterTwitter = false,
             bool filterDiscord = false,
+            string tableName = null,
             bool debugLog = false)
         {
             if (!string.IsNullOrEmpty(project.Var("acc0")))
             {
                 return;
             }
-            
-            var tableName = project.ProjectTable();
+            if (string.IsNullOrEmpty(tableName)) 
+                tableName = project.ProjectTable();
             
             // Parse priority groups from cfgAccRange
             List<string> rangeGroups = new List<string>();
@@ -940,7 +941,7 @@ namespace z3nCore
                 }
                 else
                 {
-                    accounts = project.DbGetLines("id", log: debugLog, where: fullCondition)
+                    accounts = project.DbGetLines("id",tableName: tableName, log: debugLog, where: fullCondition)
                         .Where(acc => !string.IsNullOrWhiteSpace(acc))
                         .ToList();
                 }
@@ -986,6 +987,7 @@ namespace z3nCore
             bool useRange = true,
             bool filterTwitter = false,
             bool filterDiscord = false,
+            string tableName = null,
             bool debugLog = false)
         {
             if (!string.IsNullOrEmpty(project.Var("acc0Forced")))
@@ -995,7 +997,7 @@ namespace z3nCore
             }
 
             // Get filtered list from DB
-            project.GetListFromDb(condition, sortByTaskAge, useRange, filterTwitter, filterDiscord, debugLog);
+            project.GetListFromDb(condition, sortByTaskAge, useRange, filterTwitter, filterDiscord,tableName ,debugLog);
 
             var accounts = project.Lists["accs"].ToList();
 
@@ -1019,14 +1021,21 @@ namespace z3nCore
             project.SendToLog($"Account selected: acc={acc0}, remaining={left}, condition={condition}, range={project.Var("cfgAccRange")}", LogType.Info, true, LogColor.Gray);
         }
 
-        public static void ChooseAndRunByCondition(this IZennoPosterProjectModel project,Instance instance, string condition, bool browser = false,
-            string sortByTaskAge = null, bool useRange = true, bool filterTwitter = false, bool filterDiscord = false, bool debugLog = false)
+        public static void ChooseAndRunByCondition(this IZennoPosterProjectModel project,Instance instance, 
+            string condition, 
+            bool browser = false,
+            string sortByTaskAge = null, 
+            bool useRange = true, 
+            bool filterTwitter = false, 
+            bool filterDiscord = false, 
+            string tableName = null, 
+            bool debugLog = false)
         {
             
             while (true)
             {
                 try{
-                    project.ChooseAccountByCondition(condition,sortByTaskAge,useRange,filterTwitter,filterDiscord,debugLog); 
+                    project.ChooseAccountByCondition(condition,sortByTaskAge,useRange,filterTwitter,filterDiscord,tableName,debugLog); 
 
                     if (string.IsNullOrEmpty(project.Var("acc0"))) 
                         throw new Exception("");
