@@ -17,16 +17,19 @@ namespace z3nCore
 
             public Deadline()
             {
-                Init = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                Init = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             }
 
-            public int Check(int limitSec)
+            public double Check(double limitSec)
             {
-                long currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                int difference = (int)(currentTime - Init);
-                if (difference > limitSec) 
-                    throw new Exception($"Deadline Exception: {limitSec}s");
-                return difference;
+                long currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                double differenceMs = (double)(currentTime - Init);
+                double differenceSec = differenceMs / 1000.0;
+        
+                if (differenceSec > limitSec) 
+                    throw new TimeoutException($"Deadline Exception: {limitSec}s");
+        
+                return differenceSec;
             }
         }
 
