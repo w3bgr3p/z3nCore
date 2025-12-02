@@ -18,8 +18,8 @@ namespace z3nCore
 {
     public static partial class StringExtensions
     {
-
-        #region CRYPTO
+        #region CRYPTO - Address Operations
+        
         public static string NormalizeAddress(this string address)
         {
             if (string.IsNullOrEmpty(address))
@@ -31,38 +31,33 @@ namespace z3nCore
             return address;
         }
 
-        public static string GetTxHash(this string link)
+        public static bool ChkAddress(this string shortAddress, string fullAddress)
         {
-            string hash;
+            if (string.IsNullOrEmpty(shortAddress) || string.IsNullOrEmpty(fullAddress))
+                return false;
 
-            if (!string.IsNullOrEmpty(link))
-            {
-                int lastSlashIndex = link.LastIndexOf('/');
-                if (lastSlashIndex == -1) hash = link;
+            if (!shortAddress.Contains("…") || shortAddress.Count(c => c == '…') != 1)
+                return false;
 
-                else if (lastSlashIndex == link.Length - 1) hash = string.Empty;
-                else hash = link.Substring(lastSlashIndex + 1);
-            }
-            else throw new Exception("empty Element");
+            var parts = shortAddress.Split('…');
+            if (parts.Length != 2)
+                return false;
 
-            return hash;
+            string prefix = parts[0];
+            string suffix = parts[1];
+
+            if (prefix.Length < 4 || suffix.Length < 2)
+                return false;
+
+            if (fullAddress.Length < prefix.Length + suffix.Length)
+                return false;
+
+            bool prefixMatch = fullAddress.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+            bool suffixMatch = fullAddress.EndsWith(suffix, StringComparison.OrdinalIgnoreCase);
+
+            return prefixMatch && suffixMatch;
         }
-        private static string DetectKeyType(this string input)
-        {
-            if (string.IsNullOrWhiteSpace(input))
-                return null;
 
-            if (Regex.IsMatch(input, @"^[0-9a-fA-F]{64}$"))
-                return "key";
-
-            var words = input.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (words.Length == 12)
-                return "seed";
-            if (words.Length == 24)
-                return "seed";
-
-            return null;
-        }
         public static string ToAdrEvm(this string key)
         {
             return ToEvmAddress(key);
@@ -83,7 +78,55 @@ namespace z3nCore
             }
             return blockchain.GetAddressFromPrivateKey(key);
         }
-   
+
+        #endregion
+
+        #region CRYPTO - Key Management
+
+        public static string KeyType(this string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                throw new Exception($"input isNullOrEmpty");
+
+            input = input.Trim();
+    
+            if (input.StartsWith("suiprivkey1"))
+                return "keySui";
+    
+            string cleanInput = input.StartsWith("0x") ? input.Substring(2) : input;
+    
+            if (Regex.IsMatch(cleanInput, @"^[0-9a-fA-F]{64}$"))
+                return "keyEvm";
+    
+            if (Regex.IsMatch(input, @"^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{87,88}$"))
+                return "keySol";
+            
+            var words = input.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length == 12 || words.Length == 24)
+                return "seed";
+            
+            return "undefined";
+    
+            throw new Exception($"not recognized as any key or seed {input}");
+        }
+
+        private static string DetectKeyType(this string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return null;
+
+            if (Regex.IsMatch(input, @"^[0-9a-fA-F]{64}$"))
+                return "key";
+
+            var words = input.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length == 12)
+                return "seed";
+            if (words.Length == 24)
+                return "seed";
+
+            return null;
+        }
+
         public static string ToSepc256k1(this string seed, int path = 0)
         {
             var blockchain = new Blockchain();
@@ -117,6 +160,27 @@ namespace z3nCore
             }
         }
 
+        #endregion
+
+        #region CRYPTO - Transaction Handling
+
+        public static string GetTxHash(this string link)
+        {
+            string hash;
+
+            if (!string.IsNullOrEmpty(link))
+            {
+                int lastSlashIndex = link.LastIndexOf('/');
+                if (lastSlashIndex == -1) hash = link;
+
+                else if (lastSlashIndex == link.Length - 1) hash = string.Empty;
+                else hash = link.Substring(lastSlashIndex + 1);
+            }
+            else throw new Exception("empty Element");
+
+            return hash;
+        }
+
         public static string[] TxToString(this string txJson)
         {
             dynamic txData = JsonConvert.DeserializeObject<System.Dynamic.ExpandoObject>(txJson);
@@ -132,36 +196,12 @@ namespace z3nCore
             string gwei = gasGwei.ToString().Replace(',','.');
 
             return new string[] { gas, value, sender, data, recipient, gwei };
-
-
         }
 
-        public static bool ChkAddress(this string shortAddress, string fullAddress)
-        {
-            if (string.IsNullOrEmpty(shortAddress) || string.IsNullOrEmpty(fullAddress))
-                return false;
+        #endregion
 
-            if (!shortAddress.Contains("…") || shortAddress.Count(c => c == '…') != 1)
-                return false;
+        #region CRYPTO - Value Conversion
 
-            var parts = shortAddress.Split('…');
-            if (parts.Length != 2)
-                return false;
-
-            string prefix = parts[0];
-            string suffix = parts[1];
-
-            if (prefix.Length < 4 || suffix.Length < 2)
-                return false;
-
-            if (fullAddress.Length < prefix.Length + suffix.Length)
-                return false;
-
-            bool prefixMatch = fullAddress.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
-            bool suffixMatch = fullAddress.EndsWith(suffix, StringComparison.OrdinalIgnoreCase);
-
-            return prefixMatch && suffixMatch;
-        }
         public static string StringToHex(this string value, string convert = "")
         {
             try
@@ -186,7 +226,6 @@ namespace z3nCore
                         break;
                 }
 
-                // Convert to hexadecimal and ensure it starts with 0x
                 string hex = result.ToString("X").TrimStart('0');
                 return string.IsNullOrEmpty(hex) ? "0x0" : "0x" + hex;
             }
@@ -195,6 +234,7 @@ namespace z3nCore
                 return "0x0";
             }
         }
+
         public static string HexToString(this string hexValue, string convert = "")
         {
             try
@@ -219,43 +259,11 @@ namespace z3nCore
                 return "0";
             }
         }
-        
-        public static string KeyType(this string input)
-        {
-            if (string.IsNullOrWhiteSpace(input))
-                throw new Exception($"input isNullOrEmpty");
-
-            input = input.Trim();
-    
-            // Проверка на Bech32 (suiprivkey)
-            if (input.StartsWith("suiprivkey1"))
-                return "keySui";
-    
-            // Убираем 0x если есть
-            string cleanInput = input.StartsWith("0x") ? input.Substring(2) : input;
-    
-            // EVM приватный ключ (64 hex символа)
-            if (Regex.IsMatch(cleanInput, @"^[0-9a-fA-F]{64}$"))
-                return "keyEvm";
-    
-            // Solana приватный ключ (Base58, 87-88 символов)
-            if (Regex.IsMatch(input, @"^[123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]{87,88}$"))
-                return "keySol";
-            
-    
-            // Мнемоника (12 или 24 слова)
-            var words = input.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (words.Length == 12 || words.Length == 24)
-                return "seed";
-            
-            return "undefined";
-    
-            throw new Exception($"not recognized as any key or seed {input}");
-        }
 
         #endregion
-        
-        
+
+        #region ENCODING - Base64 & SVG
+
         public static string ToBase64(this string cookiesJson)
         {
             if (string.IsNullOrEmpty(cookiesJson))
@@ -264,6 +272,7 @@ namespace z3nCore
             byte[] bytes = Encoding.UTF8.GetBytes(cookiesJson);
             return Convert.ToBase64String(bytes);
         }
+
         public static string FromBase64(this string base64Cookies)
         {
             if (string.IsNullOrEmpty(base64Cookies))
@@ -279,6 +288,7 @@ namespace z3nCore
                 return base64Cookies;
             }
         }
+
         public static void SaveSvgStringToImage(this string svgContent, string pathToScreen)
         {
             var svgDocument = SvgDocument.FromSvg<SvgDocument>(svgContent);
@@ -298,32 +308,23 @@ namespace z3nCore
                 return Convert.ToBase64String(ms.ToArray());
             }
         }
-        
-        public static string Regx(this string input, string pattern)
-        {
-            var result = ZennoLab.Macros.TextProcessing.Regex(input, pattern, "0")[0].FirstOrDefault();
-            return result;
-        }
-        
-        public static string EscapeMarkdown(this string text)
-        {
-            string[] specialChars = new[] { "_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!" };
-            foreach (var ch in specialChars)
-            {
-                text = text.Replace(ch, "\\" + ch);
-            }
-            return text;
-        }
 
-        public static Dictionary<string, string> JsonToDic(this string json)
+        #endregion
+
+        #region PARSING - JSON
+
+        public static Dictionary<string, string> JsonToDic(this string json, bool ignoreEmpty = false)
         {
             var result = new Dictionary<string, string>();
+    
+            if (string.IsNullOrWhiteSpace(json)) return result;
+
             var jObject = JObject.Parse(json);
-    
+
             FlattenJson(jObject, "", result);
-    
+
             return result;
-    
+
             void FlattenJson(JToken token, string prefix, Dictionary<string, string> dict)
             {
                 switch (token.Type)
@@ -337,7 +338,7 @@ namespace z3nCore
                             FlattenJson(property.Value, key, dict);
                         }
                         break;
-                
+        
                     case JTokenType.Array:
                         var index = 0;
                         foreach (var item in token.Children())
@@ -346,173 +347,21 @@ namespace z3nCore
                             index++;
                         }
                         break;
-                
+        
                     default:
-                        dict[prefix] = token.ToString();
+                        var value = token.ToString();
+
+                        if (ignoreEmpty && string.IsNullOrEmpty(value))
+                        {
+                            return;
+                        }
+
+                        dict[prefix] = value;
                         break;
                 }
             }
         }
-        public static Dictionary<string, string> ParseCreds(this string data, string format, char devider = ':')
-        {
-            var parsedData = new Dictionary<string, string>();
 
-            if (string.IsNullOrWhiteSpace(format) || string.IsNullOrWhiteSpace(data))
-                return parsedData;
-
-            string[] formatParts = format.Split(devider);
-            string[] dataParts = data.Split(devider);
-
-            for (int i = 0; i < formatParts.Length && i < dataParts.Length; i++)
-            {
-                string key = formatParts[i].Trim('{', '}').Trim();
-                if (!string.IsNullOrEmpty(key))
-                    parsedData[key] = dataParts[i].Trim();
-            }
-            return parsedData;
-        }
-
-        public static Dictionary<string, string> ParseByMask(this string input, string mask)
-        {
-            input = input?.Trim();
-            mask = mask?.Trim();
-
-            if (string.IsNullOrEmpty(input) || string.IsNullOrEmpty(mask))
-            {
-                return new Dictionary<string, string>();
-            }
-
-            var variableNames = new List<string>();
-            var regex = new Regex(@"\{([^{}]+)\}");
-            foreach (Match mtch in regex.Matches(mask))
-            {
-                variableNames.Add(mtch.Groups[1].Value);
-            }
-
-            if (variableNames.Count == 0)
-            {
-                return new Dictionary<string, string>();
-            }
-
-            string pattern = Regex.Escape(mask);
-            foreach (var varName in variableNames)
-            {
-                string escapedVar = Regex.Escape("{" + varName + "}");
-                pattern = pattern.Replace(escapedVar, "(.*?)");
-            }
-            pattern += "$";
-
-
-            var match = Regex.Match(input, pattern);
-            if (!match.Success)
-            {
-                return new Dictionary<string, string>();
-            }
-
-            var result = new Dictionary<string, string>();
-            for (int i = 0; i < variableNames.Count; i++)
-            {
-                result[variableNames[i]] = match.Groups[i + 1].Value;
-            }
-            return result;
-        }
-        
-        public static string[] Range(this string accRange)
-        {
-            if (string.IsNullOrEmpty(accRange))  
-                throw new Exception("range cannot be empty");
-            if (accRange.Contains(","))
-                return accRange.Split(',');
-            else if (accRange.Contains("-"))
-            {
-                var rangeParts = accRange.Split('-').Select(int.Parse).ToArray();
-                int rangeS = rangeParts[0];
-                int rangeE = rangeParts[1];
-                accRange = string.Join(",", Enumerable.Range(rangeS, rangeE - rangeS + 1));
-                return accRange.Split(',');
-            }
-            else
-            {
-                int rangeS = 1;
-                int rangeE = int.Parse(accRange);
-                accRange = string.Join(",", Enumerable.Range(rangeS, rangeE - rangeS + 1));
-                return accRange.Split(',');
-            }
-        }
-        
-        public static string GetLink(this string text)
-        {
-            int startIndex = text.IndexOf("https://");
-            if (startIndex == -1) startIndex = text.IndexOf("http://");
-            if (startIndex == -1) throw new Exception($"No Link found in message {text}");
-
-            string potentialLink = text.Substring(startIndex);
-            int endIndex = potentialLink.IndexOfAny(new[] { ' ', '\n', '\r', '\t', '"' });
-            if (endIndex != -1)
-                potentialLink = potentialLink.Substring(0, endIndex);
-
-            return Uri.TryCreate(potentialLink, UriKind.Absolute, out _)
-                ? potentialLink
-                : throw new Exception($"No Link found in message {text}");
-        }
-
-        public static string GetOtp(this string text)
-        {
-            Match match = Regex.Match(text, @"\b\d{6}\b");
-            if (match.Success)
-                return match.Value;
-            else
-                throw new Exception($"Fmail: OTP not found in [{text}]");
-        }
-
-        public static string CleanFilePath(this string text)
-        {
-
-            if (string.IsNullOrEmpty(text))
-                return text;
-
-            char[] invalidChars = Path.GetInvalidFileNameChars();
-
-            string cleaned = text;
-            foreach (char c in invalidChars)
-            {
-                cleaned = cleaned.Replace(c.ToString(), "");
-            }
-            return cleaned;
-
-        }
-
-        public static string GetFileNameFromUrl(string input, bool withExtension = false)
-        {
-            try
-            {
-                // Пробуем найти URL в строке
-                var urlMatch = Regex.Match(input, @"(?:src|href)=[""']?([^""'\s>]+)", RegexOptions.IgnoreCase);
-                var url = urlMatch.Success ? urlMatch.Groups[1].Value : input;
-
-                // Извлекаем последний сегмент (имя файла)
-                var fileMatch = Regex.Match(url, @"([^/\\?#]+)(?:\?[^/]*)?$");
-                if (fileMatch.Success)
-                {
-                    var fileName = fileMatch.Groups[1].Value;
-            
-                    // Если нужно с расширением - возвращаем как есть
-                    if (withExtension)
-                    {
-                        return fileName;
-                    }
-            
-                    // Удаляем расширение
-                    return Regex.Replace(fileName, @"\.[^.]+$", "");
-                }
-
-                return input;
-            }
-            catch
-            {
-                return input;
-            }
-        }
         public static string ConvertUrl(this string url, bool oneline = false)
         {
             if (string.IsNullOrEmpty(url))
@@ -566,7 +415,6 @@ namespace z3nCore
                 }
                 catch (JsonException)
                 {
-                    // if JSON incorrect
                 }
             }
 
@@ -589,6 +437,188 @@ namespace z3nCore
             return oneline ? finalResult.Replace('\n', ' ').Replace('\r', ' ') : finalResult;
         }
 
+        #endregion
+
+        #region PARSING - Text Patterns
+
+        public static string Regx(this string input, string pattern)
+        {
+            var result = ZennoLab.Macros.TextProcessing.Regex(input, pattern, "0")[0].FirstOrDefault();
+            return result;
+        }
+
+        public static Dictionary<string, string> ParseCreds(this string data, string format, char devider = ':')
+        {
+            var parsedData = new Dictionary<string, string>();
+
+            if (string.IsNullOrWhiteSpace(format) || string.IsNullOrWhiteSpace(data))
+                return parsedData;
+
+            string[] formatParts = format.Split(devider);
+            string[] dataParts = data.Split(devider);
+
+            for (int i = 0; i < formatParts.Length && i < dataParts.Length; i++)
+            {
+                string key = formatParts[i].Trim('{', '}').Trim();
+                if (!string.IsNullOrEmpty(key))
+                    parsedData[key] = dataParts[i].Trim();
+            }
+            return parsedData;
+        }
+
+        public static Dictionary<string, string> ParseByMask(this string input, string mask)
+        {
+            input = input?.Trim();
+            mask = mask?.Trim();
+
+            if (string.IsNullOrEmpty(input) || string.IsNullOrEmpty(mask))
+            {
+                return new Dictionary<string, string>();
+            }
+
+            var variableNames = new List<string>();
+            var regex = new Regex(@"\{([^{}]+)\}");
+            foreach (Match mtch in regex.Matches(mask))
+            {
+                variableNames.Add(mtch.Groups[1].Value);
+            }
+
+            if (variableNames.Count == 0)
+            {
+                return new Dictionary<string, string>();
+            }
+
+            string pattern = Regex.Escape(mask);
+            foreach (var varName in variableNames)
+            {
+                string escapedVar = Regex.Escape("{" + varName + "}");
+                pattern = pattern.Replace(escapedVar, "(.*?)");
+            }
+            pattern += "$";
+
+            var match = Regex.Match(input, pattern);
+            if (!match.Success)
+            {
+                return new Dictionary<string, string>();
+            }
+
+            var result = new Dictionary<string, string>();
+            for (int i = 0; i < variableNames.Count; i++)
+            {
+                result[variableNames[i]] = match.Groups[i + 1].Value;
+            }
+            return result;
+        }
+
+        public static string GetLink(this string text)
+        {
+            int startIndex = text.IndexOf("https://");
+            if (startIndex == -1) startIndex = text.IndexOf("http://");
+            if (startIndex == -1) throw new Exception($"No Link found in message {text}");
+
+            string potentialLink = text.Substring(startIndex);
+            int endIndex = potentialLink.IndexOfAny(new[] { ' ', '\n', '\r', '\t', '"' });
+            if (endIndex != -1)
+                potentialLink = potentialLink.Substring(0, endIndex);
+
+            return Uri.TryCreate(potentialLink, UriKind.Absolute, out _)
+                ? potentialLink
+                : throw new Exception($"No Link found in message {text}");
+        }
+
+        public static string GetOtp(this string text)
+        {
+            Match match = Regex.Match(text, @"\b\d{6}\b");
+            if (match.Success)
+                return match.Value;
+            else
+                throw new Exception($"Fmail: OTP not found in [{text}]");
+        }
+
+        #endregion
+
+        #region STRING UTILITIES
+
+        public static string[] Range(this string accRange)
+        {
+            if (string.IsNullOrEmpty(accRange))  
+                throw new Exception("range cannot be empty");
+            if (accRange.Contains(","))
+                return accRange.Split(',');
+            else if (accRange.Contains("-"))
+            {
+                var rangeParts = accRange.Split('-').Select(int.Parse).ToArray();
+                int rangeS = rangeParts[0];
+                int rangeE = rangeParts[1];
+                accRange = string.Join(",", Enumerable.Range(rangeS, rangeE - rangeS + 1));
+                return accRange.Split(',');
+            }
+            else
+            {
+                int rangeS = 1;
+                int rangeE = int.Parse(accRange);
+                accRange = string.Join(",", Enumerable.Range(rangeS, rangeE - rangeS + 1));
+                return accRange.Split(',');
+            }
+        }
+
+        public static string CleanFilePath(this string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+
+            char[] invalidChars = Path.GetInvalidFileNameChars();
+
+            string cleaned = text;
+            foreach (char c in invalidChars)
+            {
+                cleaned = cleaned.Replace(c.ToString(), "");
+            }
+            return cleaned;
+        }
+
+        public static string GetFileNameFromUrl(string input, bool withExtension = false)
+        {
+            try
+            {
+                var urlMatch = Regex.Match(input, @"(?:src|href)=[""']?([^""'\s>]+)", RegexOptions.IgnoreCase);
+                var url = urlMatch.Success ? urlMatch.Groups[1].Value : input;
+
+                var fileMatch = Regex.Match(url, @"([^/\\?#]+)(?:\?[^/]*)?$");
+                if (fileMatch.Success)
+                {
+                    var fileName = fileMatch.Groups[1].Value;
+            
+                    if (withExtension)
+                    {
+                        return fileName;
+                    }
+            
+                    return Regex.Replace(fileName, @"\.[^.]+$", "");
+                }
+
+                return input;
+            }
+            catch
+            {
+                return input;
+            }
+        }
+
+        public static string EscapeMarkdown(this string text)
+        {
+            string[] specialChars = new[] { "_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!" };
+            foreach (var ch in specialChars)
+            {
+                text = text.Replace(ch, "\\" + ch);
+            }
+            return text;
+        }
+
+        #endregion
+
+        #region SECURITY
+
         public static string NewPassword(int length)
         {
             if (length < 8)
@@ -604,19 +634,16 @@ namespace z3nCore
             Random random = new Random();
             StringBuilder password = new StringBuilder();
 
-            // Ensure at least one character from each required set
             password.Append(lowercase[random.Next(lowercase.Length)]);
             password.Append(uppercase[random.Next(uppercase.Length)]);
             password.Append(numbers[random.Next(numbers.Length)]);
             password.Append(special[random.Next(special.Length)]);
 
-            // Fill the remaining length with random characters from all sets
             for (int i = 4; i < length; i++)
             {
                 password.Append(allChars[random.Next(allChars.Length)]);
             }
 
-            // Shuffle the password to randomize character positions
             for (int i = 0; i < password.Length; i++)
             {
                 int randomIndex = random.Next(password.Length);
@@ -627,7 +654,8 @@ namespace z3nCore
 
             return password.ToString();
         }
-  
+
+        #endregion
     }
     public static partial class ProjectExtensions
     {

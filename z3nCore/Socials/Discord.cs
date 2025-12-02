@@ -14,7 +14,7 @@ namespace z3nCore
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
         private readonly Logger _log;
-        private readonly Sleeper _idle;
+        private readonly Utilities.Sleeper _idle;
         private string _status;
         private string _token;
         private string _login;
@@ -26,11 +26,109 @@ namespace z3nCore
             _project = project;
             _instance = instance;
             _log = new Logger(project, log: log, classEmoji: "👾");
-            _idle = new Sleeper(1337, 2078);
+            _idle = new Utilities.Sleeper(1337, 2078);
             LoadCreds();
         }
         #endregion
         #region Authentication
+        
+        public string Load(bool log = false)
+        {
+            string state = null;
+            var emu = _instance.UseFullMouseEmulation;
+            _instance.UseFullMouseEmulation = false;
+            
+            // --- START NEW LOGIC ---
+            bool isTokenValid = false;
+            // Проверяем токен через API до загрузки страницы
+            if (!string.IsNullOrEmpty(_token))
+            {
+                try 
+                {
+                    isTokenValid = TokenValidate();
+                    _log.Send($"Token API Check: {(isTokenValid ? "Valid" : "Invalid")}");
+                }
+                catch (Exception ex)
+                {
+                    _log.Warn($"Token validation error: {ex.Message}");
+                    isTokenValid = false;
+                }
+            }
+            else
+            {
+                 _log.Send("No token to validate, will use credentials.");
+            }
+            // --- END NEW LOGIC ---
+
+            bool tokenUsed = false;
+            bool credentialsUsed = false;
+
+            _instance.Go("https://discord.com/channels/@me");
+            _project.Deadline();
+            
+        start:
+            _project.Deadline(60);
+            state = null;
+            while (string.IsNullOrEmpty(state))
+            {
+                state = GetState();
+            }
+            
+            _log.Send($"Page state detected: {state}, tokenValid={isTokenValid}, tokenUsed={tokenUsed}");
+
+            // Пытаемся инжектить токен только если он прошел проверку API и мы на странице логина
+            if (isTokenValid && !tokenUsed && state == "input_credentials")
+            {
+                _log.Send("API confirmed token is valid. Attempting injection...");
+                TokenSet();
+                tokenUsed = true;
+                goto start;
+            } else if (state == "appDetected") 
+            {
+                 // Если приложение обнаружено, просто кликаем продолжить, 
+                 // токен может быть подхвачен, если нет - попадем в input_credentials на след итерации
+                 _log.Send("appDetected ");
+                _instance.HeClick(("span", "innertext", "Continue\\ in\\ Browser", "regexp", 0));
+                goto start;
+            }
+
+            switch (state){
+                case "input_credentials":
+                    _log.Send($"Using credentials (Token valid: {isTokenValid})");
+                    credentialsUsed = true;
+                    InputCredentials();
+                    goto start;
+                    
+                case "capctha":
+                    _log.Send("!W captcha ");
+                    _project.CapGuru();
+                    goto start;
+                    
+                case "input_otp":
+                    _log.Send("2FA required, entering code...");
+                    _instance.HeSet(("input:text", "autocomplete", "one-time-code", "regexp", 0), OTP.Offline(_2fa));
+                    _instance.HeClick(("button", "type", "submit", "regexp", 0));
+                    goto start;                 
+                    
+                case "logged":
+                    _instance.HeClick(("button", "innertext", "Apply", "regexp", 0), thr0w: false);
+                    
+                    var account = _instance.ActiveTab.FindElementByAttribute("div", "class", "avatarWrapper__", "regexp", 0).FirstChild.GetAttribute("aria-label");
+                    _log.Send($"logged with {account}");
+                    
+                    // Если мы зашли НЕ по старому токену (то есть использовали логин/пасс или старый токен был невалиден)
+                    if (credentialsUsed || !isTokenValid)
+                    {
+                        TokenGet(true);
+                    }
+                    _instance.UseFullMouseEmulation = emu;
+                    return state;
+                
+                default:
+                    _log.Warn(state);
+                    return state;
+            }
+        }
         
         private void LoadCreds()
         {
@@ -66,8 +164,6 @@ namespace z3nCore
         private string Login()
         {
             _project.Deadline();
-
-            //_instance.CloseExtraTabs();
             _instance.HeSet(("input:text", "aria-label", "Email or Phone Number", "text", 0), _login);
             _instance.HeSet(("input:password", "aria-label", "Password", "text", 0), _pass);
             _instance.HeClick(("button", "type", "submit", "regexp", 0));
@@ -91,7 +187,6 @@ namespace z3nCore
             Thread.Sleep(3000);
             return "ok";
         }
-
         private void InputCredentials()
         {
             _instance.HeSet(("input:text", "aria-label", "Email or Phone Number", "text", 0), _login);
@@ -112,7 +207,7 @@ namespace z3nCore
             
             return "";
         }
-        public string Load(bool log = false)
+        public string Load_(bool log = false)
         {
             string state = null;
             var emu = _instance.UseFullMouseEmulation;
@@ -120,7 +215,7 @@ namespace z3nCore
             bool tokenUsed = false;
             bool credentialsUsed = false;
 
-            _instance.Go("https://discord.com/channels/@me");
+            _instance.Go("https://discord.com/channels/@me", newTab:true);
             _project.Deadline();
         start:
         _project.Deadline(60);
@@ -183,7 +278,7 @@ namespace z3nCore
            
         }
         #endregion
-        #region Stats & Info
+        #region Stats & Info UI
         
         public List<string> Servers(bool toDb = false, bool log = false)
         {
@@ -296,7 +391,8 @@ namespace z3nCore
 
 
         #region Api
-        public string[] BuildHeaders()
+        
+        private string[] BuildHeaders()
         {
             string[] headers = {
                 $"Authorization : {_token}",
@@ -315,14 +411,25 @@ namespace z3nCore
             return headers;
         }
 
-        public Dictionary<string, string> GetMe()
+        public Dictionary<string, string> GetMe(bool updateDb = false)
         {
             _idle.Sleep();
             string response = _project.GET("https://discord.com/api/v9/users/@me", "+",BuildHeaders(), log:true, parse:true);
             var dict = response.JsonToDic();
+            if  (updateDb) _project.JsonToDb(response, "__discord");
             return dict;
         }
-
+        
+        private bool TokenValidate(string token = null)
+        {
+            if( string.IsNullOrEmpty(token)) token = _token;
+            _idle.Sleep();
+            string response = _project.GET("https://discord.com/api/v9/users/@me", "+",BuildHeaders(), log:true, parse:true);
+            if (response.Contains("401: Unauthorized")) return false;
+            if (response.Contains("username")) return true;
+            throw new Exception($"uncknown response: {response}");
+        }
+        
         public List<string> GetRolesId(string guildId)
         {
             var myUserId = _project.DbGet("_id", "__discord");
@@ -408,6 +515,7 @@ namespace z3nCore
 
 
         #endregion
+        
         public void Auth()
         {
             var emu = _instance.UseFullMouseEmulation;
