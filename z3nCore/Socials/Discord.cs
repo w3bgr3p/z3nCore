@@ -293,6 +293,121 @@ namespace z3nCore
         }
 
         #endregion
+
+
+        #region Api
+        public string[] BuildHeaders()
+        {
+            string[] headers = {
+                $"Authorization : {_token}",
+                "accept: application/json",
+                "accept-encoding: ",
+                "accept-language: en-US,en;q=0.9",
+                "origin: https://discord.com",
+                "referer: https://discord.com/channels/@me",
+                "sec-ch-ua-mobile: ?0",
+                "sec-fetch-dest: empty",
+                "sec-fetch-mode: cors",
+                "sec-fetch-site: same-origin",
+                $"user-agent: {_project.Profile.UserAgent}",
+                "x-discord-locale: en-US",
+            };
+            return headers;
+        }
+
+        public Dictionary<string, string> GetMe()
+        {
+            _idle.Sleep();
+            string response = _project.GET("https://discord.com/api/v9/users/@me", "+",BuildHeaders(), log:true, parse:true);
+            var dict = response.JsonToDic();
+            return dict;
+        }
+
+        public List<string> GetRolesId(string guildId)
+        {
+            var myUserId = _project.DbGet("_id", "__discord");
+            _idle.Sleep();
+            string response = _project.GET($"https://discord.com/api/v9/guilds/{guildId}/members/{myUserId}", "+",BuildHeaders(), log:true, parse:true);
+
+            var roles = new List<string>();
+            var json = _project.Json;
+            
+            if (json.roles == null)
+            {
+                _log.Warn($"API error: {response}");
+                return new List<string>();
+            }
+            
+            var rolesCnt = json.roles.Count;
+            for(int i = 0; i < rolesCnt ; i++)
+            {
+                var roleId = json.roles[i];
+                roles.Add(roleId);
+            }
+            return roles;
+        }
+
+        public Dictionary<string, string> GetRolesNamesForGuild(string guildId)
+        {
+            _idle.Sleep();
+            string response = _project.GET($"https://discord.com/api/v9/guilds/{guildId}/roles", "+", BuildHeaders(), log:true, parse:true);
+
+            var roles = new Dictionary<string, string>();
+            var json = _project.Json;
+            var rolesCnt = json.Count;
+
+            for(int i = 0; i < rolesCnt ; i++)
+            {
+                string roleId = json[i].id.ToString();
+                var roleName = json[i].name;
+                roles.Add(roleId,roleName);
+            }
+            return roles;
+        }
+        
+        public List<string> GetRolesNames(string guildId)
+        {
+            var rolesIds = GetRolesId(guildId);
+            var rolesNames = GetRolesNamesForGuild(guildId);  
+    
+            var namedRoles = new List<string>();
+            foreach (var roleId in rolesIds)
+            {
+                if (rolesNames.ContainsKey(roleId))  // Безопаснее
+                {
+                    namedRoles.Add(rolesNames[roleId]);
+                }
+                else
+                {
+                    _project.warn($"Role ID {roleId} not found in guild roles");
+                }
+            }
+            return namedRoles;
+        }
+
+
+        public Dictionary<string, string> GetServers(string guildId)
+        {
+            _idle.Sleep();
+            string response = _project.GET("https://discord.com/api/v9/users/@me/guilds", "+",BuildHeaders(), log:true, parse:true);
+
+            var servers = new Dictionary<string, string>();
+            var json = _project.Json;
+            var rolesCnt = json.Count;
+
+            for(int i = 0; i < rolesCnt ; i++)
+            {
+                string id = json[i].id.ToString();
+                var name = json[i].name;
+                servers.Add(id,name);
+            }
+            return servers;
+        }
+
+
+
+
+        #endregion
         public void Auth()
         {
             var emu = _instance.UseFullMouseEmulation;

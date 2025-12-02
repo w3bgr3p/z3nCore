@@ -15,7 +15,7 @@ using z3nCore.Utilities;
 
 namespace z3nCore
 {
-    public static class InstanceExtensions
+    public static partial class InstanceExtensions
     {
         private static readonly object ClipboardLock = new object();
         private static readonly SemaphoreSlim ClipboardSemaphore = new SemaphoreSlim(1, 1);
@@ -510,17 +510,37 @@ namespace z3nCore
             Thread.Sleep(500);
             if (blank)instance.ActiveTab.Navigate("about:blank", "");
         }
-        public static void Go(this Instance instance, string url, bool strict = false)
+        public static void CloseNewTab(this Instance instance, int deadline = 10, int tabIndex = 2)
+        {
+            int i = 0;
+
+            while (i < deadline)
+            {
+                i++;
+                Thread.Sleep(1000);
+                if (instance.AllTabs.ToList().Count == tabIndex)
+                {
+                    instance.CloseExtraTabs();
+                    return;
+                }
+                    
+            }
+            throw new Exception("no new tab found");
+        }
+        public static void Go(this Instance instance, string url, bool strict = false, bool WaitTillLoad = false )
         {
             bool go = false;
             string current = instance.ActiveTab.URL;
             if (strict) if (current != url) go = true;
             if (!strict) if (!current.Contains(url)) go = true;
             if (go) instance.ActiveTab.Navigate(url, "");
+            if (instance.ActiveTab.IsBusy && WaitTillLoad) instance.ActiveTab.WaitDownloading();
+            
         }
-        public static void F5(this Instance instance)
+        public static void F5(this Instance instance, bool WaitTillLoad = true)
         {
             instance.ActiveTab.MainDocument.EvaluateScript("location.reload(true)");
+            if (instance.ActiveTab.IsBusy && WaitTillLoad) instance.ActiveTab.WaitDownloading();
         }
 
         public static void ScrollDown(this Instance instance, int y = 420)

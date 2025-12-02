@@ -255,6 +255,30 @@ namespace z3nCore
 
         #endregion
         
+        
+        public static string ToBase64(this string cookiesJson)
+        {
+            if (string.IsNullOrEmpty(cookiesJson))
+                return string.Empty;
+        
+            byte[] bytes = Encoding.UTF8.GetBytes(cookiesJson);
+            return Convert.ToBase64String(bytes);
+        }
+        public static string FromBase64(this string base64Cookies)
+        {
+            if (string.IsNullOrEmpty(base64Cookies))
+                return string.Empty;
+        
+            try
+            {
+                byte[] bytes = Convert.FromBase64String(base64Cookies);
+                return Encoding.UTF8.GetString(bytes);
+            }
+            catch (FormatException)
+            {
+                return base64Cookies;
+            }
+        }
         public static void SaveSvgStringToImage(this string svgContent, string pathToScreen)
         {
             var svgDocument = SvgDocument.FromSvg<SvgDocument>(svgContent);
@@ -432,7 +456,7 @@ namespace z3nCore
                 : throw new Exception($"No Link found in message {text}");
         }
 
-        public static string GetOTP(this string text)
+        public static string GetOtp(this string text)
         {
             Match match = Regex.Match(text, @"\b\d{6}\b");
             if (match.Success)

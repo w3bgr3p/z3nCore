@@ -79,7 +79,7 @@ namespace z3nCore.Api
                 $"Authorization: Bearer {_apiKey}"
             };
 
-            string response = _project.POST(_url, jsonBody, "", headers, log);
+            string response = _project.POST(_url, jsonBody, "", headers, log:log);
             _logger.Send($"Full response: {response}");
 
             try

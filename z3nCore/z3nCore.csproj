@@ -129,6 +129,7 @@
     <Compile Include="W3b\AptosTools.cs" />
     <Compile Include="W3b\CosmosTools.cs" />
     <Compile Include="W3b\EvmTools.cs" />
+    <Compile Include="W3b\Faucet.cs" />
     <Compile Include="W3b\SolTools.cs" />
     <Compile Include="W3b\SuiTools.cs" />
     <Compile Include="Wallets\AuroWallet.cs" />

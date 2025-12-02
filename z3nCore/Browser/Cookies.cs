@@ -371,8 +371,8 @@ namespace z3nCore
                     cookieSource = File.ReadAllText(jsonPath);
                     break;
             }
-
-            _instance.SetCookie(cookieSource);
+            var cookies = JsonToNetscape(cookieSource);
+            _instance.SetCookie(cookies);
         }
         
         public string Get(string domainFilter = "")
@@ -527,17 +527,162 @@ namespace z3nCore
                 _logger.Send($"!W cant't parse JSON: [{cookiesJson}]  {ex.Message}");
             }
         }
+        
+        public static string JsonToNetscape(string jsonCookies)
+        {
+            var cookies = Newtonsoft.Json.JsonConvert.DeserializeObject<List<dynamic>>(jsonCookies);
+            var lines = new List<string>();
+    
+            foreach (var cookie in cookies)
+            {
+                string domain = cookie.domain.ToString();
+                string flag = domain.StartsWith(".") ? "TRUE" : "FALSE";
+                string path = cookie.path.ToString();
+                string secure = cookie.secure.ToString().ToUpper();
+        
+                // Конвертируем expirationDate
+                string expiration;
+                if (cookie.expirationDate == null || cookie.session == true)
+                {
+                    // Session cookie - ставим дату в будущем
+                    expiration = "01/01/2030 00:00:00";
+                }
+                else
+                {
+                    double timestamp = (double)cookie.expirationDate;
+                    DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        .AddSeconds(timestamp);
+                    expiration = dateTime.ToString("MM/dd/yyyy HH:mm:ss");
+                }
+        
+                string name = cookie.name.ToString();
+                string value = cookie.value.ToString();
+                string httpOnly = cookie.httpOnly.ToString().ToUpper();
+        
+                // Формат: domain{TAB}flag{TAB}path{TAB}secure{TAB}expiration{TAB}name{TAB}value{TAB}httpOnly{TAB}FALSE
+                string line = $"{domain}\t{flag}\t{path}\t{secure}\t{expiration}\t{name}\t{value}\t{httpOnly}\tFALSE";
+                lines.Add(line);
+            }
+            return string.Join("\n", lines);
+        }
+
     }
 
+    public static partial class InstanceExtensions
+    {
+        public static string GetDomainCookies(this Instance instance, IZennoPosterProjectModel project, bool toDb = false)
+        {
+            
+            string domainFilter = instance.ActiveTab.MainDomain;
+            var cookieContainer = project.Profile.CookieContainer;
+            var cookieList = new List<object>();
+            int domainCount = 0;
+            int totalCookies = 0;
+            int filteredDomains = 0;
+
+            foreach (var domain in cookieContainer.Domains)
+            {
+                domainCount++;
+                if (string.IsNullOrEmpty(domainFilter) || domain.Contains(domainFilter))
+                {
+                    filteredDomains++;
+                    var cookies = cookieContainer.Get(domain);
+                    int cookiesInDomain = cookies.Count();
+                    totalCookies += cookiesInDomain;
+                    
+                    cookieList.AddRange(cookies.Select(cookie => new
+                    {
+                        domain = cookie.Host,
+                        expirationDate = cookie.Expiry == DateTime.MinValue ? (double?)null : new DateTimeOffset(cookie.Expiry).ToUnixTimeSeconds(),
+                        hostOnly = !cookie.IsDomain,
+                        httpOnly = cookie.IsHttpOnly,
+                        name = cookie.Name,
+                        path = cookie.Path,
+                        sameSite = cookie.SameSite.ToString(),
+                        secure = cookie.IsSecure,
+                        session = cookie.IsSession,
+                        storeId = (string)null,
+                        value = cookie.Value,
+                        id = cookie.GetHashCode()
+                    }));
+                    
+                }
+            }
+            string cookiesJson = Global.ZennoLab.Json.JsonConvert.SerializeObject(cookieList, formatting: Formatting.None);
+            if (toDb)
+                project.DbUpd($"cookies = '{cookiesJson.ToBase64()}'");
+            return cookiesJson;
+        }
+        
+        private static string JsonToNetscape(this string jsonCookies)
+        {
+            var cookies = Newtonsoft.Json.JsonConvert.DeserializeObject<List<dynamic>>(jsonCookies);
+            var lines = new List<string>();
     
-    
+            foreach (var cookie in cookies)
+            {
+                string domain = cookie.domain.ToString();
+                string flag = domain.StartsWith(".") ? "TRUE" : "FALSE";
+                string path = cookie.path.ToString();
+                string secure = cookie.secure.ToString().ToUpper();
+        
+                // Конвертируем expirationDate
+                string expiration;
+                if (cookie.expirationDate == null || cookie.session == true)
+                {
+                    // Session cookie - ставим дату в будущем
+                    expiration = "01/01/2030 00:00:00";
+                }
+                else
+                {
+                    double timestamp = (double)cookie.expirationDate;
+                    DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
+                        .AddSeconds(timestamp);
+                    expiration = dateTime.ToString("MM/dd/yyyy HH:mm:ss");
+                }
+        
+                string name = cookie.name.ToString();
+                string value = cookie.value.ToString();
+                string httpOnly = cookie.httpOnly.ToString().ToUpper();
+        
+                // Формат: domain{TAB}flag{TAB}path{TAB}secure{TAB}expiration{TAB}name{TAB}value{TAB}httpOnly{TAB}FALSE
+                string line = $"{domain}\t{flag}\t{path}\t{secure}\t{expiration}\t{name}\t{value}\t{httpOnly}\tFALSE";
+                lines.Add(line);
+            }
+            return string.Join("\n", lines);
+        }
+        public static void SetCookie(this Instance instance, string json)
+        {
+            var cookies = JsonToNetscape(json);
+            instance.SetCookie(cookies);
+
+        }
+        public static void SetCookie(this Instance instance, IZennoPosterProjectModel project)
+        {
+            string cookies = project.Var("cookies");
+            if (string.IsNullOrWhiteSpace(cookies))
+            {
+                cookies = project.DbGet("cookies", "_instance");
+                cookies = cookies.FromBase64();
+                project.Var("cookies", cookies);
+            }
+            if (string.IsNullOrWhiteSpace(cookies))
+            {
+                project.warn("cookies is empty");
+                return;
+            }
+            cookies =  JsonToNetscape(cookies);
+            instance.SetCookie(cookies);
+            
+        }
+        
+    }
+
     public static partial class ProjectExtensions
     {
         public static string DbCookies(this IZennoPosterProjectModel project)
         {
-            var rawCookies = project.SqlGet("cookies", "_instance");
-        
-            // Декодируем из Base64 если нужно
+            var rawCookies = project.DbGet("cookies", "_instance");
             if (!string.IsNullOrEmpty(rawCookies))
             {
                 try
@@ -547,13 +692,12 @@ namespace z3nCore
                 }
                 catch (FormatException)
                 {
-                    // Если это не Base64, возможно старый формат - используем как есть
                 }
             }
-        
             return Cookies.CookieFix(rawCookies);
         }
     }
+    
 
 
 }

@@ -228,8 +228,10 @@ namespace z3nCore
             string ZpVer = v[1];
             
             if (author != "") author = $" script author: @{author}";
-            string logo = $@"using ZennoPoster v{ZpVer}; 
-             using {dllTitle} v{DllVer}
+            string frameworkVersion = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
+            
+            string logo = $@"using ZennoPoster v{ZpVer} && {frameworkVersion}; 
+             using {dllTitle} v{DllVer}  
             ┌by─┐					
             │    w3bgr3p;		
             └─→┘
@@ -974,9 +976,8 @@ namespace z3nCore
                 // Successfully found accounts, exit
                 return;
             }
-
-            // No accounts found in any priority group
-            project.warn($"GetListFromDb failed: condition={condition}, found=0 in all priority groups");
+            
+            project.warn($"No accounts found by condition\n{condition.Replace("\n", " ")} in range {project.Var("cfgAccRange")}");
         }
 
         public static void ChooseAccountByCondition(this IZennoPosterProjectModel project,
@@ -1015,7 +1016,7 @@ namespace z3nCore
 
             var left = project.Lists["accs"].Count;
             project.DbUpd($"status = 'working...'");
-            project.SendToLog($"Account selected: acc={acc0}, remaining={left}, condition={condition}", LogType.Info, true, LogColor.Gray);
+            project.SendToLog($"Account selected: acc={acc0}, remaining={left}, condition={condition}, range={project.Var("cfgAccRange")}", LogType.Info, true, LogColor.Gray);
         }
 
         public static void ChooseAndRunByCondition(this IZennoPosterProjectModel project,Instance instance, string condition, bool browser = false,
@@ -1061,14 +1062,14 @@ namespace z3nCore
                 .Where(acc => filtered.Contains(acc))
                 .ToList();
             
+            project.ListSync("accs", combined);
+            
             if (!combined.Any())
             {
                 var conditionInfo = string.IsNullOrEmpty(originalCondition) ? "" : $", condition={originalCondition}";
                 project.warn($"Social filter failed: social={socialName}, found=0{conditionInfo}");
                 return false;
             }
-            
-            project.ListSync("accs", combined);
             return true;
         }
     }
