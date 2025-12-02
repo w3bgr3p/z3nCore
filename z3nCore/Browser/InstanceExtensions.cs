@@ -527,14 +527,21 @@ namespace z3nCore
             }
             throw new Exception("no new tab found");
         }
-        public static void Go(this Instance instance, string url, bool strict = false, bool WaitTillLoad = false )
+        public static void Go(this Instance instance, string url, bool strict = false, bool waitTdle = false , bool newTab = false)
         {
+           
+            if (newTab)
+            {
+                Tab tab = instance.NewTab("new");
+            }
+            
             bool go = false;
             string current = instance.ActiveTab.URL;
             if (strict) if (current != url) go = true;
             if (!strict) if (!current.Contains(url)) go = true;
             if (go) instance.ActiveTab.Navigate(url, "");
-            if (instance.ActiveTab.IsBusy && WaitTillLoad) instance.ActiveTab.WaitDownloading();
+            
+            if (instance.ActiveTab.IsBusy && waitTdle) instance.ActiveTab.WaitDownloading();
             
         }
         public static void F5(this Instance instance, bool WaitTillLoad = true)
