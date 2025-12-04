@@ -20,6 +20,7 @@ namespace z3nCore
         private readonly Sleeper _idle;
         private string _status;
         private string _token;
+        private string _ct0;
         private string _login;
         private string _pass;
         private string _2fa;
@@ -40,22 +41,142 @@ namespace z3nCore
 
         private void LoadCreds()
         {
-            var creds = _project.DbGetColumns(" status, token, login, password, otpsecret, email, emailpass",
-                "_twitter");
+            var creds = _project.DbGetColumns("status, token, ct0, login, password, otpsecret, email, emailpass", "_twitter");
             _status = creds["status"];
             _token = creds["token"];
+            _ct0 = creds.ContainsKey("ct0") ? creds["ct0"] : ""; // ← ДОБАВЬ
             _login = creds["login"];
             _pass = creds["password"];
             _2fa = creds["otpsecret"];
             _email = creds["email"];
             _email_pass = creds["emailpass"];
 
-
             if (string.IsNullOrEmpty(_login) || string.IsNullOrEmpty(_pass))
                 throw new Exception($"invalid credentials login:[{_login}] pass:[{_pass}]");
         }
 
         #region API
+        
+        public string[] BuildHeaders()
+        {
+            // Bearer токен - константа для веб-клиента Twitter
+            const string BEARER = "AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA";
+        
+            string[] headers = {
+                $"authorization: Bearer {BEARER}",
+                $"cookie: auth_token={_token}; ct0={_ct0}",
+                $"x-csrf-token: {_ct0}",
+                "content-type: application/json",
+                $"user-agent: {_project.Profile.UserAgent}",
+                "x-twitter-active-user: yes",
+                "x-twitter-client-language: en"
+            };
+            return headers;
+        }
+        
+        public Dictionary<string, string> GetMe()
+        {
+            _idle.Sleep();
+            string response = _project.GET(
+                "https://api.twitter.com/1.1/account/verify_credentials.json?include_entities=false", 
+                "+", 
+                BuildHeaders(), 
+                log:true, 
+                parse:true
+            );
+    
+            var result = new Dictionary<string, string>();
+            var json = _project.Json;
+    
+            try { result.Add("id", json.id_str.ToString()); } catch { result.Add("id", ""); }
+            try { result.Add("screen_name", json.screen_name.ToString()); } catch { result.Add("screen_name", ""); }
+            try { result.Add("name", json.name.ToString()); } catch { result.Add("name", ""); }
+            try { result.Add("followers_count", json.followers_count.ToString()); } catch { result.Add("followers_count", "0"); }
+            try { result.Add("friends_count", json.friends_count.ToString()); } catch { result.Add("friends_count", "0"); }
+            try { result.Add("statuses_count", json.statuses_count.ToString()); } catch { result.Add("statuses_count", "0"); }
+            try { result.Add("verified", json.verified.ToString()); } catch { result.Add("verified", "false"); }
+    
+            return result;
+        }
+        
+        public bool Follow(string screenName)
+        {
+            _idle.Sleep();
+            string url = "https://api.twitter.com/1.1/friendships/create.json";
+            string postData = $"screen_name={screenName}";
+    
+            string response = _project.POST(url, postData, "+", BuildHeaders(), log:true, parse:true);
+    
+            try
+            {
+                var json = _project.Json;
+                return json.following.ToString() == "True";
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        public bool Tweet(string text)
+        {
+            string url = "https://api.twitter.com/1.1/statuses/update.json";
+            string postData = $"status={Uri.EscapeDataString(text)}";
+            _idle.Sleep();
+            string response = _project.POST(url, postData, "+", BuildHeaders(), log:true, parse:true);
+    
+            try
+            {
+                var json = _project.Json;
+                return json.id_str != null;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        public bool Like(string tweetId)
+        {
+            string url = "https://api.twitter.com/1.1/favorites/create.json";
+            string postData = $"id={tweetId}";
+            _idle.Sleep();
+            string response = _project.POST(url, postData, "+", BuildHeaders(), log:true, parse:true);
+    
+            try
+            {
+                var json = _project.Json;
+                return json.favorited.ToString() == "True";
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        public bool Retweet(string tweetId)
+        {
+            string url = $"https://api.twitter.com/1.1/statuses/retweet/{tweetId}.json";
+            _idle.Sleep();
+            string response = _project.POST(url, "", "+", BuildHeaders(), log:true, parse:true);
+    
+            try
+            {
+                var json = _project.Json;
+                return json.retweeted.ToString() == "True";
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        public bool CheckRateLimit(string response)
+        {
+            if (response.Contains("rate limit"))
+            {
+                _project.warn("Rate limited!");
+                Thread.Sleep(60000); // Жди минуту
+                return false;
+            }
+            return true;
+        }
 
         public Dictionary<string, string> UserByScreenName()
         {
@@ -371,21 +492,34 @@ while (true)
             _instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
         }
         
-        public string TokenGet()
+        public void TokenGet()
         {
-            var cookJson = new Cookies(_project, _instance).Get("."); //_instance.GetCookies(_project, ".");
+            var cookJson = new Cookies(_project, _instance).Get(".");
             JArray toParse = JArray.Parse(cookJson);
-            int i = 0;
-            var token = "";
-            while (token == "")
+    
+            string token = "";
+            string ct0 = "";
+    
+            for (int i = 0; i < toParse.Count; i++)
             {
-                if (toParse[i]["name"].ToString() == "auth_token") token = toParse[i]["value"].ToString();
-                i++;
+                string cookieName = toParse[i]["name"].ToString();
+        
+                if (cookieName == "auth_token")
+                    token = toParse[i]["value"].ToString();
+        
+                if (cookieName == "ct0")
+                    ct0 = toParse[i]["value"].ToString();
+        
+                if (!string.IsNullOrEmpty(token) && !string.IsNullOrEmpty(ct0))
+                    break;
             }
 
             _token = token;
-            _project.DbUpd($"token = '{token}'", "_twitter");
-            return token;
+            _ct0 = ct0;
+    
+            _project.DbUpd($"token = '{token}', ct0 = '{ct0}'", "_twitter");
+    
+            _log.Send($"Tokens extracted: auth_token length={token.Length}, ct0 length={ct0.Length}");
         }
         public string LoginWithCredentials()
         {
