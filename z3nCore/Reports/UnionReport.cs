@@ -726,8 +726,8 @@ namespace z3nCore.Utilities
                     max-width: 100%;
                 }
                 .heatmap-cell {
-                    width: calc((100vw - 350px) / 100 - 2px);
-                    height: calc((100vw - 350px) / 100 - 2px);
+                    width: calc((100vw - 304px) / 100 - 2px);
+                    height: calc((100vw - 304px) / 100 - 2px);
                     border-radius: 2px;
                     border: 1px solid #30363d;
                     background: transparent;
