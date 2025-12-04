@@ -27,6 +27,7 @@ namespace z3nCore
         private readonly Instance _instance;
         private readonly Logger _log;
         private readonly Utilities.Sleeper _idle;
+        private readonly bool _enableLog;
         private string _status;
         private string _token;
         private string _login;
@@ -37,7 +38,8 @@ namespace z3nCore
         {
             _project = project;
             _instance = instance;
-            _log = new Logger(project, log: log, classEmoji: "👾");
+            _enableLog = log;
+            _log = new Logger(project, log: _enableLog, classEmoji: "👾");
             _idle = new Utilities.Sleeper(1337, 2078);
             LoadCreds();
         }
@@ -334,8 +336,9 @@ namespace z3nCore
             string response = _project.GET("https://discord.com/api/v9/users/@me", "+",BuildHeaders());
             if (response.Contains("{\"message\":")) 
                 throw new Exception(response);
-            var dict = response.JsonToDic();
-            if  (updateDb) _project.JsonToDb(response, "__discord");
+            var dict = response.JsonToDic(ignoreEmpty:true);
+            if  (updateDb) 
+                _project.JsonToDb(response, "_discord", log:_enableLog);
             return dict;
         }
         

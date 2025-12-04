@@ -186,10 +186,12 @@ namespace z3nCore
         public string GetState(bool log = false)
         {
             string state = null;
-            _project.Deadline();
+            var d = new Time.Deadline();
+            //_project.Deadline();
             while (string.IsNullOrEmpty(state))
             {
-                _project.Deadline(180);
+                d.Check(180);
+                //_project.Deadline(180);
                 _idle.Sleep();
             
                 if (!_instance.ActiveTab.FindElementByAttribute("span", "innertext", "Continue\\ in\\ Browser", "regexp", 0).IsVoid) 
@@ -208,76 +210,6 @@ namespace z3nCore
             }
             return state;
             
-        }
-        public string Load_(bool log = false)
-        {
-            string state = null;
-            var emu = _instance.UseFullMouseEmulation;
-            _instance.UseFullMouseEmulation = false;
-            bool tokenUsed = false;
-            bool credentialsUsed = false;
-
-            _instance.Go("https://discord.com/channels/@me", newTab:true);
-            _project.Deadline();
-        start:
-        _project.Deadline(60);
-            state = null;
-            while (string.IsNullOrEmpty(state))
-            {
-                state = GetState();
-            }
-            
-            _log.Send($"Page state detected: {state}, tokenUsed={tokenUsed}");
-
-            if (!tokenUsed)
-            {
-                _log.Send("Attempting token auth...");
-                TokenSet();
-                tokenUsed = true;
-                goto start;
-            }
-            
-            
-            switch (state){
-                case "input_credentials":
-                    _log.Send($"Token auth failed, using credentials: login={_login}");
-                    credentialsUsed = true;
-                    InputCredentials();
-                    goto start;
-                    
-                case "appDetected":
-                    _log.Send("appDetected ");
-                    _instance.HeClick(("span", "innertext", "Continue\\ in\\ Browser", "regexp", 0));
-                    goto start;
-                    
-                case "capctha":
-                    _log.Send("!W captcha ");
-                    _project.CapGuru();
-                    goto start;
-                    
-                case "input_otp":
-                    _log.Send("2FA required, entering code...");
-                    _instance.HeSet(("input:text", "autocomplete", "one-time-code", "regexp", 0), OTP.Offline(_2fa));
-                    _instance.HeClick(("button", "type", "submit", "regexp", 0));
-                    goto start;                 
-                    
-                case "logged":
-                    _instance.HeClick(("button", "innertext", "Apply", "regexp", 0), thr0w: false);
-                    
-                    var account = _instance.ActiveTab.FindElementByAttribute("div", "class", "avatarWrapper__", "regexp", 0).FirstChild.GetAttribute("aria-label");
-                    _log.Send($"logged with {account}");
-                    if (credentialsUsed)
-                    {
-                        TokenGet(true);
-                    }
-                    _instance.UseFullMouseEmulation = emu;
-                    return state;
-                
-                default:
-                    _log.Warn(state);
-                    return state;
-            }
-           
         }
         #endregion
         #region Stats & Info UI
@@ -419,8 +351,9 @@ namespace z3nCore
             string response = _project.GET("https://discord.com/api/v9/users/@me", "+",BuildHeaders());
             if (response.Contains("{\"message\":")) 
                 throw new Exception(response);
-            var dict = response.JsonToDic();
-            if  (updateDb) _project.JsonToDb(response, "__discord");
+            var dict = response.JsonToDic(ignoreEmpty:true);
+            if  (updateDb) 
+                _project.JsonToDb(response, "_discord");
             return dict;
         }
         
@@ -527,12 +460,15 @@ namespace z3nCore
             _instance.ActiveTab.FullEmulationMouseMove(700,350);
 
             _instance.HeGet(("button", "data-mana-component", "button", "regexp", 1));
-            _project.Deadline();
+            var d1 = new Time.Deadline();
+            
+            
             
             int scrollAttempts = 0;
             while (true)
             {
-                _project.Deadline(30);
+                d1.Check(30);
+                
                 if (!_instance.ActiveTab.FindElementByAttribute("button", "data-mana-component", "button", "regexp", 1).GetAttribute("innerhtml").Contains(d))
                     break;
                 _instance.ActiveTab.FullEmulationMouseWheel(0, 1000);

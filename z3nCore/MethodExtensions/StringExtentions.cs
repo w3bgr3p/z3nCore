@@ -313,7 +313,7 @@ namespace z3nCore
 
         #region PARSING - JSON
 
-        public static Dictionary<string, string> JsonToDic(this string json, bool ignoreEmpty = false)
+        public static Dictionary<string, string> JsonToDic(this string json, bool ignoreEmpty = true)
         {
             var result = new Dictionary<string, string>();
     
