@@ -646,11 +646,11 @@ namespace z3nCore.Utilities
                    display: flex;
                    flex-wrap: wrap;
                    gap: 2px;
-                   max-width: 100%;
+                   max-width: calc((14px + 2px) * 100);
                 }
                 .heatmap-cell {
-                    width: calc((100vw - 350px) / 100 - 2px);
-                    height: calc((100vw - 350px) / 100 - 2px);
+                   width: 14px;
+                   height: 14px;
                    border-radius: 2px;
                    border: 1px solid #30363d;
                    background: transparent;

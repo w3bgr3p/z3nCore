@@ -1,5 +1,6 @@
 ﻿using System;
-
+using System.Collections.Generic;
+using System.Linq;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
 
@@ -14,7 +15,7 @@ namespace z3nCore.Api
         private string _url;
         private string _model;
 
-        public AI(IZennoPosterProjectModel project, string provider, string model = null, bool log = false)
+        public AI(IZennoPosterProjectModel project, string provider = "aiio", string model = null, bool log = false)
         {
             _project = project;
             _logger = new Logger(project, log: log, classEmoji: "AI");
@@ -24,22 +25,66 @@ namespace z3nCore.Api
 
         private void SetProvider(string provider)
         {
-
-            switch (provider)
+            _url = "https://api.intelligence.io.solutions/api/v1/chat/completions";
+            _apiKey = _project.SqlGet("api", "__aiio");
+            if (string.IsNullOrEmpty(_apiKey))
+                throw new Exception($"aiio key not found for {_project.Var("acc0")}");
+        }
+        
+        private static readonly Dictionary<string, string[]> ModelCapabilities = new Dictionary<string, string[]>
+        {
+            // Reasoning модели (специализация на логических рассуждениях)
+            ["moonshotai/Kimi-K2-Thinking"] = new[] { "text", "code", "reasoning" },
+            ["deepseek-ai/DeepSeek-R1-0528"] = new[] { "text", "code", "reasoning" },
+            ["Qwen/Qwen3-235B-A22B-Thinking-2507"] = new[] { "text", "code", "reasoning" },
+        
+            // Мультимодальные (текст + изображения)
+            ["meta-llama/Llama-3.2-90B-Vision-Instruct"] = new[] { "text", "img", "code" },
+            ["Qwen/Qwen2.5-VL-32B-Instruct"] = new[] { "text", "img", "code" },
+        
+            // Специализированные на коде
+            ["Intel/Qwen3-Coder-480B-A35B-Instruct-int4-mixed-ar"] = new[] { "code", "text" },
+            ["mistralai/Devstral-Small-2505"] = new[] { "code", "text" },
+            ["mistralai/Magistral-Small-2506"] = new[] { "code", "text" },
+        
+            // Топовые универсальные модели (70B+)
+            ["deepseek-ai/DeepSeek-V3.2"] = new[] { "text", "code" },
+            ["zai-org/GLM-4.6"] = new[] { "text", "code" },
+            ["openai/gpt-oss-120b"] = new[] { "text", "code" },
+            ["Qwen/Qwen3-Next-80B-A3B-Instruct"] = new[] { "text", "code" },
+            ["meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8"] = new[] { "text", "code" },
+            ["meta-llama/Llama-3.3-70B-Instruct"] = new[] { "text", "code" },
+            ["mistralai/Mistral-Large-Instruct-2411"] = new[] { "text", "code" },
+        
+            // Быстрые/компактные модели
+            ["moonshotai/Kimi-K2-Instruct-0905"] = new[] { "text", "code" },
+            ["openai/gpt-oss-20b"] = new[] { "text", "code" },
+            ["mistralai/Mistral-Nemo-Instruct-2407"] = new[] { "text", "code" }
+        };
+        
+        public static List<string> SetModels(string @using = "all")
+        {
+            var filter = @using.ToLower().Trim();
+        
+            if (filter == "all")
             {
-                case "perplexity":
-                    _url = "https://api.perplexity.ai/chat/completions";
-                    _apiKey = _project.SqlGet("apikey", "_api", where: $"key = '{provider}'");
-                    break;
-                case "aiio":
-                    _url = "https://api.intelligence.io.solutions/api/v1/chat/completions";
-                    _apiKey = _project.SqlGet("api", "__aiio");
-                    if (string.IsNullOrEmpty(_apiKey))
-                        throw new Exception($"aiio key not found for {_project.Var("acc0")}");
-                    break;
-                default:
-                    throw new Exception($"unknown provider {provider}");
+                return ModelCapabilities.Keys.ToList();
             }
+        
+            return ModelCapabilities
+                .Where(kvp => kvp.Value.Contains(filter))
+                .Select(kvp => kvp.Key)
+                .ToList();
+        }
+        public static string[] GetModelCapabilities(string modelName)
+        {
+            return ModelCapabilities.TryGetValue(modelName, out var caps) ? caps : Array.Empty<string>();
+        }
+        
+        public static bool SupportsCapability(string modelName, string capability)
+        {
+            return ModelCapabilities.TryGetValue(modelName, out var caps) && 
+                   caps.Contains(capability.ToLower());
         }
 
         public string Query(string systemContent, string userContent, string aiModel = "rnd", bool log = false, double temperature_ = 0.8, double top_p_ = 0.9, double top_k_ = 0, int presence_penalty_ = 0,int frequency_penalty_ = 1)
@@ -96,28 +141,7 @@ namespace z3nCore.Api
             }
         }
 
-        public string GenerateTweet(string content, string bio = "", bool log = false)
-        {
-            string systemContent = string.IsNullOrEmpty(bio)
-                            ? "You are a social media account. Generate tweets that reflect a generic social media persona."
-                            : $"You are a social media account with the bio: '{bio}'. Generate tweets that reflect this persona, incorporating themes relevant to bio.";
 
-        gen:
-            string tweetText = Query(systemContent, content);
-            if (tweetText.Length > 220)
-            {
-                _logger.Send($"tweet is over 220sym `y");
-                goto gen;
-            }
-            return tweetText;
-
-        }
-
-        public string OptimizeCode(string content, bool log = false)
-        {
-            string systemContent = "You are a web3 developer. Optimize the following code. Return only the optimized code. Do not add explanations, comments, or formatting. Output code only, in plain text.";
-            return Query(systemContent, content,log:log);
-        }
 
         public string GoogleAppeal(bool log = false)
         {
