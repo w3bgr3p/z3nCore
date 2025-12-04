@@ -655,8 +655,8 @@ namespace z3nCore.Utilities
                     max-width: 100%;
                 }
                 .account-cell {
-                    width: calc((100vw - 60px) / 100 - 2px);
-                    height: calc((100vw - 60px) / 100 - 2px);
+                    width: calc((100vw - 92px) / 100 - 2px);
+                    height: calc((100vw - 92px) / 100 - 2px);
                     background: #0d1117;
                     border: 1px solid #30363d;
                     border-radius: 2px;
@@ -723,11 +723,11 @@ namespace z3nCore.Utilities
                     display: flex;
                     flex-wrap: wrap;
                     gap: 2px;
-                    max-width: calc((11px + 2px) * 100);
+                    max-width: 100%;
                 }
                 .heatmap-cell {
-                    width: 11px;
-                    height: 11px;
+                    width: calc((100vw - 350px) / 100 - 2px);
+                    height: calc((100vw - 350px) / 100 - 2px);
                     border-radius: 2px;
                     border: 1px solid #30363d;
                     background: transparent;
