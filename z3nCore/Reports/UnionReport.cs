@@ -72,51 +72,83 @@ namespace z3nCore.Utilities
             List<AccountSocialData> socialAccounts,
             List<DailyReport.ProjectData> dailyProjects)
         {
-            var sb = new StringBuilder();
+            var html = new StringBuilder();
             var userId = _project.ExecuteMacro("{-Environment.CurrentUser-}");
             var title = $"Union Report {DateTime.Now:dd.MM.yyyy [HH:mm:ss]} id: {userId}";
+            var today = DateTime.UtcNow.Date;
+
+            // Получаем процессы ZennoPoster
+            var zennoProcesses = DailyReport.FarmReportGenerator.GetZennoProcesses();
+
+            // Подсчитываем статистику для Daily
+            int totalAccounts = 0;
+            int totalSuccess = 0;
+            int totalErrors = 0;
+            int maxAccountIndex = 0;
+
+            foreach (var project in dailyProjects)
+            {
+                totalAccounts += project.All.Count;
+                foreach (var data in project.All.Values)
+                {
+                    var status = data[0].Trim();
+                    if (status == "+") totalSuccess++;
+                    else if (status == "-") totalErrors++;
+                }
+
+                foreach (var acc in project.All.Keys)
+                {
+                    if (int.TryParse(acc, out int accIndex))
+                    {
+                        if (accIndex > maxAccountIndex)
+                            maxAccountIndex = accIndex;
+                    }
+                }
+            }
+
+            var overallSuccessRate = totalAccounts > 0 ? (double)totalSuccess / totalAccounts * 100 : 0;
 
             // HTML Header
-            sb.AppendLine("<!DOCTYPE html>");
-            sb.AppendLine("<html lang='ru'>");
-            sb.AppendLine("<head>");
-            sb.AppendLine("    <meta charset='UTF-8'>");
-            sb.AppendLine("    <meta name='viewport' content='width=device-width, initial-scale=1.0'>");
-            sb.AppendLine("    <title>" + title + "</title>");
-            sb.AppendLine("    <style>");
-            sb.AppendLine(GetUnifiedStyles());
-            sb.AppendLine("    </style>");
-            sb.AppendLine("</head>");
-            sb.AppendLine("<body>");
+            html.AppendLine("<!DOCTYPE html>");
+            html.AppendLine("<html lang='ru'>");
+            html.AppendLine("<head>");
+            html.AppendLine("    <meta charset='UTF-8'>");
+            html.AppendLine("    <meta name='viewport' content='width=device-width, initial-scale=1.0'>");
+            html.AppendLine("    <title>" + title + "</title>");
+            html.AppendLine("    <style>");
+            html.AppendLine(GetUnifiedStyles());
+            html.AppendLine("    </style>");
+            html.AppendLine("</head>");
+            html.AppendLine("<body>");
 
-            sb.AppendLine("    <div id='tooltip' class='tooltip'></div>");
-            sb.AppendLine("    <div class='container'>");
+            html.AppendLine("    <div id='tooltip' class='tooltip'></div>");
+            html.AppendLine("    <div class='container'>");
 
             // Main Header
-            sb.AppendLine("        <div class='header main-header'>");
-            sb.AppendLine($"            <h1>📊 {title}</h1>");
-            sb.AppendLine("        </div>");
+            html.AppendLine("        <div class='header main-header'>");
+            html.AppendLine($"            <h1>📊 {title}</h1>");
+            html.AppendLine("        </div>");
 
             // === SOCIAL REPORT SECTION ===
-            sb.Append(GenerateSocialReportSection(socialAccounts));
+            html.Append(GenerateSocialReportSection(socialAccounts));
 
             // Divider
-            sb.AppendLine("        <div class='section-divider'></div>");
+            html.AppendLine("        <div class='section-divider'></div>");
 
-            // === DAILY REPORT SECTION ===
-            sb.Append(GenerateDailyReportSection(dailyProjects));
+            // === DAILY REPORT SECTION (оригинальная реализация) ===
+            html.Append(GenerateDailyReportSection(dailyProjects, today, maxAccountIndex, totalAccounts, totalSuccess, totalErrors, overallSuccessRate, zennoProcesses));
 
-            sb.AppendLine("    </div>");
+            html.AppendLine("    </div>");
 
             // JavaScript
-            sb.AppendLine("    <script>");
-            sb.AppendLine(GetUnifiedJavaScript());
-            sb.AppendLine("    </script>");
+            html.AppendLine("    <script>");
+            html.AppendLine(GetUnifiedJavaScript());
+            html.AppendLine("    </script>");
 
-            sb.AppendLine("</body>");
-            sb.AppendLine("</html>");
+            html.AppendLine("</body>");
+            html.AppendLine("</html>");
 
-            return sb.ToString();
+            return html.ToString();
         }
 
         #region Social Report Section
@@ -261,295 +293,307 @@ namespace z3nCore.Utilities
 
         #endregion
 
-        #region Daily Report Section
+        #region Daily Report Section (оригинальная реализация из DailyReport)
 
-        private string GenerateDailyReportSection(List<DailyReport.ProjectData> projects)
+        private string GenerateDailyReportSection(
+            List<DailyReport.ProjectData> projects,
+            DateTime today,
+            int maxAccountIndex,
+            int totalAccounts,
+            int totalSuccess,
+            int totalErrors,
+            double overallSuccessRate,
+            List<string[]> zennoProcesses)
         {
-            var sb = new StringBuilder();
-            var today = DateTime.UtcNow.Date;
-
-            int totalAccounts = 0;
-            int totalSuccess = 0;
-            int totalErrors = 0;
-
-            foreach (var project in projects)
-            {
-                totalAccounts += project.All.Count;
-                foreach (var data in project.All.Values)
-                {
-                    var status = data[0].Trim();
-                    if (status == "+") totalSuccess++;
-                    else if (status == "-") totalErrors++;
-                }
-            }
-
-            var overallSuccessRate = totalAccounts > 0 ? (double)totalSuccess / totalAccounts * 100 : 0;
-
-            var maxAccountIndex = 0;
-            foreach (var project in projects)
-            {
-                foreach (var acc in project.All.Keys)
-                {
-                    if (int.TryParse(acc, out int accIndex))
-                    {
-                        if (accIndex > maxAccountIndex)
-                            maxAccountIndex = accIndex;
-                    }
-                }
-            }
+            var html = new StringBuilder();
 
             // Section Header
-            sb.AppendLine("        <div class='section-header'>");
-            sb.AppendLine("            <h2>📈 Daily Projects Status</h2>");
-            sb.AppendLine("        </div>");
+            html.AppendLine("        <div class='section-header'>");
+            html.AppendLine("            <h2>📈 Daily Projects Status</h2>");
+            html.AppendLine("        </div>");
 
             // Summary Cards
-            sb.AppendLine("        <div class='summary-cards'>");
-            sb.AppendLine("            <div class='summary-card'>");
-            sb.AppendLine("                <h3>TOTAL ATTEMPTS</h3>");
-            sb.AppendLine($"                <div class='value'>{totalAccounts}</div>");
-            sb.AppendLine("                <div class='subtext'>In all projects</div>");
-            sb.AppendLine("            </div>");
+            html.AppendLine("        <div class='summary-cards'>");
+            html.AppendLine("            <div class='summary-card'>");
+            html.AppendLine("                <h3>TOTAL ATTEMPTS</h3>");
+            html.AppendLine("                <div class='value'>" + totalAccounts + "</div>");
+            html.AppendLine("                <div class='subtext'>In all projects</div>");
+            html.AppendLine("            </div>");
+            html.AppendLine("            <div class='summary-card success'>");
+            html.AppendLine("                <h3>DONE</h3>");
+            html.AppendLine("                <div class='value'>" + totalSuccess + "</div>");
+            html.AppendLine("                <div class='subtext'>" + overallSuccessRate.ToString("F1") + "% success</div>");
+            html.AppendLine("            </div>");
+            html.AppendLine("            <div class='summary-card error'>");
+            html.AppendLine("                <h3>FAILED</h3>");
+            html.AppendLine("                <div class='value'>" + totalErrors + "</div>");
+            html.AppendLine("                <div class='subtext'>! Needs attention</div>");
+            html.AppendLine("            </div>");
+            html.AppendLine("        </div>");
 
-            sb.AppendLine("            <div class='summary-card success'>");
-            sb.AppendLine("                <h3>DONE</h3>");
-            sb.AppendLine($"                <div class='value'>{totalSuccess}</div>");
-            sb.AppendLine($"                <div class='subtext'>{overallSuccessRate:F1}% success</div>");
-            sb.AppendLine("            </div>");
+            html.AppendLine("        <div class='section'>");
+            html.AppendLine("            <h2>Projects HeatMap</h2>");
+            html.AppendLine("            <div class='heatmap-container'>");
+            html.AppendLine("                <div class='heatmap-wrapper'>");
 
-            sb.AppendLine("            <div class='summary-card error'>");
-            sb.AppendLine("                <h3>FAILED</h3>");
-            sb.AppendLine($"                <div class='value'>{totalErrors}</div>");
-            sb.AppendLine("                <div class='subtext'>! Needs attention</div>");
-            sb.AppendLine("            </div>");
-            sb.AppendLine("        </div>");
+            html.AppendLine("                    <div class='heatmap-legend'>");
+            html.AppendLine("                        <span>Legend:</span>");
+            html.AppendLine("                        <div class='legend-item'><div class='legend-box success'></div><div class='legend-box error'></div> Today</div>");
+            html.AppendLine("                        <div class='legend-item'><div class='legend-box success-yesterday'></div><div class='legend-box error-yesterday'></div> Yesterday</div>");
+            html.AppendLine("                        <div class='legend-item'><div class='legend-box success-2days'></div><div class='legend-box error-2days'></div> 2 days ago</div>");
+            html.AppendLine("                        <div class='legend-item'><div class='legend-box success-old'></div><div class='legend-box error-old'></div> 3+ days</div>");
+            html.AppendLine("                        <div class='legend-item'><div class='legend-box notdone'></div> Not touched</div>");
+            html.AppendLine("                    </div>");
 
-            // Heatmap Section
-            sb.AppendLine("        <div class='section'>");
-            sb.AppendLine("            <h2>Projects HeatMap</h2>");
-            sb.AppendLine("            <div class='heatmap-container'>");
-            sb.AppendLine("                <div class='heatmap-wrapper'>");
-
-            // Legend
-            sb.AppendLine("                    <div class='heatmap-legend'>");
-            sb.AppendLine("                        <span>Legend:</span>");
-            sb.AppendLine("                        <div class='legend-item'><div class='legend-box success'></div><div class='legend-box error'></div> Today</div>");
-            sb.AppendLine("                        <div class='legend-item'><div class='legend-box success-yesterday'></div><div class='legend-box error-yesterday'></div> Yesterday</div>");
-            sb.AppendLine("                        <div class='legend-item'><div class='legend-box success-2days'></div><div class='legend-box error-2days'></div> 2 days ago</div>");
-            sb.AppendLine("                        <div class='legend-item'><div class='legend-box success-old'></div><div class='legend-box error-old'></div> 3+ days</div>");
-            sb.AppendLine("                        <div class='legend-item'><div class='legend-box notdone'></div> Not touched</div>");
-            sb.AppendLine("                    </div>");
-
-            sb.AppendLine("                    <div class='heatmap-grid'>");
-            sb.AppendLine("                        <div class='heatmaps-column'>");
+            html.AppendLine("                    <div class='heatmap-grid'>");
+            html.AppendLine("                        <div class='heatmaps-column'>");
 
             foreach (var proj in projects)
             {
                 if (proj.All.Count == 0) continue;
 
-                var stats = CalculateProjectStats(proj, today, maxAccountIndex);
+                int successCount = 0;
+                int errorCount = 0;
+                double totalSuccessTime = 0;
+                double totalErrorTime = 0;
+                int successWithTime = 0;
+                int errorWithTime = 0;
+                double minSuccessTime = double.MaxValue;
+                double maxSuccessTime = 0;
+                double minErrorTime = double.MaxValue;
+                double maxErrorTime = 0;
 
-                sb.AppendLine("                        <div class='heatmap-with-stats'>");
-                sb.AppendLine("                            <div class='heatmap-project-card'>");
-                sb.AppendLine("                                <div class='project-card'>");
-                sb.AppendLine($"                                    <div class='project-name'>{proj.ProjectName}</div>");
-                sb.AppendLine("                                    <div class='progress-bar'>");
-                sb.AppendLine("                                        <div style='display: flex; height: 100%; width: 100%;'>");
-                sb.AppendLine($"                                            <div style='width: {stats.SuccessRate:F1}%; background: #238636;'></div>");
-                sb.AppendLine($"                                            <div style='width: {stats.ErrorRate:F1}%; background: #da3633;'></div>");
-                sb.AppendLine("                                        </div>");
-                sb.AppendLine("                                    </div>");
+                foreach (var data in proj.All.Values)
+                {
+                    var status = data[0].Trim();
+                    var ts = data[1];
+                    var timeStr = data[2].Trim();
 
-                sb.Append(GenerateProjectStatsHtml(stats));
+                    bool isToday = false;
+                    if (DateTime.TryParse(ts, null, System.Globalization.DateTimeStyles.RoundtripKind, out DateTime timestamp))
+                    {
+                        isToday = timestamp.Date == today;
+                    }
 
-                sb.AppendLine("                                </div>");
-                sb.AppendLine("                            </div>");
+                    if (status == "+")
+                    {
+                        if (isToday) successCount++;
+                        if (!string.IsNullOrEmpty(timeStr) && double.TryParse(timeStr,
+                                System.Globalization.NumberStyles.Any,
+                                System.Globalization.CultureInfo.InvariantCulture, out double time) && time > 0)
+                        {
+                            totalSuccessTime += time;
+                            successWithTime++;
+                            if (time < minSuccessTime) minSuccessTime = time;
+                            if (time > maxSuccessTime) maxSuccessTime = time;
+                        }
+                    }
+                    else if (status == "-")
+                    {
+                        if (isToday) errorCount++;
+                        if (!string.IsNullOrEmpty(timeStr) && double.TryParse(timeStr,
+                                System.Globalization.NumberStyles.Any,
+                                System.Globalization.CultureInfo.InvariantCulture, out double time) && time > 0)
+                        {
+                            totalErrorTime += time;
+                            errorWithTime++;
+                            if (time < minErrorTime) minErrorTime = time;
+                            if (time > maxErrorTime) maxErrorTime = time;
+                        }
+                    }
+                }
 
-                sb.AppendLine("                            <div class='heatmap-content'>");
-                sb.AppendLine("                                <div class='heatmap-row'>");
-                sb.AppendLine("                                    <div class='cells-container'>");
+                var successRate = maxAccountIndex > 0 ? (double)successCount / maxAccountIndex * 100 : 0;
+                var errorRate = maxAccountIndex > 0 ? (double)errorCount / maxAccountIndex * 100 : 0;
+                var avgSuccessTime = successWithTime > 0 ? totalSuccessTime / successWithTime : 0;
+                var avgErrorTime = errorWithTime > 0 ? totalErrorTime / errorWithTime : 0;
+                var statusClass = successRate >= 90 ? "stat-good" : (successRate >= 70 ? "" : "stat-bad");
+
+                html.AppendLine("                        <div class='heatmap-with-stats'>");
+
+                html.AppendLine("                            <div class='heatmap-project-card'>");
+                html.AppendLine("                                <div class='project-card'>");
+                html.AppendLine("                                    <div class='project-name'>" + proj.ProjectName + "</div>");
+                html.AppendLine("                                    <div class='progress-bar'>");
+                html.AppendLine("                                        <div style='display: flex; height: 100%; width: 100%;'>");
+                html.AppendLine("                                            <div style='width: " + successRate.ToString("F1") + "%; background: #238636;'></div>");
+                html.AppendLine("                                            <div style='width: " + errorRate.ToString("F1") + "%; background: #da3633;'></div>");
+                html.AppendLine("                                        </div>");
+                html.AppendLine("                                    </div>");
+
+                html.AppendLine("                                    <div class='project-stats'>");
+                html.AppendLine("                                        <div class='stat-row'>");
+                html.AppendLine("                                            <span>✔️ Successful: </span>");
+                html.AppendLine("                                            <span class='stat-good'>" + successCount + "</span>");
+                html.AppendLine("                                        </div>");
+
+                if (successWithTime > 0)
+                {
+                    html.AppendLine("                                        <div class='stat-row'>");
+                    html.AppendLine("                                            <span>Min|Max|Avg : </span>");
+                    html.AppendLine("                                            <span class='stat-neutral'>" +
+                                    minSuccessTime.ToString("F1") + "|" +
+                                    maxSuccessTime.ToString("F1") + "|" +
+                                    avgSuccessTime.ToString("F1") + "s</span>");
+                    html.AppendLine("                                        </div>");
+                }
+
+                html.AppendLine("                                        <div class='stat-row'>");
+                html.AppendLine("                                            <span>❌ Failed:  </span>");
+                html.AppendLine("                                            <span class='stat-bad'>" + errorCount + "</span>");
+                html.AppendLine("                                        </div>");
+
+                if (errorWithTime > 0)
+                {
+                    html.AppendLine("                                        <div class='stat-row'>");
+                    html.AppendLine("                                            <span>Min|Max|Avg : </span>");
+                    html.AppendLine("                                            <span class='stat-neutral'>" +
+                                    minErrorTime.ToString("F1") + "|" +
+                                    maxErrorTime.ToString("F1") + "|" +
+                                    avgErrorTime.ToString("F1") + "s</span>");
+                    html.AppendLine("                                        </div>");
+                }
+
+                html.AppendLine("                                        <div class='stat-row'>");
+                html.AppendLine("                                            <span>[✔️/❌] Rate: </span>");
+                html.AppendLine("                                            <span class='" + statusClass + "'>" + successRate.ToString("F1") + "%</span>");
+                html.AppendLine("                                        </div>");
+
+                html.AppendLine("                                    </div>");
+                html.AppendLine("                                </div>");
+                html.AppendLine("                            </div>");
+
+                html.AppendLine("                            <div class='heatmap-content'>");
+                html.AppendLine("                                <div class='heatmap-row'>");
+                html.AppendLine("                                    <div class='cells-container'>");
 
                 for (int i = 1; i <= maxAccountIndex; i++)
                 {
-                    sb.Append(GenerateDailyCell(proj, i.ToString(), today));
-                }
+                    var accStr = i.ToString();
+                    var cellClass = "heatmap-cell";
+                    var tooltipData = "";
 
-                sb.AppendLine("                                    </div>");
-                sb.AppendLine("                                </div>");
-                sb.AppendLine("                            </div>");
-                sb.AppendLine("                        </div>");
-            }
-
-            sb.AppendLine("                        </div>");
-            sb.AppendLine("                    </div>");
-            sb.AppendLine("                </div>");
-            sb.AppendLine("            </div>");
-            sb.AppendLine("        </div>");
-
-            return sb.ToString();
-        }
-
-        private class ProjectStats
-        {
-            public int SuccessCount;
-            public int ErrorCount;
-            public double SuccessRate;
-            public double ErrorRate;
-            public double MinSuccessTime = double.MaxValue;
-            public double MaxSuccessTime;
-            public double AvgSuccessTime;
-            public double MinErrorTime = double.MaxValue;
-            public double MaxErrorTime;
-            public double AvgErrorTime;
-            public int SuccessWithTime;
-            public int ErrorWithTime;
-        }
-
-        private ProjectStats CalculateProjectStats(DailyReport.ProjectData proj, DateTime today, int maxAccountIndex)
-        {
-            var stats = new ProjectStats();
-            double totalSuccessTime = 0;
-            double totalErrorTime = 0;
-
-            foreach (var data in proj.All.Values)
-            {
-                var status = data[0].Trim();
-                var ts = data[1];
-                var timeStr = data[2].Trim();
-
-                bool isToday = false;
-                if (DateTime.TryParse(ts, null, System.Globalization.DateTimeStyles.RoundtripKind, out DateTime timestamp))
-                {
-                    isToday = timestamp.Date == today;
-                }
-
-                if (status == "+")
-                {
-                    if (isToday) stats.SuccessCount++;
-                    if (!string.IsNullOrEmpty(timeStr) && double.TryParse(timeStr,
-                            System.Globalization.NumberStyles.Any,
-                            System.Globalization.CultureInfo.InvariantCulture, out double time) && time > 0)
+                    if (proj.All.ContainsKey(accStr))
                     {
-                        totalSuccessTime += time;
-                        stats.SuccessWithTime++;
-                        if (time < stats.MinSuccessTime) stats.MinSuccessTime = time;
-                        if (time > stats.MaxSuccessTime) stats.MaxSuccessTime = time;
+                        var data = proj.All[accStr];
+                        var status = data[0].Trim();
+                        var ts = data[1];
+                        var completionTime = data[2];
+                        var report = data[3];
+
+                        string ageClass = "";
+                        if (DateTime.TryParse(ts, null, System.Globalization.DateTimeStyles.RoundtripKind, out DateTime timestamp))
+                        {
+                            var recordDate = timestamp.ToUniversalTime().Date;
+                            var daysDiff = (today - recordDate).Days;
+
+                            if (daysDiff == 0)
+                                ageClass = "";
+                            else if (daysDiff == 1)
+                                ageClass = "-yesterday";
+                            else if (daysDiff == 2)
+                                ageClass = "-2days";
+                            else
+                                ageClass = "-old";
+                        }
+
+                        if (status == "+")
+                        {
+                            cellClass += " success" + ageClass;
+                        }
+                        else if (status == "-")
+                        {
+                            cellClass += " error" + ageClass;
+                        }
+
+                        tooltipData = "account #" + accStr + "||" +
+                                      proj.ProjectName + "||" +
+                                      ts + "||" +
+                                      completionTime + "||" +
+                                      (status == "+" ? "success" : "error") + "||" +
+                                      report + "||daily";
                     }
-                }
-                else if (status == "-")
-                {
-                    if (isToday) stats.ErrorCount++;
-                    if (string.IsNullOrEmpty(timeStr) && double.TryParse(timeStr,
-                            System.Globalization.NumberStyles.Any,
-                            System.Globalization.CultureInfo.InvariantCulture, out double time) && time > 0)
-                    {
-                        totalErrorTime += time;
-                        stats.ErrorWithTime++;
-                        if (time < stats.MinErrorTime) stats.MinErrorTime = time;
-                        if (time > stats.MaxErrorTime) stats.MaxErrorTime = time;
-                    }
-                }
-            }
-
-            stats.SuccessRate = maxAccountIndex > 0 ? (double)stats.SuccessCount / maxAccountIndex * 100 : 0;
-            stats.ErrorRate = maxAccountIndex > 0 ? (double)stats.ErrorCount / maxAccountIndex * 100 : 0;
-            stats.AvgSuccessTime = stats.SuccessWithTime > 0 ? totalSuccessTime / stats.SuccessWithTime : 0;
-            stats.AvgErrorTime = stats.ErrorWithTime > 0 ? totalErrorTime / stats.ErrorWithTime : 0;
-
-            if (stats.MinSuccessTime == double.MaxValue) stats.MinSuccessTime = 0;
-            if (stats.MinErrorTime == double.MaxValue) stats.MinErrorTime = 0;
-
-            return stats;
-        }
-
-        private string GenerateProjectStatsHtml(ProjectStats stats)
-        {
-            var sb = new StringBuilder();
-            var statusClass = stats.SuccessRate >= 90 ? "stat-good" : (stats.SuccessRate >= 70 ? "" : "stat-bad");
-
-            sb.AppendLine("                                    <div class='project-stats'>");
-            sb.AppendLine("                                        <div class='stat-row'>");
-            sb.AppendLine("                                            <span>✔️ Successful: </span>");
-            sb.AppendLine($"                                            <span class='stat-good'>{stats.SuccessCount}</span>");
-            sb.AppendLine("                                        </div>");
-
-            if (stats.SuccessWithTime > 0)
-            {
-                sb.AppendLine("                                        <div class='stat-row'>");
-                sb.AppendLine("                                            <span>Min|Max|Avg : </span>");
-                sb.AppendLine($"                                            <span class='stat-neutral'>{stats.MinSuccessTime:F1}|{stats.MaxSuccessTime:F1}|{stats.AvgSuccessTime:F1}s</span>");
-                sb.AppendLine("                                        </div>");
-            }
-
-            sb.AppendLine("                                        <div class='stat-row'>");
-            sb.AppendLine("                                            <span>❌ Failed:  </span>");
-            sb.AppendLine($"                                            <span class='stat-bad'>{stats.ErrorCount}</span>");
-            sb.AppendLine("                                        </div>");
-
-            if (stats.ErrorWithTime > 0)
-            {
-                sb.AppendLine("                                        <div class='stat-row'>");
-                sb.AppendLine("                                            <span>Min|Max|Avg : </span>");
-                sb.AppendLine($"                                            <span class='stat-neutral'>{stats.MinErrorTime:F1}|{stats.MaxErrorTime:F1}|{stats.AvgErrorTime:F1}s</span>");
-                sb.AppendLine("                                        </div>");
-            }
-
-            sb.AppendLine("                                        <div class='stat-row'>");
-            sb.AppendLine("                                            <span>[✔️/❌] Rate: </span>");
-            sb.AppendLine($"                                            <span class='{statusClass}'>{stats.SuccessRate:F1}%</span>");
-            sb.AppendLine("                                        </div>");
-            sb.AppendLine("                                    </div>");
-
-            return sb.ToString();
-        }
-
-        private string GenerateDailyCell(DailyReport.ProjectData proj, string accStr, DateTime today)
-        {
-            var cellClass = "heatmap-cell";
-            var tooltipData = "";
-
-            if (proj.All.ContainsKey(accStr))
-            {
-                var data = proj.All[accStr];
-                var status = data[0].Trim();
-                var ts = data[1];
-                var completionTime = data[2];
-                var report = data[3];
-
-                string ageClass = "";
-                if (DateTime.TryParse(ts, null, System.Globalization.DateTimeStyles.RoundtripKind, out DateTime timestamp))
-                {
-                    var recordDate = timestamp.ToUniversalTime().Date;
-                    var daysDiff = (today - recordDate).Days;
-
-                    if (daysDiff == 0)
-                        ageClass = "";
-                    else if (daysDiff == 1)
-                        ageClass = "-yesterday";
-                    else if (daysDiff == 2)
-                        ageClass = "-2days";
                     else
-                        ageClass = "-old";
+                    {
+                        tooltipData = "account #" + accStr + "||" +
+                                      proj.ProjectName + "||" +
+                                      "—||" +
+                                      "||" +
+                                      "notdone||||daily";
+                    }
+
+                    html.AppendLine("                                        <div class='" + cellClass +
+                                    "' data-tooltip='" +
+                                    DailyReport.HtmlEncoder.HtmlAttributeEncode(tooltipData) + "'></div>");
                 }
 
-                if (status == "+")
+                html.AppendLine("                                    </div>");
+                html.AppendLine("                                </div>");
+                html.AppendLine("                            </div>");
+                html.AppendLine("                        </div>");
+            }
+
+            html.AppendLine("                        </div>");
+
+            // Stats sidebar (процессы справа)
+            html.AppendLine("                        <div class='stats-sidebar'>");
+            html.AppendLine("                            <div class='stats-card'>");
+            html.AppendLine("                                <h3>ZP Processes</h3>");
+
+            if (zennoProcesses.Count > 0)
+            {
+                html.AppendLine("                                <div class='processes-list'>");
+
+                foreach (var proc in zennoProcesses)
                 {
-                    cellClass += " success" + ageClass;
-                }
-                else if (status == "-")
-                {
-                    cellClass += " error" + ageClass;
+                    var name = proc[0];
+                    var mem = proc[1];
+                    var time = proc[2];
+
+                    html.AppendLine("                                    <div class='process-line' title='" +
+                                    DailyReport.HtmlEncoder.HtmlAttributeEncode(name) + "'>");
+                    html.Append("                                        <span class='process-name'>" +
+                                DailyReport.HtmlEncoder.HtmlEncode(name) + "</span> ");
+                    html.Append("<span class='process-mem'>" + mem + "mb</span> ");
+                    html.AppendLine("<span class='process-time'>" + DailyReport.HtmlEncoder.HtmlEncode(time) + "min</span>");
+                    html.AppendLine("                                    </div>");
                 }
 
-                tooltipData = $"account #{accStr}||{proj.ProjectName}||{ts}||{completionTime}||" +
-                              (status == "+" ? "success" : "error") + $"||{report}||daily";
+                html.AppendLine("                                </div>");
             }
             else
             {
-                tooltipData = $"account #{accStr}||{proj.ProjectName}||—||||notdone||||daily";
+                html.AppendLine("                                <div style='color: #8b949e; font-size: 8px;'>Нет данных</div>");
             }
 
-            return $"<div class='{cellClass}' data-tooltip='{DailyReport.HtmlEncoder.HtmlAttributeEncode(tooltipData)}'></div>\n";
+            html.AppendLine("                            </div>");
+            html.AppendLine("                        </div>");
+            html.AppendLine("                    </div>");
+            html.AppendLine("                </div>");
+            html.AppendLine("            </div>");
+            html.AppendLine("        </div>");
+
+            // Empty projects
+            var emptyProjects = projects.Where(p => p.All.Count == 0).ToList();
+            if (emptyProjects.Count > 0)
+            {
+                html.AppendLine("        <div class='section'>");
+                html.AppendLine("            <h2>💤 Idle Projects</h2>");
+                html.AppendLine("            <div class='project-grid'>");
+
+                foreach (var project in emptyProjects)
+                {
+                    html.AppendLine("                <div class='project-card'>");
+                    html.AppendLine("                    <div class='project-name'>" + project.ProjectName + "</div>");
+                    html.AppendLine("                    <div style='color: #8b949e; font-size: 12px;'>no data</div>");
+                    html.AppendLine("                </div>");
+                }
+
+                html.AppendLine("            </div>");
+                html.AppendLine("        </div>");
+            }
+
+            return html.ToString();
         }
 
         #endregion
@@ -716,7 +760,7 @@ namespace z3nCore.Utilities
                     min-height: 0;
                 }
 
-                /* Daily Report Cells */
+                /* Daily Report Cells (оригинальные стили из DailyReport) */
                 .heatmap-grid {
                     display: flex;
                     gap: 15px;
@@ -752,11 +796,11 @@ namespace z3nCore.Utilities
                     display: flex;
                     flex-wrap: wrap;
                     gap: 2px;
-                    max-width: calc((14px + 2px) * 100);
+                    max-width: calc((11px + 2px) * 100);
                 }
                 .heatmap-cell {
-                    width: 14px;
-                    height: 14px;
+                    width: 11px;
+                    height: 11px;
                     border-radius: 2px;
                     border: 1px solid #30363d;
                     background: transparent;
@@ -778,7 +822,68 @@ namespace z3nCore.Utilities
                     box-shadow: 0 0 8px rgba(255,255,255,0.3);
                 }
 
+                /* Stats Sidebar (процессы справа) */
+                .stats-sidebar {
+                    width: 200px;
+                    flex-shrink: 0;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+                .stats-card {
+                    background: #0d1117;
+                    border: 1px solid #30363d;
+                    border-radius: 6px;
+                    padding: 12px;
+                }
+                .stats-card h3 {
+                    color: #c9d1d9;
+                    font-size: 12px;
+                    margin-bottom: 8px;
+                    font-weight: 600;
+                }
+                .processes-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                    font-size: 9px;
+                    font-family: 'Iosevka', 'Consolas', monospace;
+                }
+                .process-line {
+                    display: flex;
+                    align-items: center;
+                    padding: 4px;
+                    background: rgba(48, 54, 61, 0.3);
+                    border-radius: 3px;
+                    line-height: 1.3;
+                }
+                .process-name {
+                    flex: 1;
+                    min-width: 0;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                    color: #c9d1d9;
+                }
+                .process-mem {
+                    min-width: 35px;
+                    text-align: right;
+                    color: #58a6ff;
+                    margin-left: 4px;
+                }
+                .process-time {
+                    min-width: 50px;
+                    text-align: right;
+                    color: #8b949e;
+                }
+
                 /* Project Cards */
+                .project-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                    gap: 15px;
+                    margin-bottom: 20px;
+                }
                 .project-card {
                     border: 1px solid #30363d;
                     border-radius: 6px;
@@ -912,6 +1017,10 @@ namespace z3nCore.Utilities
                     .summary-cards { flex-direction: column; }
                     .cells-grid { justify-content: center; }
                     .heatmap-grid { flex-direction: column; }
+                    .heatmap-with-stats { flex-direction: column; }
+                    .heatmap-project-card { width: 100%; max-width: 320px; }
+                    .stats-sidebar { width: 100%; }
+                    .project-grid { grid-template-columns: 1fr; }
                 }
             ";
         }
