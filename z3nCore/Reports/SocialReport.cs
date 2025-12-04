@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
@@ -228,8 +227,7 @@ namespace z3nCore.Utilities
 
             foreach (var acc in accounts)
             {
-                sb.AppendLine($"                        <div class='account-cell' data-account='{acc.AccountId}'>");
-                sb.AppendLine("                            <div class='account-number'>" + acc.AccountId + "</div>");
+                sb.AppendLine("                        <div class='account-cell'>");
                 sb.AppendLine("                            <div class='social-squares'>");
 
                 // Twitter (верхний левый)
@@ -268,14 +266,25 @@ namespace z3nCore.Utilities
 
         private string GenerateSocialSquare(string socialName, SocialStatus social, int accountId)
         {
-            string color = socialName switch
+            string color;
+            switch (socialName)
             {
-                "twitter" => COLOR_TWITTER,
-                "github" => COLOR_GITHUB,
-                "discord" => COLOR_DISCORD,
-                "telegram" => COLOR_TELEGRAM,
-                _ => "#30363d"
-            };
+                case "twitter":
+                    color = COLOR_TWITTER;
+                    break;
+                case "github":
+                    color = COLOR_GITHUB;
+                    break;
+                case "discord":
+                    color = COLOR_DISCORD;
+                    break;
+                case "telegram":
+                    color = COLOR_TELEGRAM;
+                    break;
+                default:
+                    color = "#30363d";
+                    break;
+            }
 
             bool hasData = social?.IsActive == true;
             bool isOk = social?.IsOk == true;
@@ -387,51 +396,40 @@ namespace z3nCore.Utilities
                 .cells-grid {
                     display: flex;
                     flex-wrap: wrap;
-                    gap: 8px;
+                    gap: 2px;
+                    max-width: 100%;
                 }
                 .account-cell {
-                    width: 60px;
-                    height: 60px;
+                    width: calc((100vw - 60px) / 100 - 2px);
+                    height: calc((100vw - 60px) / 100 - 2px);
                     background: #0d1117;
                     border: 1px solid #30363d;
-                    border-radius: 4px;
-                    padding: 3px;
+                    border-radius: 2px;
+                    padding: 1px;
                     position: relative;
+                    cursor: pointer;
                     transition: all 0.2s;
                 }
                 .account-cell:hover {
-                    border-color: #58a6ff;
-                    transform: scale(1.05);
+                    transform: scale(1.3);
                     z-index: 10;
-                }
-                .account-number {
-                    position: absolute;
-                    top: 2px;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    font-size: 8px;
-                    color: #8b949e;
-                    font-weight: 600;
+                    box-shadow: 0 0 8px rgba(255,255,255,0.3);
                 }
                 .social-squares {
-                    margin-top: 12px;
                     display: grid;
                     grid-template-columns: 1fr 1fr;
                     grid-template-rows: 1fr 1fr;
-                    gap: 3px;
-                    height: calc(100% - 12px);
+                    gap: 1px;
+                    width: 100%;
+                    height: 100%;
                 }
                 .social-square {
-                    border-radius: 2px;
-                    border: 1px solid #30363d;
+                    border-radius: 1px;
                     cursor: pointer;
-                    transition: all 0.2s;
+                    transition: none;
                     position: relative;
-                }
-                .social-square:hover {
-                    transform: scale(1.1);
-                    z-index: 20;
-                    box-shadow: 0 0 8px rgba(255,255,255,0.3);
+                    min-width: 0;
+                    min-height: 0;
                 }
 
                 .tooltip {
