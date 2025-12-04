@@ -859,9 +859,6 @@ namespace z3nCore.Utilities
         #endregion
         
         
-     
-
-
         private string GenerateBalanceHeatmapHtml(Dictionary<int, Dictionary<string, decimal>> accountsData, List<string> chains, int maxAccountId)
         {
             var sb = new System.Text.StringBuilder();
@@ -1298,7 +1295,7 @@ namespace z3nCore.Utilities
                                   (balance > 0 ? "active" : "empty");
                     
                     sb.AppendLine("                                        <div class='" + cellClass +
-                                  "' data-tooltip='" + DailyReport.HtmlEncoder.HtmlAttributeEncode(tooltipData) + "'></div>");
+                                  "' data-tooltip='" + HtmlEncoder.HtmlAttributeEncode(tooltipData) + "'></div>");
                 }
                 
                 sb.AppendLine("                                    </div>");

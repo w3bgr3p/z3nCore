@@ -5,25 +5,8 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 namespace z3nCore.Utilities
 
 {
-    public class AccountSocialData
-    {
-        public int AccountId { get; set; }
-        public SocialStatus Twitter { get; set; }
-        public SocialStatus GitHub { get; set; }
-        public SocialStatus Discord { get; set; }
-        public SocialStatus Telegram { get; set; }
-        public AccountSocialData(int id)
-        {
-            AccountId = id;
-        }
-    }
-    public class SocialStatus
-    {
-        public string Status { get; set; }  // "ok" или другое
-        public string Login { get; set; }   // логин или username
-        public bool IsActive => !string.IsNullOrEmpty(Login);
-        public bool IsOk => Status == "ok";
-    }
+
+
 
    public class UnionReport
    {
