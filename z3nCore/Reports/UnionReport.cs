@@ -7,6 +7,35 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 namespace z3nCore.Utilities
 {
     /// <summary>
+    /// Данные о социальных сетях для одного аккаунта
+    /// </summary>
+    public class AccountSocialData
+    {
+        public int AccountId { get; set; }
+        public SocialStatus Twitter { get; set; }
+        public SocialStatus GitHub { get; set; }
+        public SocialStatus Discord { get; set; }
+        public SocialStatus Telegram { get; set; }
+
+        public AccountSocialData(int id)
+        {
+            AccountId = id;
+        }
+    }
+
+    /// <summary>
+    /// Статус одной социальной сети
+    /// </summary>
+    public class SocialStatus
+    {
+        public string Status { get; set; }  // "ok" или другое
+        public string Login { get; set; }   // логин или username
+
+        public bool IsActive => !string.IsNullOrEmpty(Login);
+        public bool IsOk => Status == "ok";
+    }
+
+    /// <summary>
     /// Объединённый отчёт: SocialReport + DailyReport в одном HTML
     /// </summary>
     public class UnionReport
@@ -410,7 +439,7 @@ namespace z3nCore.Utilities
                 else if (status == "-")
                 {
                     if (isToday) stats.ErrorCount++;
-                    if (!string.IsNullOrEmpty(timeStr) && double.TryParse(timeStr,
+                    if (string.IsNullOrEmpty(timeStr) && double.TryParse(timeStr,
                             System.Globalization.NumberStyles.Any,
                             System.Globalization.CultureInfo.InvariantCulture, out double time) && time > 0)
                     {
@@ -723,11 +752,11 @@ namespace z3nCore.Utilities
                     display: flex;
                     flex-wrap: wrap;
                     gap: 2px;
-                    max-width: 100%;
+                    max-width: calc((14px + 2px) * 100);
                 }
                 .heatmap-cell {
-                    width: calc((100vw - 304px) / 100 - 2px);
-                    height: calc((100vw - 304px) / 100 - 2px);
+                    width: 14px;
+                    height: 14px;
                     border-radius: 2px;
                     border: 1px solid #30363d;
                     background: transparent;
