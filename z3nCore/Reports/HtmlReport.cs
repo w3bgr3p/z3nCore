@@ -1153,7 +1153,7 @@ namespace z3nCore
        {
            var result = new Dictionary<int, Dictionary<string, string>>();
            project.Var("projectTable", tableName);
-           var allLines = project.DbGetLines(columns, where: $"id >= {rangeStart} AND id <= {rangeEnd}" , log:true);
+           var allLines = project.DbGetLines(columns, where: $"id >= {rangeStart} AND id <= {rangeEnd}");
     
            foreach (var line in allLines)
            {
@@ -1180,12 +1180,12 @@ namespace z3nCore
 
        public static void GenerateHtmlReport(this IZennoPosterProjectModel project, List<AccountSocialData> socialAccounts, List<ProjectData> dailyProjects, bool call = false)
        {
-           new HtmlReport(project, log: true).ShowUnionReport(socialAccounts, dailyProjects, call);
+           new HtmlReport(project, log: false).ShowUnionReport(socialAccounts, dailyProjects, call);
        }
        public static void GenerateFullHtmlReport(this IZennoPosterProjectModel project)
         {
             var rangeStart = project.Int("rangeStart");
-            var rangeEnd = project.Int("rangeEnd");
+            var rangeEnd = 1000;//project.Int("rangeEnd");
             
             // Получаем ВСЕ данные за 4 запроса вместо (rangeEnd - rangeStart) * 4
             var twitterData = ParseSocialData(project, "_twitter", "id, status, login", rangeStart, rangeEnd);

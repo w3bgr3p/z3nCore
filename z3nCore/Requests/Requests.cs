@@ -5,14 +5,102 @@ using System.Threading;
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.Enums.Http;
 using ZennoLab.InterfacesLibrary.ProjectModel;
-
+using Newtonsoft.Json.Linq;
 namespace z3nCore
 {
     public static class Requests
     {
         private static readonly object LockObject = new object();
 
-        // Системные заголовки которые ZennoPoster добавляет автоматически
+        private static string GetCookiesForRequest(IZennoPosterProjectModel project, string url)
+        {
+            string cookiesJson = project.Var("cookies");
+    
+            if (string.IsNullOrEmpty(cookiesJson))
+            {
+                string cookiesBase64 = project.DbGet("cookies", "_instance");
+                if (!string.IsNullOrEmpty(cookiesBase64))
+                {
+                    cookiesJson = cookiesBase64.FromBase64();
+                    project.Var("cookies",cookiesJson);
+                }
+            }
+    
+            if (string.IsNullOrEmpty(cookiesJson))
+            {
+                return null;
+            }
+    
+            string domain = ExtractDomain(url);
+            if (string.IsNullOrEmpty(domain))
+            {
+                return null;
+            }
+    
+            var cookiePairs = new List<string>();
+    
+            try
+            {
+                JArray cookiesArray = JArray.Parse(cookiesJson);
+        
+                for (int i = 0; i < cookiesArray.Count; i++)
+                {
+                    string cookieDomain = cookiesArray[i]["domain"]?.ToString() ?? "";
+            
+                    if (IsDomainMatch(domain, cookieDomain))
+                    {
+                        string name = cookiesArray[i]["name"]?.ToString() ?? "";
+                        string value = cookiesArray[i]["value"]?.ToString() ?? "";
+                
+                        if (!string.IsNullOrEmpty(name))
+                        {
+                            cookiePairs.Add($"{name}={value}");
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                return null;
+            }
+    
+            if (cookiePairs.Count == 0)
+            {
+                return null;
+            }
+    
+            return string.Join("; ", cookiePairs) + ";";
+        }
+
+        private static string ExtractDomain(string url)
+        {
+            try
+            {
+                Uri uri = new Uri(url);
+                return uri.Host;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+
+        private static bool IsDomainMatch(string requestDomain, string cookieDomain)
+        {
+            if (string.IsNullOrEmpty(requestDomain) || string.IsNullOrEmpty(cookieDomain))
+            {
+                return false;
+            }
+    
+            if (cookieDomain.StartsWith("."))
+            {
+                return requestDomain.EndsWith(cookieDomain.Substring(1)) || 
+                       requestDomain == cookieDomain.Substring(1);
+            }
+    
+            return requestDomain == cookieDomain;
+        }
         private static readonly HashSet<string> AUTOMATIC_HEADERS = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "host",
@@ -211,6 +299,8 @@ namespace z3nCore
             }
         }
 
+
+        
         private static string ExecuteGetViaZennoPoster(
             IZennoPosterProjectModel project,
             string url,
@@ -222,7 +312,17 @@ namespace z3nCore
             out int statusCode)
         {
             string fullResponse;
-            cookies = project.Cookies(cookies);
+            
+            // Если cookies не переданы явно, используем GetCookiesForRequest
+            if (string.IsNullOrEmpty(cookies))
+            {
+                cookies = GetCookiesForRequest(project, url);
+            }
+            
+            // Если GetCookiesForRequest вернул null, используем CookieContainer
+            // Иначе передаем null в CookieContainer чтобы использовать строку cookies
+            bool useCookieContainer = string.IsNullOrEmpty(cookies);
+            
             lock (LockObject)
             {
                 string proxyString = ParseProxy(project, proxy, logger);
@@ -237,7 +337,7 @@ namespace z3nCore
                     "UTF-8",
                     ResponceType.HeaderAndBody,
                     deadline * 1000,
-                    cookies,
+                    cookies ?? "",
                     userAgent,
                     true,
                     5,
@@ -245,14 +345,64 @@ namespace z3nCore
                     "",
                     false,
                     false,
-                    project.Profile.CookieContainer);
+                    useCookieContainer ? project.Profile.CookieContainer : null);
             }
 
             string body;
             ParseResponse(fullResponse, out statusCode, out body);
             return body;
         }
+        private static string ExecutePostViaZennoPoster(
+            IZennoPosterProjectModel project,
+            string url,
+            string body,
+            string proxy,
+            string[] headers,
+            string cookies,
+            int deadline,
+            Logger logger,
+            out int statusCode)
+        {
+            string fullResponse;
+            
+            if (string.IsNullOrEmpty(cookies))
+            {
+                cookies = GetCookiesForRequest(project, url);
+            }
+            
 
+            bool useCookieContainer = string.IsNullOrEmpty(cookies);
+            
+            lock (LockObject)
+            {
+                string proxyString = ParseProxy(project, proxy, logger);
+                headers = PrepareHeaders(project, headers, out string userAgent, out string contentType);
+
+                fullResponse = ZennoPoster.HTTP.Request(
+                    HttpMethod.POST,
+                    url,
+                    body,
+                    contentType,
+                    proxyString,
+                    "UTF-8",
+                    ResponceType.HeaderAndBody,
+                    deadline * 1000,
+                    cookies ?? "",
+                    userAgent,
+                    true,
+                    5,
+                    headers,
+                    "",
+                    false,
+                    true,
+                    useCookieContainer ? project.Profile.CookieContainer : null);
+            }
+
+            string responseBody;
+            ParseResponse(fullResponse, out statusCode, out responseBody);
+            return responseBody;
+        }
+        
         private static string ExecuteGetViaNetHttp(
             IZennoPosterProjectModel project,
             string url,
@@ -280,6 +430,20 @@ namespace z3nCore
                 catch { }
             }
 
+            if (headersDic == null)
+            {
+                headersDic = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            if (!headersDic.ContainsKey("Cookie"))
+            {
+                string cookies = GetCookiesForRequest(project, url);
+                if (!string.IsNullOrEmpty(cookies))
+                {
+                    headersDic["Cookie"] = cookies.TrimEnd(';', ' ');
+                }
+            }
+
             string response = netHttp.GET(
                 url,
                 proxy,
@@ -292,49 +456,6 @@ namespace z3nCore
             statusCode = TryParseStatusFromNetHttpResponse(response);
 
             return response;
-        }
-        
-        private static string ExecutePostViaZennoPoster(
-            IZennoPosterProjectModel project,
-            string url,
-            string body,
-            string proxy,
-            string[] headers,
-            string cookies,
-            int deadline,
-            Logger logger,
-            out int statusCode)
-        {
-            string fullResponse;
-            cookies = project.Cookies(cookies);
-            lock (LockObject)
-            {
-                string proxyString = ParseProxy(project, proxy, logger);
-                headers = PrepareHeaders(project, headers, out string userAgent, out string contentType);
-
-                fullResponse = ZennoPoster.HTTP.Request(
-                    HttpMethod.POST,
-                    url,
-                    body,
-                    contentType,
-                    proxyString,
-                    "UTF-8",
-                    ResponceType.HeaderAndBody,
-                    deadline * 1000,
-                    cookies,
-                    userAgent,
-                    true,
-                    5,
-                    headers,
-                    "",
-                    false,
-                    true,
-                    project.Profile.CookieContainer);
-            }
-
-            string responseBody;
-            ParseResponse(fullResponse, out statusCode, out responseBody);
-            return responseBody;
         }
 
         private static string ExecutePostViaNetHttp(
@@ -363,6 +484,20 @@ namespace z3nCore
                     headersDic = ConvertHeadersToDictionary(headersArray);
                 }
                 catch { }
+            }
+
+            if (headersDic == null)
+            {
+                headersDic = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            if (!headersDic.ContainsKey("Cookie"))
+            {
+                string cookies = GetCookiesForRequest(project, url);
+                if (!string.IsNullOrEmpty(cookies))
+                {
+                    headersDic["Cookie"] = cookies.TrimEnd(';', ' ');
+                }
             }
 
             string response = netHttp.POST(

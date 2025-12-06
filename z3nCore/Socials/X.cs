@@ -177,6 +177,8 @@ namespace z3nCore
             }
             return true;
         }
+        
+        
 
         public Dictionary<string, string> UserByScreenName()
         {
@@ -492,7 +494,39 @@ while (true)
             _instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
         }
         
-        public void TokenGet()
+        public void GetCt0FromToken()
+        {
+            if (string.IsNullOrEmpty(_token))
+                throw new Exception("No auth_token");
+
+            // Делаем GET с токеном
+            string[] headers = {
+                $"cookie: auth_token={_token}",
+                $"user-agent: {_project.Profile.UserAgent}"
+            };
+    
+            _project.GET(
+                "https://api.twitter.com/1.1/account/verify_credentials.json", 
+                "+", 
+                headers
+            );
+    
+            // ct0 теперь в куках
+            var cookies = new Cookies(_project, _instance).Get(".");
+            JArray parsed = JArray.Parse(cookies);
+    
+            for (int i = 0; i < parsed.Count; i++)
+            {
+                if (parsed[i]["name"].ToString() == "ct0")
+                {
+                    _ct0 = parsed[i]["value"].ToString();
+                    _project.DbUpd($"ct0 = '{_ct0}'", "_twitter");
+                    _log.Send($"ct0 extracted: {_ct0.Length} chars");
+                    break;
+                }
+            }
+        }
+        public string TokenGet()
         {
             var cookJson = new Cookies(_project, _instance).Get(".");
             JArray toParse = JArray.Parse(cookJson);
@@ -520,6 +554,7 @@ while (true)
             _project.DbUpd($"token = '{token}', ct0 = '{ct0}'", "_twitter");
     
             _log.Send($"Tokens extracted: auth_token length={token.Length}, ct0 length={ct0.Length}");
+            return token;
         }
         public string LoginWithCredentials()
         {
