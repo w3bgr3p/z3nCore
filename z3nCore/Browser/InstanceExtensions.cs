@@ -28,6 +28,9 @@ namespace z3nCore
             public ElementNotFoundException(string message) : base(message) { }
         }
         
+        
+        
+        
         public static HtmlElement GetHe(this Instance instance, object obj, string method = "")
         {
 
@@ -78,6 +81,16 @@ namespace z3nCore
                 int pos;
                 if (!int.TryParse(posObj.ToString(), out pos)) throw new ArgumentException("5th element of Tupple must be (int).");
 
+                if (method == "random")
+                {
+                    var elements = instance.ActiveTab.FindElementsByAttribute(tag, attribute, pattern, mode).ToList();
+                    if (elements.Count == 0)
+                    {
+                        throw new Exception($"no elements for random: tag='{tag}', attr='{attribute}', pattern='{pattern}'");
+                    }
+                    return elements.Rnd();
+                }
+                
                 if (method == "last")
                 {
 
@@ -510,7 +523,8 @@ namespace z3nCore
             Thread.Sleep(500);
             if (blank)instance.ActiveTab.Navigate("about:blank", "");
         }
-        public static void CloseNewTab(this Instance instance, int deadline = 10, int tabIndex = 2)
+
+        public static void CloseNewTab(this Instance instance, int deadline = 10, int tabIndex = 2, bool thrw = true)
         {
             int i = 0;
 
@@ -525,7 +539,9 @@ namespace z3nCore
                 }
                     
             }
-            throw new Exception("no new tab found");
+            if (thrw)
+                throw new Exception("no new tab found");
+            
         }
         public static void Go(this Instance instance, string url, bool strict = false, bool waitTdle = false , bool newTab = false)
         {

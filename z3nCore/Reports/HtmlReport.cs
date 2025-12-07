@@ -1185,8 +1185,8 @@ namespace z3nCore
        public static void GenerateFullHtmlReport(this IZennoPosterProjectModel project)
         {
             var rangeStart = project.Int("rangeStart");
-            var rangeEnd = 1000;//project.Int("rangeEnd");
-            
+            var rangeEnd = project.Int("rangeEnd");
+            if (rangeEnd < 100) rangeEnd = 100;
             // Получаем ВСЕ данные за 4 запроса вместо (rangeEnd - rangeStart) * 4
             var twitterData = ParseSocialData(project, "_twitter", "id, status, login", rangeStart, rangeEnd);
             var githubData = ParseSocialData(project, "_github", "id, status, login", rangeStart, rangeEnd);
