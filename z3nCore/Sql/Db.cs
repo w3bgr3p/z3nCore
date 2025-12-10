@@ -546,8 +546,8 @@ namespace z3nCore
             string dbMode = project.Var("DBmode");
 
             using (var db = dbMode == "PostgreSQL"
-                       ? new dSql($"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;")
-                       : new dSql(sqLitePath, null))
+                       ? new Sql($"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;")
+                       : new Sql(sqLitePath, null))
             {
                 try
                 {
@@ -592,7 +592,11 @@ namespace z3nCore
                 project.DbQ($@"ALTER TABLE {DbHelpers.Quote(tblName)} ADD COLUMN {clmnName} {defaultValue};", log: log);
             }
         }
-        
+        public static void ClmnAdd(this IZennoPosterProjectModel project, List<string> columns, string tblName,  bool log = false, string defaultValue = "TEXT DEFAULT ''")
+        {
+            foreach (var column in columns)
+                project.ClmnAdd(column, tblName, log:log);
+        }      
         public static void ClmnAdd(this IZennoPosterProjectModel project, string[] columns, string tblName,  bool log = false, string defaultValue = "TEXT DEFAULT ''")
         {
             foreach (var column in columns)
@@ -969,12 +973,12 @@ namespace z3nCore
 
             project.SendInfoToLog($"Migrating all tables from {dbMode} to {(direction == "toSQLite" ? "SQLite" : "PostgreSQL")}", true);
 
-            using (var sourceDb = dbMode == "PostgreSQL" ? new dSql(pgConnection) : new dSql(sqLitePath, null))
-            using (var destinationDb = dbMode == "PostgreSQL" ? new dSql(sqLitePath, null) : new dSql(pgConnection))
+            using (var sourceDb = dbMode == "PostgreSQL" ? new Sql(pgConnection) : new Sql(sqLitePath, null))
+            using (var destinationDb = dbMode == "PostgreSQL" ? new Sql(sqLitePath, null) : new Sql(pgConnection))
             {
                 try
                 {
-                    int rowsMigrated = dSql.MigrateAllTablesAsync(sourceDb, destinationDb).GetAwaiter().GetResult();
+                    int rowsMigrated = Sql.MigrateAllTablesAsync(sourceDb, destinationDb).GetAwaiter().GetResult();
                     project.SendInfoToLog($"Successfully migrated {rowsMigrated} rows", true);
                 }
                 catch (Exception ex)
@@ -997,8 +1001,8 @@ namespace z3nCore
             string dbMode = project.Var("DBmode");
 
             using (var db = dbMode == "PostgreSQL"
-                       ? new dSql($"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;")
-                       : new dSql(sqLitePath, null))
+                       ? new Sql($"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;")
+                       : new Sql(sqLitePath, null))
             {
                 try
                 {
@@ -1040,8 +1044,8 @@ namespace z3nCore
             try
             {
                 using (var db = dbMode == "PostgreSQL"
-                    ? new dSql($"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;")
-                    : new dSql(sqLitePath, null))
+                    ? new Sql($"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;")
+                    : new Sql(sqLitePath, null))
                 {
                     if (Regex.IsMatch(query.TrimStart(), @"^\s*SELECT\b", RegexOptions.IgnoreCase))
                         result = db.DbReadAsync(query, "¦","·").GetAwaiter().GetResult();

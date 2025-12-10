@@ -135,9 +135,10 @@ namespace z3nCore
 
                 string cookiesPath = _project.PathCookies();
                 _logger.Send($"Saving cookies to: '{cookiesPath}'");
-                
-                var cookieManager = new Cookies(_project, _instance, log:_showLog);
-                cookieManager.Save("all", cookiesPath);
+
+                _project.SaveCookiesToDb();
+                //var cookieManager = new Cookies(_project, _instance, log:_showLog);
+                //cookieManager.Save("all", cookiesPath);
                 
                 _logger.Send($"Cookies saved successfully to: '{cookiesPath}'");
             }

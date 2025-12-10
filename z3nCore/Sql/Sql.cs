@@ -1,16 +1,12 @@
 ﻿using Dapper;
-using Microsoft.Data.Sqlite;
 using Npgsql;
-
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Odbc;
 using System.Diagnostics;
-
 using System.Linq;
-
 using System.Threading.Tasks;
-
 
 namespace z3nCore
 {
@@ -21,45 +17,44 @@ namespace z3nCore
         PostgreSQL
     }
 
-    public class dSql : IDisposable
+    public class Sql : IDisposable
     {
         private readonly IDbConnection _connection;
-
         private bool _disposed = false;
 
-        public dSql(string dbPath, string dbPass)
+        public Sql(string dbPath, string dbPass)
         {
             Debug.WriteLine(dbPath);
-            _connection = new SqliteConnection($"Data Source={dbPath}");
+            _connection = new OdbcConnection($"Driver={{SQLite3 ODBC Driver}};Database={dbPath}");
             _connection.Open();
         }
-        public dSql(string hostname, string port, string database, string user, string password)
+
+        public Sql(string hostname, string port, string database, string user, string password)
         {
             _connection = new NpgsqlConnection($"Host={hostname};Port={port};Database={database};Username={user};Password={password};Pooling=true;Connection Idle Lifetime=100;");
             _connection.Open();
         }
-        public dSql(string connectionstring)
+
+        public Sql(string connectionstring)
         {
             _connection = new NpgsqlConnection(connectionstring);
             _connection.Open();
         }
-        public dSql(IDbConnection connection)
+
+        public Sql(IDbConnection connection)
         {
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
-
             if (_connection.State != ConnectionState.Open)
             {
                 _connection.Open();
             }
         }
 
-
-
         public DatabaseType ConnectionType
         {
             get
             {
-                if (_connection is SqliteConnection)
+                if (_connection is OdbcConnection)
                     return DatabaseType.SQLite;
                 if (_connection is NpgsqlConnection)
                     return DatabaseType.PostgreSQL;
@@ -70,7 +65,7 @@ namespace z3nCore
         private void EnsureConnection()
         {
             if (_disposed)
-                throw new ObjectDisposedException(nameof(dSql));
+                throw new ObjectDisposedException(nameof(Sql));
 
             if (_connection.State != ConnectionState.Open)
             {
@@ -92,10 +87,7 @@ namespace z3nCore
                 {
                     _connection?.Close();
                 }
-                catch
-                {
-                    // Игнорируем ошибки при закрытии
-                }
+                catch { }
                 finally
                 {
                     _connection?.Dispose();
@@ -106,9 +98,9 @@ namespace z3nCore
 
         public IDbDataParameter CreateParameter(string name, object value)
         {
-            if (_connection is SqliteConnection)
+            if (_connection is OdbcConnection)
             {
-                return new SqliteParameter(name, value ?? DBNull.Value);
+                return new OdbcParameter(name, value ?? DBNull.Value);
             }
             else if (_connection is NpgsqlConnection)
             {
@@ -119,6 +111,7 @@ namespace z3nCore
                 throw new NotSupportedException("Unsupported connection type");
             }
         }
+
         public IDbDataParameter[] CreateParameters(params (string name, object value)[] parameters)
         {
             var result = new IDbDataParameter[parameters.Length];
@@ -134,9 +127,9 @@ namespace z3nCore
             EnsureConnection();
             var result = new List<string>();
 
-            if (_connection is SqliteConnection sqliteConn)
+            if (_connection is OdbcConnection odbcConn)
             {
-                using (var cmd = new SqliteCommand(sql, sqliteConn))
+                using (var cmd = new OdbcCommand(sql, odbcConn))
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     while (await reader.ReadAsync())
@@ -168,6 +161,7 @@ namespace z3nCore
             }
             return string.Join(rawSepararor, result);
         }
+
         public string DbRead(string sql, string separator = "|")
         {
             return DbReadAsync(sql, separator).GetAwaiter().GetResult();
@@ -179,9 +173,9 @@ namespace z3nCore
 
             try
             {
-                if (_connection is SqliteConnection sqliteConn)
+                if (_connection is OdbcConnection odbcConn)
                 {
-                    using (var cmd = new SqliteCommand(sql, sqliteConn))
+                    using (var cmd = new OdbcCommand(sql, odbcConn))
                     {
                         if (parameters != null)
                         {
@@ -225,11 +219,11 @@ namespace z3nCore
                 throw new Exception($"{ex.Message} : [{sql}]");
             }
         }
+
         public int DbWrite(string sql, params IDbDataParameter[] parameters)
         {
             return DbWriteAsync(sql, parameters).GetAwaiter().GetResult();
         }
-
 
         public async Task<int> CopyTableAsync(string sourceTable, string destinationTable)
         {
@@ -386,9 +380,7 @@ namespace z3nCore
             }
             
         }
-
-
-        public static async Task<int> MigrateAllTablesAsync(dSql sourceDb, dSql destinationDb)
+        public static async Task<int> MigrateAllTablesAsync(Sql sourceDb, Sql destinationDb)
         {
             string columnSeparator = "|";
             string rowSeparator = "░";
@@ -698,7 +690,6 @@ namespace z3nCore
                 throw;
             }
         }
-
         public async Task AddRange(int range, string tableName = null)
         {
             if (tableName == null) throw new Exception("TableName is null");
@@ -712,7 +703,6 @@ namespace z3nCore
                 await _connection.ExecuteAsync($@"INSERT INTO {tableName} (id) VALUES ({currentId}) ON CONFLICT DO NOTHING;");
             }
         }
-
         private string QuoteName(string name, bool isColumnList = false)
         {
             if (isColumnList)

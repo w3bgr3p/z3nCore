@@ -233,7 +233,11 @@ namespace z3nCore
             }
         }
 
-        
+        public static void HeMultiClick(this Instance instance,List<object> selectors)
+        {
+            foreach (var selector in selectors) instance.HeClick(selector);
+        }
+
         public static void HeClick(this Instance instance, object obj, string method = "", int deadline = 10, double delay = 1, string comment = "", bool thrw = true , bool thr0w = true, int emu = 0)
         {
             bool emuSnap = instance.UseFullMouseEmulation;

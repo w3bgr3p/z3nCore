@@ -2,247 +2,246 @@
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Globalization;
+using System.Buffers;
 using Global.ZennoLab.Json;
 using Newtonsoft.Json.Linq;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 using ZennoLab.CommandCenter;
-using System.Text;
-using System.Globalization;
-using System.Buffers;
 
 namespace z3nCore
 {
-    
-
-
     public class Cookies
     {
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
         private readonly Logger _logger;
 
-        public Cookies(IZennoPosterProjectModel project, Instance instance, bool log = false)
+        private static readonly ArrayPool<byte> _bytePool = ArrayPool<byte>.Shared;
+
+        public Cookies(IZennoPosterProjectModel project, Instance instance = null, bool log = false)
         {
             _project = project;
             _instance = instance;
-            _logger = new Logger(project, log: log, classEmoji: "⚡");
+            _logger = new Logger(project, log: log, classEmoji: "🍪");
         }
 
-        // ============================================
-        // НОВЫЕ МЕТОДЫ ДЛЯ BASE64 КОДИРОВАНИЯ
-        // ============================================
-        
-        private static readonly ArrayPool<byte> _bytePool = ArrayPool<byte>.Shared;
-        
-        /// <summary>
-        /// Кодирует JSON в Base64 для безопасного сохранения в БД
-        /// </summary>
-        private static string EncodeForDb(string cookiesJson)
+        private void RequireInstance(string methodName)
         {
-            if (string.IsNullOrEmpty(cookiesJson))
-                return string.Empty;
-            
-            int maxByteCount = Encoding.UTF8.GetMaxByteCount(cookiesJson.Length);
-            byte[] buffer = _bytePool.Rent(maxByteCount);
-            
-            try
-            {
-                int actualBytes = Encoding.UTF8.GetBytes(cookiesJson, 0, cookiesJson.Length, buffer, 0);
-                return Convert.ToBase64String(buffer, 0, actualBytes);
-            }
-            finally
-            {
-                _bytePool.Return(buffer);
-            }
-        }
-        
-        /// <summary>
-        /// Декодирует Base64 обратно в JSON при чтении из БД
-        /// </summary>
-        private static string DecodeFromDb(string base64Cookies)
-        {
-            if (string.IsNullOrEmpty(base64Cookies))
-                return string.Empty;
-            
-            try
-            {
-                byte[] bytes = Convert.FromBase64String(base64Cookies);
-                return Encoding.UTF8.GetString(bytes);
-            }
-            catch (FormatException)
-            {
-                // Если это не Base64, возможно старый формат - возвращаем как есть
-                return base64Cookies;
-            }
+            if (_instance == null)
+                throw new InvalidOperationException($"{methodName} requires Instance but it was not provided to Cookies constructor");
         }
 
-        // ============================================
-        // МОДИФИЦИРОВАННЫЕ МЕТОДЫ
-        // ============================================
-
-        public void Save(string source = null, string jsonPath = null)
-        {
-            switch (source)
-            {
-                case "project":
-                    SaveProjectFast();
-                    return;
-                    
-                case "all":
-                    SaveAllFast(jsonPath);
-                    return;
-                    
-                default:
-                    _logger.Send($"ERROR: Unsupported source '{source}'");
-                    throw new Exception($"unsupported input {source}. Use [null|project|all]");
-            }
-        }
-
-        public void SaveAllFast(string jsonPath = null)
+        public void SaveAll(string jsonPath = null, string table = "_instance")
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
-
-            string tempFile = Path.Combine(Path.GetTempPath(), $"cookies_{Guid.NewGuid()}.txt");
             
-            try
+            byte[] exportedBytes = _project.Profile.CookieContainer.Export();
+            string cookieContent = Encoding.UTF8.GetString(exportedBytes);
+            _logger.Send($"Profile export: {sw.ElapsedMilliseconds}ms, {cookieContent.Length / 1024.0:F2} KB");
+
+            sw.Restart();
+            string jsonCookies = NetscapeToJson(cookieContent);
+            _logger.Send($"Conversion: {sw.ElapsedMilliseconds}ms, {jsonCookies.Length / 1024.0:F2} KB");
+
+            sw.Restart();
+            string encoded = EncodeForDb(jsonCookies);
+            _project.DbUpd($"cookies = '{encoded}'", table);
+            _logger.Send($"DB save: {sw.ElapsedMilliseconds}ms, {encoded.Length / 1024.0:F2} KB");
+
+            if (!string.IsNullOrEmpty(jsonPath))
             {
-                // 1. Сохраняем куки в файл
-                _instance.SaveCookie(tempFile);
-                var saveTime = sw.ElapsedMilliseconds;
-                _logger.Send($"Native SaveCookie: {saveTime}ms");
-
-                // Проверяем что файл создался
-                if (!File.Exists(tempFile))
-                {
-                    _logger.Send($"ERROR: Cookie file was not created: {tempFile}");
-                    throw new FileNotFoundException($"Cookie file was not created: {tempFile}");
-                }
-
-                // 2. Читаем файл
-                sw.Restart();
-                string cookieContent = File.ReadAllText(tempFile);
-                var readTime = sw.ElapsedMilliseconds;
-                _logger.Send($"File read: {readTime}ms, size: {cookieContent.Length / 1024.0:F2} KB");
-
-                // 3. Конвертируем в JSON
-                sw.Restart();
-                string jsonCookies = ConvertToJson(cookieContent);
-                var convertTime = sw.ElapsedMilliseconds;
-                _logger.Send($"Conversion to JSON: {convertTime}ms, {jsonCookies.Length / 1024.0:F2} KB");
-
-                // 4. Сохраняем в БД с Base64 кодированием
-                sw.Restart();
-                string encoded = EncodeForDb(jsonCookies);
-                _project.DbUpd($"cookies = '{encoded}'", "_instance");
-                var dbTime = sw.ElapsedMilliseconds;
-                _logger.Send($"DB save (Base64 encoded): {dbTime}ms, encoded size: {encoded.Length / 1024.0:F2} KB");
-
-                // 5. Сохраняем в файл если нужно (обычный JSON, не Base64)
-                if (!string.IsNullOrEmpty(jsonPath))
-                {
-                    sw.Restart();
-                    File.WriteAllText(jsonPath, jsonCookies);
-                    _logger.Send($"JSON file saved to {jsonPath}: {sw.ElapsedMilliseconds}ms");
-                }
-
-                var totalTime = saveTime + readTime + convertTime + dbTime;
-                _logger.Send($"✅ TOTAL TIME: {totalTime}ms ({totalTime / 1000.0:F1}s)");
+                File.WriteAllText(jsonPath, jsonCookies);
+                _logger.Send($"JSON file: {jsonPath}");
             }
-            catch (Exception ex)
-            {
-                _logger.Send($"ERROR in SaveAllFast: {ex.Message}");
-                throw;
-            }
-            finally
-            {
-                // Удаляем временный файл
-                if (File.Exists(tempFile))
-                {
-                    try
-                    {
-                        File.Delete(tempFile);
-                        _logger.Send($"Temp file deleted: {tempFile}");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.Send($"WARNING: Could not delete temp file: {ex.Message}");
-                    }
-                }
-            }
+
+            _logger.Send($"✅ Total: {sw.ElapsedMilliseconds}ms");
         }
 
-        public void SaveProjectFast()
+        public void SaveCurrent(string table = "profiles")
         {
+            RequireInstance("SaveCurrent");
+
             var sw = System.Diagnostics.Stopwatch.StartNew();
             string currentDomain = _instance.ActiveTab.MainDomain;
 
-            string tempFile = Path.Combine(Path.GetTempPath(), $"cookies_{Guid.NewGuid()}.txt");
+            byte[] exportedBytes = _project.Profile.CookieContainer.Export();
+            string cookieContent = Encoding.UTF8.GetString(exportedBytes);
             
-            try
-            {
-                _instance.SaveCookie(tempFile);
-                
-                // Проверяем что файл создался
-                if (!File.Exists(tempFile))
-                {
-                    _logger.Send($"ERROR: Cookie file was not created: {tempFile}");
-                    throw new FileNotFoundException($"Cookie file was not created: {tempFile}");
-                }
-
-                string cookieContent = File.ReadAllText(tempFile);
-                string jsonCookies = ConvertToJson(cookieContent, domainFilter: currentDomain);
-
-                // Кодируем в Base64 перед сохранением в БД
-                string encoded = EncodeForDb(jsonCookies);
-                _project.DbUpd($"cookies = '{encoded}'");
-
-                _logger.Send($"✅ Project cookies saved in {sw.ElapsedMilliseconds}ms (Base64 encoded)");
-            }
-            catch (Exception ex)
-            {
-                _logger.Send($"ERROR in SaveProjectFast: {ex.Message}");
-                throw;
-            }
-            finally
-            {
-                if (File.Exists(tempFile))
-                {
-                    try
-                    {
-                        File.Delete(tempFile);
-                        _logger.Send($"Temp file deleted: {tempFile}");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.Send($"WARNING: Could not delete temp file: {ex.Message}");
-                    }
-                }
-            }
+            string jsonCookies = NetscapeToJson(cookieContent, domainFilter: currentDomain);
+            string encoded = EncodeForDb(jsonCookies);
+            
+            _project.DbUpd($"cookies = '{encoded}'", table);
+            _logger.Send($"✅ Domain '{currentDomain}' cookies saved: {sw.ElapsedMilliseconds}ms");
         }
-        
-        public static string CookieFix(string brokenJson)
+
+        public void Load(string source = "dbMain", string jsonPath = null)
         {
-            string fixedJson = brokenJson.Replace("\"\"value\":\"", "\"value\":\"");
-            fixedJson = fixedJson.Replace("\" =", "=");
-            try
+            RequireInstance("Load");
+
+            string cookieData = null;
+
+            switch (source)
             {
-                JArray cookies = JArray.Parse(fixedJson);
-                foreach (JObject cookie in cookies)
-                {
-                    if (cookie["id"] != null)
-                    {
-                        cookie["id"] = 1;
-                    }
-                }
-                return JsonConvert.SerializeObject(cookies, Formatting.Indented);
+                case "dbMain":
+                    cookieData = _project.SqlGet("cookies", "_instance");
+                    break;
+                case "dbProject":
+                    cookieData = _project.SqlGet("cookies");
+                    break;
+                case "fromFile":
+                    if (string.IsNullOrEmpty(jsonPath))
+                        jsonPath = _project.PathCookies();
+                    cookieData = File.ReadAllText(jsonPath);
+                    break;
+                default:
+                    throw new ArgumentException($"Unknown source: {source}. Use 'dbMain', 'dbProject', or 'fromFile'");
             }
-            catch (JsonReaderException ex)
+
+            if (string.IsNullOrEmpty(cookieData))
             {
-                return $"Ошибка парсинга JSON: {ex.Message}";
+                _logger.Send($"No cookies found in {source}");
+                return;
+            }
+
+            cookieData = DecodeFromDb(cookieData);
+            string netscape = JsonToNetscape(cookieData);
+            _instance.SetCookie(netscape);
+            
+            _logger.Send($"✅ Cookies loaded from {source}");
+        }
+
+        public string Get(string domainFilter = "")
+        {
+            if (domainFilter == ".")
+            {
+                RequireInstance("Get with domainFilter='.'");
+                domainFilter = _instance.ActiveTab.MainDomain;
+            }
+
+            var cookieContainer = _project.Profile.CookieContainer;
+            var cookieList = new List<object>();
+
+            foreach (var domain in cookieContainer.Domains)
+            {
+                if (string.IsNullOrEmpty(domainFilter) || domain.Contains(domainFilter))
+                {
+                    var cookies = cookieContainer.Get(domain);
+                    
+                    cookieList.AddRange(cookies.Select(cookie => new
+                    {
+                        domain = cookie.Host,
+                        expirationDate = cookie.Expiry == DateTime.MinValue ? (double?)null : new DateTimeOffset(cookie.Expiry).ToUnixTimeSeconds(),
+                        hostOnly = !cookie.IsDomain,
+                        httpOnly = cookie.IsHttpOnly,
+                        name = cookie.Name,
+                        path = cookie.Path,
+                        sameSite = cookie.SameSite.ToString(),
+                        secure = cookie.IsSecure,
+                        session = cookie.IsSession,
+                        storeId = (string)null,
+                        value = cookie.Value,
+                        id = cookie.GetHashCode()
+                    }));
+                }
+            }
+
+            string cookiesJson = Global.ZennoLab.Json.JsonConvert.SerializeObject(cookieList, formatting: Formatting.None);
+            _logger.Send($"Retrieved {cookieList.Count} cookies, {cookiesJson.Length / 1024.0:F2} KB");
+            
+            return cookiesJson;
+        }
+
+        public string GetByJs()
+        {
+            RequireInstance("GetByJs");
+
+            string jsCode = @"
+var cookies = document.cookie.split('; ').map(function(cookie) {
+    var parts = cookie.split('=');
+    var name = parts[0];
+    var value = parts.slice(1).join('=');
+    return {
+        'domain': window.location.hostname,
+        'name': name,
+        'value': value,
+        'path': '/', 
+        'expirationDate': null, 
+        'hostOnly': true,
+        'httpOnly': false,
+        'secure': window.location.protocol === 'https:',
+        'session': false,
+        'sameSite': 'Unspecified',
+        'storeId': null,
+        'id': 1
+    };
+});
+return JSON.stringify(cookies);
+";
+            string result = _instance.ActiveTab.MainDocument.EvaluateScript(jsCode).ToString();
+            _logger.Send($"JS extracted {result.Length} chars");
+            return result.Replace("\r\n", "").Replace("\n", "").Replace("\r", "").Trim();
+        }
+
+        public void SetByJs(string cookiesJson)
+        {
+            RequireInstance("SetByJs");
+
+            var cookies = JArray.Parse(cookiesJson);
+            var uniqueCookies = cookies
+                .GroupBy(c => new { Domain = c["domain"].ToString(), Name = c["name"].ToString() })
+                .Select(g => g.Last())
+                .ToList();
+
+            string currentDomain = _instance.ActiveTab.Domain;
+            string[] domainParts = currentDomain.Split('.');
+            string parentDomain = "." + string.Join(".", domainParts.Skip(domainParts.Length - 2));
+
+            var jsLines = new List<string>();
+            int cookieCount = 0;
+
+            foreach (JObject cookie in uniqueCookies)
+            {
+                string domain = cookie["domain"].ToString();
+                string name = cookie["name"].ToString();
+                string value = cookie["value"].ToString();
+
+                if (domain == currentDomain || domain == "." + currentDomain)
+                {
+                    string path = cookie["path"]?.ToString() ?? "/";
+                    string expires;
+
+                    if (cookie["expirationDate"] != null && cookie["expirationDate"].Type != JTokenType.Null)
+                    {
+                        double expValue = double.Parse(cookie["expirationDate"].ToString());
+                        expires = expValue < DateTimeOffset.UtcNow.ToUnixTimeSeconds() 
+                            ? DateTimeOffset.UtcNow.AddYears(1).ToString("R")
+                            : DateTimeOffset.FromUnixTimeSeconds((long)expValue).ToString("R");
+                    }
+                    else
+                    {
+                        expires = DateTimeOffset.UtcNow.AddYears(1).ToString("R");
+                    }
+
+                    jsLines.Add($"document.cookie = '{name}={value}; domain={parentDomain}; path={path}; expires={expires}; Secure';");
+                    cookieCount++;
+                }
+            }
+
+            if (jsLines.Count > 0)
+            {
+                string jsCode = string.Join("\n", jsLines);
+                _instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
+                _logger.Send($"✅ JS set {cookieCount} cookies for {currentDomain}");
+            }
+            else
+            {
+                _logger.Send($"No cookies found for {currentDomain}");
             }
         }
-        
-        private string ConvertToJson(string content, string domainFilter = null)
+
+        private static string NetscapeToJson(string content, string domainFilter = null)
         {
             var cookies = new List<object>();
             var lines = content.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
@@ -253,32 +252,11 @@ namespace z3nCore
                     continue;
 
                 var parts = line.Split('\t');
-
-                // Формат (по вашему примеру):
-                // 0: domain (www.google.com)
-                // 1: includeSubdomains (TRUE/FALSE) 
-                // 2: path (/recaptcha)
-                // 3: isSecure (TRUE/FALSE)
-                // 4: expiry (04/17/2026 00:43:42 или пусто)
-                // 5: name (_GRECAPTCHA)
-                // 6: value (09AG7bz...)
-                // 7: httpOnly (TRUE/FALSE)
-                // 8: секундный httpOnly? (FALSE)
-                // 9: sameSite (None/Lax/Strict)
-                // 10: priority (High/Medium/Low)
-                // 11: пусто
-                // 12: port (443/80)
-                // 13: схема (Secure/NonSecure)
-                // 14: пусто
-                // 15: еще что-то (FALSE)
-
                 if (parts.Length < 7) continue;
 
                 try
                 {
                     var domain = parts[0];
-
-                    // Фильтруем по домену если нужно
                     if (!string.IsNullOrEmpty(domainFilter) && !domain.Contains(domainFilter))
                         continue;
 
@@ -289,28 +267,16 @@ namespace z3nCore
                     var name = parts[5];
                     var value = parts.Length > 6 ? parts[6] : "";
 
-                    // Дополнительные поля
-                    var httpOnly = false;
-                    var sameSite = "Unspecified";
+                    var httpOnly = parts.Length > 7 && parts[7].Equals("TRUE", StringComparison.OrdinalIgnoreCase);
+                    var sameSite = parts.Length > 9 ? parts[9] : "Unspecified";
 
-                    if (parts.Length > 7)
-                        httpOnly = parts[7].Equals("TRUE", StringComparison.OrdinalIgnoreCase);
-
-                    if (parts.Length > 9)
-                        sameSite = parts[9];
-
-                    // Конвертируем дату
                     double? expirationDate = null;
                     bool isSession = string.IsNullOrEmpty(expiryStr);
 
-                    if (!isSession)
+                    if (!isSession && DateTime.TryParseExact(expiryStr, "MM/dd/yyyy HH:mm:ss",
+                            CultureInfo.InvariantCulture, DateTimeStyles.None, out var expiry))
                     {
-                        // Формат: MM/dd/yyyy HH:mm:ss
-                        if (DateTime.TryParseExact(expiryStr, "MM/dd/yyyy HH:mm:ss",
-                                CultureInfo.InvariantCulture, DateTimeStyles.None, out var expiry))
-                        {
-                            expirationDate = new DateTimeOffset(expiry).ToUnixTimeSeconds();
-                        }
+                        expirationDate = new DateTimeOffset(expiry).ToUnixTimeSeconds();
                     }
 
                     cookies.Add(new
@@ -329,375 +295,179 @@ namespace z3nCore
                         id = (domain + name + path).GetHashCode()
                     });
                 }
-                catch (Exception ex)
-                {
-                    _logger.Send($"Failed to parse cookie: {ex.Message}");
-                }
+                catch { }
             }
 
-            _logger.Send($"Converted {cookies.Count} cookies");
-            return JsonConvert.SerializeObject(cookies, Formatting.None);
+            return Global.ZennoLab.Json.JsonConvert.SerializeObject(cookies, Global.ZennoLab.Json.Formatting.None);
         }
 
-        public void Set(string cookieSource = null, string jsonPath = null)
+        private static string JsonToNetscape(string jsonCookies)
         {
-            if (string.IsNullOrEmpty(jsonPath))
-                cookieSource = "fromFile";
-
-            if (cookieSource == null)
-                cookieSource = "dbMain";
-
-            switch (cookieSource)
+            var cookies = Newtonsoft.Json.JsonConvert.DeserializeObject<List<dynamic>>(jsonCookies);
+            var lines = new List<string>();
+    
+            foreach (var cookie in cookies)
             {
-                case "dbMain":
-                    cookieSource = _project.SqlGet("cookies", "_instance");
-                    if (!string.IsNullOrEmpty(cookieSource))
-                    {
-                        // Декодируем из Base64
-                        cookieSource = DecodeFromDb(cookieSource);
-                    }
-                    break;
-                case "dbProject":
-                    cookieSource = _project.SqlGet("cookies");
-                    if (!string.IsNullOrEmpty(cookieSource))
-                    {
-                        // Декодируем из Base64
-                        cookieSource = DecodeFromDb(cookieSource);
-                    }
-                    break;
-                case "fromFile":
-                    if (string.IsNullOrEmpty(jsonPath))
-                        jsonPath = _project.PathCookies();
-                    cookieSource = File.ReadAllText(jsonPath);
-                    break;
-            }
-            var cookies = JsonToNetscape(cookieSource);
-            _instance.SetCookie(cookies);
-        }
+                string domain = cookie.domain.ToString();
+                string flag = domain.StartsWith(".") ? "TRUE" : "FALSE";
+                string path = cookie.path.ToString();
+                string secure = cookie.secure.ToString().ToUpper();
         
-        public string Get(string domainFilter = "")
-        {
-            _logger.Send($"Get() called with filter: '{domainFilter}'");
-            
-            if (domainFilter == ".") 
-            {
-                domainFilter = _instance.ActiveTab.MainDomain;
-                _logger.Send($"Filter '.' resolved to main domain: '{domainFilter}'");
-            }
-            
-            var cookieContainer = _project.Profile.CookieContainer;
-            _logger.Send($"Cookie container accessed, total domains: {cookieContainer.Domains.Count()}");
-            
-            var cookieList = new List<object>();
-            int domainCount = 0;
-            int totalCookies = 0;
-            int filteredDomains = 0;
-
-            foreach (var domain in cookieContainer.Domains)
-            {
-                domainCount++;
-                
-                if (string.IsNullOrEmpty(domainFilter) || domain.Contains(domainFilter))
+                string expiration;
+                if (cookie.expirationDate == null || cookie.session == true)
                 {
-                    filteredDomains++;
-                    _logger.Send($"Processing domain #{filteredDomains}: '{domain}'");
-                    
-                    var cookies = cookieContainer.Get(domain);
-                    int cookiesInDomain = cookies.Count();
-                    totalCookies += cookiesInDomain;
-                    
-                    _logger.Send($"Domain '{domain}' has {cookiesInDomain} cookies");
-                    
-                    cookieList.AddRange(cookies.Select(cookie => new
-                    {
-                        domain = cookie.Host,
-                        expirationDate = cookie.Expiry == DateTime.MinValue ? (double?)null : new DateTimeOffset(cookie.Expiry).ToUnixTimeSeconds(),
-                        hostOnly = !cookie.IsDomain,
-                        httpOnly = cookie.IsHttpOnly,
-                        name = cookie.Name,
-                        path = cookie.Path,
-                        sameSite = cookie.SameSite.ToString(),
-                        secure = cookie.IsSecure,
-                        session = cookie.IsSession,
-                        storeId = (string)null,
-                        value = cookie.Value,
-                        id = cookie.GetHashCode()
-                    }));
-                    
-                    _logger.Send($"Added {cookiesInDomain} cookies to list (total now: {cookieList.Count})");
+                    expiration = "01/01/2030 00:00:00";
                 }
-            }
-            
-            _logger.Send($"Filtering complete: {filteredDomains} domains matched out of {domainCount} total, {totalCookies} cookies collected");
-            _logger.Send($"Starting JSON serialization of {cookieList.Count} cookie objects...");
-            
-            string cookiesJson = Global.ZennoLab.Json.JsonConvert.SerializeObject(cookieList, formatting: Formatting.None);
-            
-            _logger.Send($"Serialization complete: {cookiesJson.Length} characters, {cookiesJson.Length / 1024.0:F2} KB");
-            
-            return cookiesJson;
-        }
+                else
+                {
+                    double timestamp = (double)cookie.expirationDate;
+                    DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).AddSeconds(timestamp);
+                    expiration = dateTime.ToString("MM/dd/yyyy HH:mm:ss");
+                }
         
-        public string GetByJs(string domainFilter = "", bool log = false)
-        {
-            string jsCode = @"
-    var cookies = document.cookie.split('; ').map(function(cookie) {
-	    var parts = cookie.split('=');
-	    var name = parts[0];
-	    var value = parts.slice(1).join('=');
-	    return {
-		    'domain': window.location.hostname,
-		    'name': name,
-		    'value': value,
-		    'path': '/', 
-		    'expirationDate': null, 
-		    'hostOnly': true,
-		    'httpOnly': false,
-		    'secure': window.location.protocol === 'https:',
-		    'session': false,
-		    'sameSite': 'Unspecified',
-		    'storeId': null,
-		    'id': 1
-	    };
-    });
-    return JSON.stringify(cookies);
-    ";
-
-            string jsonResult = _instance.ActiveTab.MainDocument.EvaluateScript(jsCode).ToString();
-            if (log) _project.log(jsonResult);
-            var escapedJson = jsonResult.Replace("\r\n", "").Replace("\n", "").Replace("\r", "").Replace(" ", "").Trim();
-            _project.Json.FromString(jsonResult);
-            return escapedJson;
+                string name = cookie.name.ToString();
+                string value = cookie.value.ToString();
+                string httpOnly = cookie.httpOnly.ToString().ToUpper();
+        
+                string line = $"{domain}\t{flag}\t{path}\t{secure}\t{expiration}\t{name}\t{value}\t{httpOnly}\tFALSE";
+                lines.Add(line);
+            }
+            return string.Join("\n", lines);
         }
 
-        public void SetByJs(string cookiesJson, bool log = false)
+        private static string EncodeForDb(string cookiesJson)
         {
+            if (string.IsNullOrEmpty(cookiesJson))
+                return string.Empty;
+            
+            int maxByteCount = Encoding.UTF8.GetMaxByteCount(cookiesJson.Length);
+            byte[] buffer = _bytePool.Rent(maxByteCount);
+            
             try
             {
-                JArray cookies = JArray.Parse(cookiesJson);
-
-                var uniqueCookies = cookies
-                    .GroupBy(c => new { Domain = c["domain"].ToString(), Name = c["name"].ToString() })
-                    .Select(g => g.Last())
-                    .ToList();
-
-                string currentDomain = _instance.ActiveTab.Domain;
-                string[] domainParts = currentDomain.Split('.');
-                string parentDomain = "." + string.Join(".", domainParts.Skip(domainParts.Length - 2));
-
-                string jsCode = "";
-                int cookieCount = 0;
-                foreach (JObject cookie in uniqueCookies)
-                {
-                    string domain = cookie["domain"].ToString();
-                    string name = cookie["name"].ToString();
-                    string value = cookie["value"].ToString();
-
-                    if (domain == currentDomain || domain == "." + currentDomain)
-                    {
-                        string path = cookie["path"]?.ToString() ?? "/";
-                        string expires;
-
-                        if (cookie["expirationDate"] != null && cookie["expirationDate"].Type != JTokenType.Null)
-                        {
-                            double expValue = double.Parse(cookie["expirationDate"].ToString());
-                            if (expValue < DateTimeOffset.UtcNow.ToUnixTimeSeconds()) 
-                                expires = DateTimeOffset.UtcNow.AddYears(1).ToString("R");
-                            else 
-                                expires = DateTimeOffset.FromUnixTimeSeconds((long)expValue).ToString("R");
-                        }
-                        else
-                            expires = DateTimeOffset.UtcNow.AddYears(1).ToString("R");
-
-                        jsCode += $"document.cookie = '{name}={value}; domain={parentDomain}; path={path}; expires={expires}'; Secure';\n";
-                        cookieCount++;
-                    }
-                }
-                
-                _logger.Send($"Found cookies for {currentDomain}: [{cookieCount}] runingJs...\n + {jsCode}");
-
-                if (!string.IsNullOrEmpty(jsCode))
-                {
-                    _instance.ActiveTab.MainDocument.EvaluateScript(jsCode);
-                }
-                else _logger.Send($"!W No cookies Found for {currentDomain}");
+                int actualBytes = Encoding.UTF8.GetBytes(cookiesJson, 0, cookiesJson.Length, buffer, 0);
+                return Convert.ToBase64String(buffer, 0, actualBytes);
             }
-            catch (Exception ex)
+            finally
             {
-                _logger.Send($"!W cant't parse JSON: [{cookiesJson}]  {ex.Message}");
+                _bytePool.Return(buffer);
             }
         }
-        
-        public static string JsonToNetscape(string jsonCookies)
+
+        private static string DecodeFromDb(string base64Cookies)
         {
-            var cookies = Newtonsoft.Json.JsonConvert.DeserializeObject<List<dynamic>>(jsonCookies);
-            var lines = new List<string>();
-    
-            foreach (var cookie in cookies)
+            if (string.IsNullOrEmpty(base64Cookies))
+                return string.Empty;
+            
+            try
             {
-                string domain = cookie.domain.ToString();
-                string flag = domain.StartsWith(".") ? "TRUE" : "FALSE";
-                string path = cookie.path.ToString();
-                string secure = cookie.secure.ToString().ToUpper();
-        
-                // Конвертируем expirationDate
-                string expiration;
-                if (cookie.expirationDate == null || cookie.session == true)
-                {
-                    // Session cookie - ставим дату в будущем
-                    expiration = "01/01/2030 00:00:00";
-                }
-                else
-                {
-                    double timestamp = (double)cookie.expirationDate;
-                    DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        .AddSeconds(timestamp);
-                    expiration = dateTime.ToString("MM/dd/yyyy HH:mm:ss");
-                }
-        
-                string name = cookie.name.ToString();
-                string value = cookie.value.ToString();
-                string httpOnly = cookie.httpOnly.ToString().ToUpper();
-        
-                // Формат: domain{TAB}flag{TAB}path{TAB}secure{TAB}expiration{TAB}name{TAB}value{TAB}httpOnly{TAB}FALSE
-                string line = $"{domain}\t{flag}\t{path}\t{secure}\t{expiration}\t{name}\t{value}\t{httpOnly}\tFALSE";
-                lines.Add(line);
+                byte[] bytes = Convert.FromBase64String(base64Cookies);
+                return Encoding.UTF8.GetString(bytes);
             }
-            return string.Join("\n", lines);
+            catch (FormatException)
+            {
+                return base64Cookies;
+            }
         }
-
     }
 
-    public static partial class InstanceExtensions
+    public static class ProjectCookieExtensions
     {
-        public static string GetDomainCookies(this Instance instance, IZennoPosterProjectModel project, bool toDb = false)
+        public static void SaveCookiesToDb(this IZennoPosterProjectModel project,  string table = "_instance")
         {
-            
-            string domainFilter = instance.ActiveTab.MainDomain;
-            var cookieContainer = project.Profile.CookieContainer;
-            var cookieList = new List<object>();
-            int domainCount = 0;
-            int totalCookies = 0;
-            int filteredDomains = 0;
+            new Cookies(project).SaveAll(table: table);
+        }
 
-            foreach (var domain in cookieContainer.Domains)
-            {
-                domainCount++;
-                if (string.IsNullOrEmpty(domainFilter) || domain.Contains(domainFilter))
-                {
-                    filteredDomains++;
-                    var cookies = cookieContainer.Get(domain);
-                    int cookiesInDomain = cookies.Count();
-                    totalCookies += cookiesInDomain;
-                    
-                    cookieList.AddRange(cookies.Select(cookie => new
-                    {
-                        domain = cookie.Host,
-                        expirationDate = cookie.Expiry == DateTime.MinValue ? (double?)null : new DateTimeOffset(cookie.Expiry).ToUnixTimeSeconds(),
-                        hostOnly = !cookie.IsDomain,
-                        httpOnly = cookie.IsHttpOnly,
-                        name = cookie.Name,
-                        path = cookie.Path,
-                        sameSite = cookie.SameSite.ToString(),
-                        secure = cookie.IsSecure,
-                        session = cookie.IsSession,
-                        storeId = (string)null,
-                        value = cookie.Value,
-                        id = cookie.GetHashCode()
-                    }));
-                    
-                }
-            }
-            string cookiesJson = Global.ZennoLab.Json.JsonConvert.SerializeObject(cookieList, formatting: Formatting.None);
-            if (toDb)
-                project.DbUpd($"cookies = '{cookiesJson.ToBase64()}'");
-            return cookiesJson;
-        }
-        
-        private static string JsonToNetscape(this string jsonCookies)
+        public static string GetCookies(this IZennoPosterProjectModel project, string domainFilter = "")
         {
-            var cookies = Newtonsoft.Json.JsonConvert.DeserializeObject<List<dynamic>>(jsonCookies);
-            var lines = new List<string>();
-    
-            foreach (var cookie in cookies)
-            {
-                string domain = cookie.domain.ToString();
-                string flag = domain.StartsWith(".") ? "TRUE" : "FALSE";
-                string path = cookie.path.ToString();
-                string secure = cookie.secure.ToString().ToUpper();
-        
-                // Конвертируем expirationDate
-                string expiration;
-                if (cookie.expirationDate == null || cookie.session == true)
-                {
-                    // Session cookie - ставим дату в будущем
-                    expiration = "01/01/2030 00:00:00";
-                }
-                else
-                {
-                    double timestamp = (double)cookie.expirationDate;
-                    DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
-                        .AddSeconds(timestamp);
-                    expiration = dateTime.ToString("MM/dd/yyyy HH:mm:ss");
-                }
-        
-                string name = cookie.name.ToString();
-                string value = cookie.value.ToString();
-                string httpOnly = cookie.httpOnly.ToString().ToUpper();
-        
-                // Формат: domain{TAB}flag{TAB}path{TAB}secure{TAB}expiration{TAB}name{TAB}value{TAB}httpOnly{TAB}FALSE
-                string line = $"{domain}\t{flag}\t{path}\t{secure}\t{expiration}\t{name}\t{value}\t{httpOnly}\tFALSE";
-                lines.Add(line);
-            }
-            return string.Join("\n", lines);
+            return new Cookies(project).Get(domainFilter);
         }
-        public static void SetCookie(this Instance instance, string json)
-        {
-            var cookies = JsonToNetscape(json);
-            instance.SetCookie(cookies);
 
+        public static string GetCookiesJson(this IZennoPosterProjectModel project)
+        {
+            return new Cookies(project).Get();
         }
-        public static void SetCookie(this Instance instance, IZennoPosterProjectModel project)
+    }
+
+    public static class InstanceCookieExtensions
+    {
+        public static void SaveCookies(this Instance instance, IZennoPosterProjectModel project, string table = "_instance")
+        {
+            new Cookies(project, instance).SaveAll(table: table);
+        }
+
+        public static void SaveCurrentCookies(this Instance instance, IZennoPosterProjectModel project)
+        {
+            new Cookies(project, instance).SaveCurrent();
+        }
+
+        public static void LoadCookies(this Instance instance, IZennoPosterProjectModel project, string source = "dbMain")
+        {
+            new Cookies(project, instance).Load(source);
+        }
+
+        public static void SetCookies(this Instance instance, IZennoPosterProjectModel project)
         {
             string cookies = project.Var("cookies");
+            
             if (string.IsNullOrWhiteSpace(cookies))
             {
                 cookies = project.DbGet("cookies", "_instance");
-                cookies = cookies.FromBase64();
-                project.Var("cookies", cookies);
+                if (!string.IsNullOrWhiteSpace(cookies))
+                {
+                    try
+                    {
+                        byte[] bytes = Convert.FromBase64String(cookies);
+                        cookies = Encoding.UTF8.GetString(bytes);
+                    }
+                    catch (FormatException) { }
+                    
+                    project.Var("cookies", cookies);
+                }
             }
+            
             if (string.IsNullOrWhiteSpace(cookies))
             {
                 project.warn("cookies is empty");
                 return;
             }
-            cookies =  JsonToNetscape(cookies);
-            instance.SetCookie(cookies);
-            
-        }
-        
-    }
 
-    public static partial class ProjectExtensions
-    {
-        public static string DbCookies(this IZennoPosterProjectModel project)
+            var netscape = JsonToNetscape(cookies);
+            instance.SetCookie(netscape);
+        }
+
+        private static string JsonToNetscape(string jsonCookies)
         {
-            var rawCookies = project.DbGet("cookies", "_instance");
-            if (!string.IsNullOrEmpty(rawCookies))
+            var cookies = Newtonsoft.Json.JsonConvert.DeserializeObject<List<dynamic>>(jsonCookies);
+            var lines = new List<string>();
+    
+            foreach (var cookie in cookies)
             {
-                try
+                string domain = cookie.domain.ToString();
+                string flag = domain.StartsWith(".") ? "TRUE" : "FALSE";
+                string path = cookie.path.ToString();
+                string secure = cookie.secure.ToString().ToUpper();
+        
+                string expiration;
+                if (cookie.expirationDate == null || cookie.session == true)
                 {
-                    byte[] bytes = Convert.FromBase64String(rawCookies);
-                    rawCookies = Encoding.UTF8.GetString(bytes);
+                    expiration = "01/01/2030 00:00:00";
                 }
-                catch (FormatException)
+                else
                 {
+                    double timestamp = (double)cookie.expirationDate;
+                    DateTime dateTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc).AddSeconds(timestamp);
+                    expiration = dateTime.ToString("MM/dd/yyyy HH:mm:ss");
                 }
+        
+                string name = cookie.name.ToString();
+                string value = cookie.value.ToString();
+                string httpOnly = cookie.httpOnly.ToString().ToUpper();
+        
+                string line = $"{domain}\t{flag}\t{path}\t{secure}\t{expiration}\t{name}\t{value}\t{httpOnly}\tFALSE";
+                lines.Add(line);
             }
-            return Cookies.CookieFix(rawCookies);
+            return string.Join("\n", lines);
         }
     }
-    
-
-
 }

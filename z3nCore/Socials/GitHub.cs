@@ -148,7 +148,7 @@ namespace z3nCore
         }
         public void SaveCookies()
         {
-            new Cookies(_project, _instance).SaveProjectFast();
+            //new Cookies(_project, _instance).SaveProjectFast();
         }
     }
 }
