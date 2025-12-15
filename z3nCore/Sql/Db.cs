@@ -1433,34 +1433,39 @@ namespace z3nCore
             int maxRetries = 10;
             int delay = 100;     
             Random rnd = new Random();
-            for (int i = 0; i < maxRetries; i++)
+            // ✅ ИСПРАВЛЕНИЕ #1: Создаем подключение ОДИН раз (вне retry loop)
+            using (var db = dbMode == "PostgreSQL"
+                       ? new Sql($"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;")
+                       : new Sql(sqLitePath, null))
             {
-                try
+                // ✅ ИСПРАВЛЕНИЕ #2: Retry только на execution, не на создание подключения
+                for (int i = 0; i < maxRetries; i++)
                 {
-                    using (var db = dbMode == "PostgreSQL"
-                               ? new Sql(
-                                   $"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;")
-                               : new Sql(sqLitePath, null))
+                    try
                     {
                         if (Regex.IsMatch(query.TrimStart(), @"^\s*SELECT\b", RegexOptions.IgnoreCase))
                             result = db.DbReadAsync(query, "¦", "·").GetAwaiter().GetResult();
                         else
                             result = db.DbWriteAsync(query).GetAwaiter().GetResult().ToString();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    if (dbMode == "SQLite" && ex.Message.Contains("locked") && i < maxRetries - 1)
-                    {
-                        delay = 50 * (1 << i) + rnd.Next(10, 50); // Exponential: 50, 100, 200, 400, 800
-                        Thread.Sleep(delay);
-                        continue;
-                    }
 
-                    project.warn(ex.Message + $"\n [{query}]", thrw);
-                    return string.Empty;
+                        // ✅ Успех - выходим из loop
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        if (dbMode == "SQLite" && ex.Message.Contains("locked") && i < maxRetries - 1)
+                        {
+                            // ✅ Exponential backoff для SQLite lock
+                            delay = 50 * (1 << i) + rnd.Next(10, 50);
+                            Thread.Sleep(delay);
+                            continue;  // ✅ Retry, но подключение УЖЕ создано
+                        }
+
+                        project.warn(ex.Message + $"\n [{query}]", thrw);
+                        return string.Empty;
+                    }
                 }
-            }
+            } // ✅ Подключение закрывается ОДИН раз
 
             string toLog = (query.Contains("SELECT")) ? $"[{query}]\n[{result}]" : $"[{query}] - [{result}]";
             new Logger(project, log: log, classEmoji: dbMode == "PostgreSQL" ? "🐘" : "SQLite").Send(toLog);

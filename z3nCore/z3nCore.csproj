@@ -93,9 +93,12 @@
     <Compile Include="Api\BinanceApi.cs" />
     <Compile Include="Api\Bitget.cs" />
     <Compile Include="Api\Capsolver.cs" />
+    <Compile Include="Api\CoinGecco.cs" />
+    <Compile Include="Api\DexScreener.cs" />
     <Compile Include="Api\DiscordApi.cs" />
     <Compile Include="Api\Git.cs" />
     <Compile Include="Api\GitHub.cs" />
+    <Compile Include="Api\KuCoin.cs" />
     <Compile Include="Api\Mexc.cs" />
     <Compile Include="Api\OKXApi.cs" />
     <Compile Include="Api\Webshare.cs" />
@@ -120,6 +123,7 @@
     <Compile Include="Reports\Accountant.cs" />
     <Compile Include="Reports\HtmlReport.cs" />
     <Compile Include="Reports\Reporter.cs" />
+    <Compile Include="Requests\NetHttp.cs" />
     <Compile Include="Requests\Requests.cs" />
     <Compile Include="Security\Cryptography.cs" />
     <Compile Include="Security\ISAFU.cs" />
@@ -151,7 +155,6 @@
     <Compile Include="W3b\W3b.cs" />
     <Compile Include="Socials\GitHub.cs" />
     <Compile Include="Api\FirstMail.cs" />
-    <Compile Include="Requests\NetHttp.cs" />
     <Compile Include="Browser\BrowserScan.cs" />
     <Compile Include="Browser\ChromeExt.cs" />
     <Compile Include="Api\GazZip.cs" />

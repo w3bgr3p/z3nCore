@@ -1,4 +1,6 @@
-﻿using System;
+﻿
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -14,14 +16,32 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 namespace z3nCore
 {
     /// <summary>
-    /// Основной класс для HTTP запросов с ASYNC методами
-    /// Используй этот класс если можешь работать с async/await
+    /// ИСПРАВЛЕНО: Основной класс для HTTP запросов с ASYNC методами
+    /// ✅ Использует singleton HttpClient для предотвращения socket exhaustion
+    /// ✅ Кеширует клиенты с proxy для переиспользования
     /// </summary>
     public class NetHttpAsync
     {
         private readonly IZennoPosterProjectModel _project;
         private readonly Logger _logger;
         private readonly bool _logShow;
+
+        // ✅ ИСПРАВЛЕНИЕ #1: Singleton HttpClient для запросов без proxy
+        private static readonly HttpClient _defaultClient = new HttpClient();
+
+        // ✅ ИСПРАВЛЕНИЕ #2: Кеш клиентов с proxy (ключ = proxy string)
+        private static readonly ConcurrentDictionary<string, HttpClient> _proxyClients
+            = new ConcurrentDictionary<string, HttpClient>();
+
+        // ✅ ИСПРАВЛЕНИЕ #3: Ограничение размера кеша proxy клиентов
+        private const int MAX_PROXY_CLIENTS = 100;
+
+        static NetHttpAsync()
+        {
+            // Настройка default client
+            _defaultClient.Timeout = TimeSpan.FromSeconds(30);
+            _defaultClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0");
+        }
 
         public NetHttpAsync(IZennoPosterProjectModel project, bool log = false)
         {
@@ -47,6 +67,50 @@ namespace z3nCore
             {
                 _logger.Send($"[!W {ex.Message}] [{json}]");
             }
+        }
+
+        /// <summary>
+        /// ✅ ИСПРАВЛЕНО: Получает или создает HttpClient для указанного proxy
+        /// </summary>
+        private HttpClient GetHttpClient(string proxyString, int deadline)
+        {
+            if (string.IsNullOrEmpty(proxyString))
+            {
+                return _defaultClient;
+            }
+
+            // Проверяем кеш
+            return _proxyClients.GetOrAdd(proxyString, proxy =>
+            {
+                // Проверяем лимит кеша
+                if (_proxyClients.Count >= MAX_PROXY_CLIENTS)
+                {
+                    _logger.Send($"!W Proxy client cache full ({MAX_PROXY_CLIENTS}), creating temporary client");
+                    // Не добавляем в кеш, возвращаем временный
+                    return CreateProxyClient(proxy);
+                }
+
+                _logger.Send($"Creating new cached proxy client for: {proxy.Substring(0, Math.Min(20, proxy.Length))}...");
+                return CreateProxyClient(proxy);
+            });
+        }
+
+        /// <summary>
+        /// Создает HttpClient с указанным proxy
+        /// </summary>
+        private HttpClient CreateProxyClient(string proxyString)
+        {
+            WebProxy proxy = ParseProxy(proxyString);
+            var handler = new HttpClientHandler
+            {
+                Proxy = proxy,
+                UseProxy = true
+            };
+
+            return new HttpClient(handler)
+            {
+                Timeout = TimeSpan.FromSeconds(30)
+            };
         }
 
         private WebProxy ParseProxy(string proxyString, [CallerMemberName] string callerName = "")
@@ -103,7 +167,7 @@ namespace z3nCore
         }
 
         /// <summary>
-        /// ASYNC GET запрос
+        /// ✅ ИСПРАВЛЕНО: ASYNC GET запрос с переиспользованием HttpClient
         /// </summary>
         public async Task<string> GetAsync(
             string url,
@@ -116,86 +180,87 @@ namespace z3nCore
             string debugHeaders = "";
             try
             {
-                WebProxy proxy = ParseProxy(proxyString);
-                var handler = new HttpClientHandler
-                {
-                    Proxy = proxy,
-                    UseProxy = proxy != null
-                };
+                // ✅ ИСПРАВЛЕНИЕ: Получаем клиент из пула вместо создания нового
+                HttpClient client = GetHttpClient(proxyString, deadline);
 
-                using (var client = new HttpClient(handler))
+                // ⚠️ ВАЖНО: Не используем using, т.к. клиент переиспользуется!
+                // Создаем отдельный request с headers
+                using (var request = new HttpRequestMessage(HttpMethod.Get, url))
                 {
-                    client.Timeout = TimeSpan.FromSeconds(deadline);
-                    client.DefaultRequestHeaders.Add("User-Agent", _project.Profile.UserAgent);
-                    debugHeaders += $"User-Agent: {_project.Profile.UserAgent}\n";
-
-                    if (headers != null)
+                    // Устанавливаем timeout для конкретного запроса
+                    using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(deadline)))
                     {
-                        foreach (var header in headers)
+                        request.Headers.Add("User-Agent", _project.Profile.UserAgent);
+                        debugHeaders += $"User-Agent: {_project.Profile.UserAgent}\n";
+
+                        if (headers != null)
                         {
+                            foreach (var header in headers)
+                            {
+                                try
+                                {
+                                    if (IsRestrictedHeader(header.Key))
+                                    {
+                                        _logger.Send($"Skipping restricted header: {header.Key}");
+                                        continue;
+                                    }
+
+                                    if (header.Key.ToLower() == "cookie")
+                                    {
+                                        request.Headers.Add("Cookie", header.Value);
+                                        debugHeaders += $"{header.Key}: {header.Value}\n";
+                                    }
+                                    else
+                                    {
+                                        request.Headers.Add(header.Key, header.Value);
+                                        debugHeaders += $"{header.Key}: {header.Value}\n";
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.Send($"Failed to add header {header.Key}: {ex.Message}");
+                                }
+                            }
+                        }
+
+                        // ✅ Используем переиспользуемый клиент с cancellation token
+                        using (HttpResponseMessage response = await client.SendAsync(request, cts.Token).ConfigureAwait(false))
+                        {
+                            int statusCode = (int)response.StatusCode;
+
+                            if (!response.IsSuccessStatusCode)
+                            {
+                                string errorMessage = $"{statusCode} !!! {response.ReasonPhrase}";
+                                _logger.Send($"ErrFromServer: [{errorMessage}] \nurl:[{url}]  \nheaders: [{debugHeaders}]");
+                                if (throwOnFail)
+                                {
+                                    response.EnsureSuccessStatusCode();
+                                }
+                                return errorMessage;
+                            }
+
+                            string responseHeaders = string.Join("; ", response.Headers.Select(h => $"{h.Key}: {string.Join(", ", h.Value)}"));
+
+                            string cookies = "";
+                            if (response.Headers.TryGetValues("Set-Cookie", out var cookieValues))
+                            {
+                                cookies = string.Join("; ", cookieValues);
+                                _logger.Send($"Set-Cookie found: {cookies}");
+                            }
+
                             try
                             {
-                                if (IsRestrictedHeader(header.Key))
-                                {
-                                    _logger.Send($"Skipping restricted header: {header.Key}");
-                                    continue;
-                                }
+                                _project.Variables["debugCookies"].Value = cookies;
+                            }
+                            catch { }
 
-                                if (header.Key.ToLower() == "cookie")
-                                {
-                                    client.DefaultRequestHeaders.Add("Cookie", header.Value);
-                                    debugHeaders += $"{header.Key}: {header.Value}\n";
-                                }
-                                else
-                                {
-                                    client.DefaultRequestHeaders.Add(header.Key, header.Value);
-                                    debugHeaders += $"{header.Key}: {header.Value}\n";
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.Send($"Failed to add header {header.Key}: {ex.Message}");
-                            }
+                            string result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+                            if (parse) ParseJson(result);
+                            _logger.Send(result);
+                            return result.Trim();
                         }
                     }
-
-                    // ✅ ПРАВИЛЬНО: async вызов
-                    HttpResponseMessage response = await client.GetAsync(url).ConfigureAwait(false);
-
-                    int statusCode = (int)response.StatusCode;
-
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        string errorMessage = $"{statusCode} !!! {response.ReasonPhrase}";
-                        _logger.Send($"ErrFromServer: [{errorMessage}] \nurl:[{url}]  \nheaders: [{debugHeaders}]");
-                        if (throwOnFail)
-                        {
-                            response.EnsureSuccessStatusCode();
-                        }
-                        return errorMessage;
-                    }
-
-                    string responseHeaders = string.Join("; ", response.Headers.Select(h => $"{h.Key}: {string.Join(", ", h.Value)}"));
-
-                    string cookies = "";
-                    if (response.Headers.TryGetValues("Set-Cookie", out var cookieValues))
-                    {
-                        cookies = string.Join("; ", cookieValues);
-                        _logger.Send($"Set-Cookie found: {cookies}");
-                    }
-
-                    try
-                    {
-                        _project.Variables["debugCookies"].Value = cookies;
-                    }
-                    catch { }
-
-                    // ✅ ПРАВИЛЬНО: async чтение
-                    string result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    
-                    if (parse) ParseJson(result);
-                    _logger.Send(result);
-                    return result.Trim();
                 }
             }
             catch (HttpRequestException e)
@@ -207,6 +272,12 @@ namespace z3nCore
                 if (throwOnFail) throw;
                 return errorMessage;
             }
+            catch (TaskCanceledException e)
+            {
+                _logger.Send($"!W [GET] Timeout: [{e.Message}] \nurl:[{url}]  \nheaders: [{debugHeaders}]");
+                if (throwOnFail) throw;
+                return $"Timeout: {e.Message}";
+            }
             catch (Exception e)
             {
                 _logger.Send($"!W [GET] ErrSending: [{e.Message}] \nurl:[{url}]  \nheaders: [{debugHeaders}]");
@@ -216,7 +287,7 @@ namespace z3nCore
         }
 
         /// <summary>
-        /// ASYNC POST запрос
+        /// ✅ ИСПРАВЛЕНО: ASYNC POST запрос с переиспользованием HttpClient
         /// </summary>
         public async Task<string> PostAsync(
             string url,
@@ -230,66 +301,63 @@ namespace z3nCore
             string debugHeaders = "";
             try
             {
-                WebProxy proxy = ParseProxy(proxyString);
-                var handler = new HttpClientHandler
+                // ✅ ИСПРАВЛЕНИЕ: Получаем клиент из пула
+                HttpClient client = GetHttpClient(proxyString, deadline);
+
+                using (var request = new HttpRequestMessage(HttpMethod.Post, url))
                 {
-                    Proxy = proxy,
-                    UseProxy = proxy != null
-                };
-
-                using (var client = new HttpClient(handler))
-                {
-                    client.Timeout = TimeSpan.FromSeconds(deadline);
-                    var content = new StringContent(body, Encoding.UTF8, "application/json");
-
-                    var requestHeaders = BuildHeaders(headers);
-
-                    foreach (var header in requestHeaders)
+                    using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(deadline)))
                     {
-                        client.DefaultRequestHeaders.Add(header.Key, header.Value);
-                        debugHeaders += $"{header.Key}: {header.Value}; ";
-                    }
-                    debugHeaders += "Content-Type: application/json; charset=UTF-8; ";
+                        request.Content = new StringContent(body, Encoding.UTF8, "application/json");
 
-                    _logger.Send(body);
+                        var requestHeaders = BuildHeaders(headers);
 
-                    // ✅ ПРАВИЛЬНО: async вызов
-                    HttpResponseMessage response = await client.PostAsync(url, content).ConfigureAwait(false);
-
-                    int statusCode = (int)response.StatusCode;
-
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        string errorMessage = $"{statusCode} !!! {response.ReasonPhrase}";
-                        _logger.Send($"[POST] SERVER Err: [{errorMessage}] url:[{url}] (proxy: {proxyString}), headers: [{debugHeaders.Trim()}]");
-                        if (throwOnFail)
+                        foreach (var header in requestHeaders)
                         {
-                            response.EnsureSuccessStatusCode();
+                            request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                            debugHeaders += $"{header.Key}: {header.Value}; ";
                         }
-                        return errorMessage;
+                        debugHeaders += "Content-Type: application/json; charset=UTF-8; ";
+
+                        _logger.Send(body);
+
+                        using (HttpResponseMessage response = await client.SendAsync(request, cts.Token).ConfigureAwait(false))
+                        {
+                            int statusCode = (int)response.StatusCode;
+
+                            if (!response.IsSuccessStatusCode)
+                            {
+                                string errorMessage = $"{statusCode} !!! {response.ReasonPhrase}";
+                                _logger.Send($"[POST] SERVER Err: [{errorMessage}] url:[{url}] (proxy: {proxyString}), headers: [{debugHeaders.Trim()}]");
+                                if (throwOnFail)
+                                {
+                                    response.EnsureSuccessStatusCode();
+                                }
+                                return errorMessage;
+                            }
+
+                            string responseHeaders = string.Join("; ", response.Headers.Select(h => $"{h.Key}: {string.Join(", ", h.Value)}"));
+
+                            string cookies = "";
+                            if (response.Headers.TryGetValues("Set-Cookie", out var cookieValues))
+                            {
+                                cookies = string.Join("; ", cookieValues);
+                                _logger.Send($"Set-Cookie found: {cookies}");
+                            }
+
+                            try
+                            {
+                                _project.Variables["debugCookies"].Value = cookies;
+                            }
+                            catch { }
+
+                            string result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+                            _logger.Send(result);
+                            if (parse) ParseJson(result);
+                            return result.Trim();
+                        }
                     }
-
-                    string responseHeaders = string.Join("; ", response.Headers.Select(h => $"{h.Key}: {string.Join(", ", h.Value)}"));
-
-                    string cookies = "";
-                    if (response.Headers.TryGetValues("Set-Cookie", out var cookieValues))
-                    {
-                        cookies = string.Join("; ", cookieValues);
-                        _logger.Send($"Set-Cookie found: {cookies}");
-                    }
-
-                    try
-                    {
-                        _project.Variables["debugCookies"].Value = cookies;
-                    }
-                    catch { }
-
-                    // ✅ ПРАВИЛЬНО: async чтение
-                    string result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    
-                    _logger.Send(result);
-                    if (parse) ParseJson(result);
-                    return result.Trim();
                 }
             }
             catch (HttpRequestException e)
@@ -301,6 +369,12 @@ namespace z3nCore
                 if (throwOnFail) throw;
                 return errorMessage;
             }
+            catch (TaskCanceledException e)
+            {
+                _logger.Send($"!W [POST] Timeout: [{e.Message}] url:[{url}] (proxy: {proxyString}) headers: [{debugHeaders.Trim()}]");
+                if (throwOnFail) throw;
+                return $"Timeout: {e.Message}";
+            }
             catch (Exception e)
             {
                 _logger.Send($"!W [POST] RequestErr: [{e.Message}] url:[{url}] (proxy: {proxyString}) headers: [{debugHeaders.Trim()}]");
@@ -310,7 +384,7 @@ namespace z3nCore
         }
 
         /// <summary>
-        /// ASYNC PUT запрос
+        /// ✅ ИСПРАВЛЕНО: ASYNC PUT запрос
         /// </summary>
         public async Task<string> PutAsync(
             string url,
@@ -321,60 +395,60 @@ namespace z3nCore
         {
             try
             {
-                WebProxy proxy = ParseProxy(proxyString);
-                var handler = new HttpClientHandler
+                HttpClient client = GetHttpClient(proxyString, 30);
+
+                using (var request = new HttpRequestMessage(HttpMethod.Put, url))
                 {
-                    Proxy = proxy,
-                    UseProxy = proxy != null
-                };
-
-                using (var client = new HttpClient(handler))
-                {
-                    client.Timeout = TimeSpan.FromSeconds(30);
-                    var content = string.IsNullOrEmpty(body) ? null : new StringContent(body, Encoding.UTF8, "application/json");
-
-                    string defaultUserAgent = _project.Profile.UserAgent;
-                    if (headers == null || !headers.ContainsKey("User-Agent"))
+                    using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                     {
-                        client.DefaultRequestHeaders.Add("User-Agent", defaultUserAgent);
-                    }
-
-                    if (headers != null)
-                    {
-                        foreach (var header in headers)
+                        if (!string.IsNullOrEmpty(body))
                         {
-                            client.DefaultRequestHeaders.Add(header.Key, header.Value);
+                            request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+                        }
+
+                        string defaultUserAgent = _project.Profile.UserAgent;
+                        if (headers == null || !headers.ContainsKey("User-Agent"))
+                        {
+                            request.Headers.Add("User-Agent", defaultUserAgent);
+                        }
+
+                        if (headers != null)
+                        {
+                            foreach (var header in headers)
+                            {
+                                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                            }
+                        }
+
+                        if (!string.IsNullOrEmpty(body))
+                        {
+                            _logger.Send(body);
+                        }
+
+                        using (HttpResponseMessage response = await client.SendAsync(request, cts.Token).ConfigureAwait(false))
+                        {
+                            response.EnsureSuccessStatusCode();
+
+                            string cookies = "";
+                            if (response.Headers.TryGetValues("Set-Cookie", out var cookieValues))
+                            {
+                                cookies = cookieValues.Aggregate((a, b) => a + "; " + b);
+                                _logger.Send($"Set-Cookie found: {cookies}");
+                            }
+
+                            try
+                            {
+                                _project.Variables["debugCookies"].Value = cookies;
+                            }
+                            catch { }
+
+                            string result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+                            _logger.Send(result);
+                            if (parse) ParseJson(result);
+                            return result.Trim();
                         }
                     }
-
-                    if (content != null)
-                    {
-                        _logger.Send(body);
-                    }
-
-                    // ✅ ПРАВИЛЬНО: async вызов
-                    HttpResponseMessage response = await client.PutAsync(url, content).ConfigureAwait(false);
-                    response.EnsureSuccessStatusCode();
-
-                    string cookies = "";
-                    if (response.Headers.TryGetValues("Set-Cookie", out var cookieValues))
-                    {
-                        cookies = cookieValues.Aggregate((a, b) => a + "; " + b);
-                        _logger.Send($"Set-Cookie found: {cookies}");
-                    }
-
-                    try
-                    {
-                        _project.Variables["debugCookies"].Value = cookies;
-                    }
-                    catch { }
-
-                    // ✅ ПРАВИЛЬНО: async чтение
-                    string result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    
-                    _logger.Send(result);
-                    if (parse) ParseJson(result);
-                    return result.Trim();
                 }
             }
             catch (HttpRequestException e)
@@ -390,7 +464,7 @@ namespace z3nCore
         }
 
         /// <summary>
-        /// ASYNC DELETE запрос
+        /// ✅ ИСПРАВЛЕНО: ASYNC DELETE запрос
         /// </summary>
         public async Task<string> DeleteAsync(
             string url,
@@ -400,54 +474,50 @@ namespace z3nCore
             string debugHeaders = null;
             try
             {
-                WebProxy proxy = ParseProxy(proxyString);
-                var handler = new HttpClientHandler
+                HttpClient client = GetHttpClient(proxyString, 30);
+
+                using (var request = new HttpRequestMessage(HttpMethod.Delete, url))
                 {
-                    Proxy = proxy,
-                    UseProxy = proxy != null
-                };
-
-                using (var client = new HttpClient(handler))
-                {
-                    client.Timeout = TimeSpan.FromSeconds(30);
-
-                    string defaultUserAgent = _project.Profile.UserAgent;
-                    if (headers == null || !headers.ContainsKey("User-Agent"))
+                    using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
                     {
-                        client.DefaultRequestHeaders.Add("User-Agent", defaultUserAgent);
-                    }
-
-                    if (headers != null)
-                    {
-                        foreach (var header in headers)
+                        string defaultUserAgent = _project.Profile.UserAgent;
+                        if (headers == null || !headers.ContainsKey("User-Agent"))
                         {
-                            client.DefaultRequestHeaders.Add(header.Key, header.Value);
-                            debugHeaders += $"{header.Key}: {header.Value}";
+                            request.Headers.Add("User-Agent", defaultUserAgent);
+                        }
+
+                        if (headers != null)
+                        {
+                            foreach (var header in headers)
+                            {
+                                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                                debugHeaders += $"{header.Key}: {header.Value}";
+                            }
+                        }
+
+                        using (HttpResponseMessage response = await client.SendAsync(request, cts.Token).ConfigureAwait(false))
+                        {
+                            response.EnsureSuccessStatusCode();
+
+                            string cookies = "";
+                            if (response.Headers.TryGetValues("Set-Cookie", out var cookieValues))
+                            {
+                                cookies = cookieValues.Aggregate((a, b) => a + "; " + b);
+                                _logger.Send($"Set-Cookie found: {cookies}");
+                            }
+
+                            try
+                            {
+                                _project.Variables["debugCookies"].Value = cookies;
+                            }
+                            catch { }
+
+                            string result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+                            _logger.Send(result);
+                            return result.Trim();
                         }
                     }
-
-                    // ✅ ПРАВИЛЬНО: async вызов
-                    HttpResponseMessage response = await client.DeleteAsync(url).ConfigureAwait(false);
-                    response.EnsureSuccessStatusCode();
-
-                    string cookies = "";
-                    if (response.Headers.TryGetValues("Set-Cookie", out var cookieValues))
-                    {
-                        cookies = cookieValues.Aggregate((a, b) => a + "; " + b);
-                        _logger.Send($"Set-Cookie found: {cookies}");
-                    }
-
-                    try
-                    {
-                        _project.Variables["debugCookies"].Value = cookies;
-                    }
-                    catch { }
-
-                    // ✅ ПРАВИЛЬНО: async чтение
-                    string result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    
-                    _logger.Send(result);
-                    return result.Trim();
                 }
             }
             catch (HttpRequestException e)
@@ -496,6 +566,26 @@ namespace z3nCore
             }
 
             return mergedHeaders;
+        }
+
+        /// <summary>
+        /// ✅ ДОПОЛНИТЕЛЬНО: Метод для очистки кеша proxy клиентов
+        /// Вызывайте периодически если используется много разных proxy
+        /// </summary>
+        public static void ClearProxyCache()
+        {
+            var oldClients = _proxyClients.ToArray();
+            _proxyClients.Clear();
+
+            // Dispose старых клиентов
+            foreach (var kvp in oldClients)
+            {
+                try
+                {
+                    kvp.Value?.Dispose();
+                }
+                catch { }
+            }
         }
     }
 
@@ -585,9 +675,6 @@ namespace z3nCore
                     .ConfigureAwait(false)
             ).GetAwaiter().GetResult();
         }
-
-
-        
     }
 
     /// <summary>
