@@ -239,8 +239,9 @@ namespace z3nCore
             if (_instance.ActiveTab.IsBusy) _instance.ActiveTab.WaitDownloading();
             //Thread.Sleep(5000);
             _instance.Go("https://myaccount.google.com/");
-            string gCookies = new Cookies(_project, _instance).Get(".");
-            _project.DbUpd($"status = 'ok', cookies = '{gCookies}'", "_google");
+
+            _project.SaveDomainCookies(_instance, tableName: "_google");//new Cookies(_project, _instance).Get(".");
+            //_project.DbUpd($"status = 'ok', cookies = '{gCookies}'", "_google");
         }
         public void ParseSecurity()
         {

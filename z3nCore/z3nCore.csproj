@@ -85,6 +85,10 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AccountManagement\AccountManager.cs" />
+    <Compile Include="AccountManagement\Disposer.cs" />
+    <Compile Include="AccountManagement\ProfileSync.cs" />
+    <Compile Include="AccountManagement\PropertyManager.cs" />
     <Compile Include="Api\AntiCapctha.cs" />
     <Compile Include="Api\BinanceApi.cs" />
     <Compile Include="Api\Bitget.cs" />
@@ -100,17 +104,19 @@
     <Compile Include="Browser\HtmlExtensions.cs" />
     <Compile Include="Browser\Traffic.cs" />
     <Compile Include="Browser\ZB.cs" />
-    <Compile Include="Core\Disposer.cs" />
     <Compile Include="Core\Init.cs" />
+    <Compile Include="Core\Logger.cs" />
+    <Compile Include="Diagnostic\Debug.cs" />
+    <Compile Include="Diagnostic\ProcAcc.cs" />
+    <Compile Include="Diagnostic\Running.cs" />
     <Compile Include="MethodExtensions\ListExtentions.cs" />
     <Compile Include="MethodExtensions\StringExtentions.cs" />
-    <Compile Include="Processess\ProcAcc.cs" />
-    <Compile Include="Processess\Running.cs" />
     <Compile Include="ProjectExtentions\Exceptions.cs" />
     <Compile Include="ProjectExtentions\FS.cs" />
-    <Compile Include="ProjectExtentions\Logger.cs" />
+    <Compile Include="ProjectExtentions\Helper.cs" />
+    <Compile Include="ProjectExtentions\ProfileManager.cs" />
     <Compile Include="ProjectExtentions\Time.cs" />
-    <Compile Include="ProjectExtentions\Utils.cs" />
+    <Compile Include="ProjectExtentions\ExternalCode.cs" />
     <Compile Include="Reports\Accountant.cs" />
     <Compile Include="Reports\HtmlReport.cs" />
     <Compile Include="Reports\Reporter.cs" />
@@ -118,12 +124,9 @@
     <Compile Include="Security\Cryptography.cs" />
     <Compile Include="Security\ISAFU.cs" />
     <Compile Include="Socials\Twitter.cs" />
-    <Compile Include="Socials\X.cs" />
     <Compile Include="Sql\Db.cs" />
     <Compile Include="Utilities\Converter.cs" />
-    <Compile Include="Utilities\Debug.cs" />
     <Compile Include="Utilities\F0rms.cs" />
-    <Compile Include="Utilities\Helper.cs" />
     <Compile Include="Utilities\OTP.cs" />
     <Compile Include="Utilities\Rss.cs" />
     <Compile Include="Utilities\Sleeper.cs" />
@@ -134,6 +137,7 @@
     <Compile Include="W3b\Faucet.cs" />
     <Compile Include="W3b\SolTools.cs" />
     <Compile Include="W3b\SuiTools.cs" />
+    <Compile Include="W3b\Tx.cs" />
     <Compile Include="Wallets\AuroWallet.cs" />
     <Compile Include="Wallets\Keplr.cs" />
     <Compile Include="Browser\InstanceExtensions.cs" />
@@ -150,7 +154,6 @@
     <Compile Include="Requests\NetHttp.cs" />
     <Compile Include="Browser\BrowserScan.cs" />
     <Compile Include="Browser\ChromeExt.cs" />
-    <Compile Include="W3b\Tx.cs" />
     <Compile Include="Api\GazZip.cs" />
     <Compile Include="Api\Galxe.cs" />
     <Compile Include="Socials\Telegram.cs" />
@@ -164,8 +167,8 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Wallets\SuietWallet.cs" />
     <Compile Include="Wallets\ZerionWallet.cs" />
-    <Compile Include="_projects\Neuraverse.cs" />
     <Compile Include="~deprecated\Fallback.cs" />
+    <Compile Include="~deprecated\X.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="ValidateZennoPosterDllPath" BeforeTargets="BeforeBuild">
@@ -174,9 +177,6 @@
   <ItemGroup>
     <PackageReference Include="Chaos.NaCl.Standard">
       <Version>1.0.0</Version>
-    </PackageReference>
-    <PackageReference Include="Dapper">
-      <Version>2.1.66</Version>
     </PackageReference>
     <PackageReference Include="ILRepack">
       <Version>2.0.44</Version>
@@ -239,6 +239,9 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="merge.ps1" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="_projects\" />
   </ItemGroup>
 
     <Target Name="ILRepack" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">

@@ -136,7 +136,7 @@ namespace z3nCore.Utilities
            List<string[]> zennoProcesses = new List<string[]>();
             try
             {
-                var zp = Debugger.ZennoProcesses();
+                var zp = Diagnostic.ZennoProcesses();
                 foreach (string[] arr in zp)
                 {
                     zennoProcesses.Add(arr);

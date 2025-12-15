@@ -2,6 +2,8 @@
 using System.IO;
 using System.Collections.Generic;
 using ZennoLab.InterfacesLibrary.ProjectModel;
+using System.Linq;
+using Newtonsoft.Json.Linq;
 
 
 namespace z3nCore
@@ -69,4 +71,66 @@ namespace z3nCore
             return project.ExecuteProject(path, mapVars, true, true, true);
         }
     }
+    
+        public static class ZbDbManager
+    {
+        public static string ZBDbGet(this IZennoPosterProjectModel project,string query, string tableName = "ProfileInfos", bool log = false)
+        {
+            var modeBkp = project.Var("DBmode");   
+            var pathBkp = project.Var("DBsqltPath");   
+            var acc0Bkp = project.Var("acc0");   
+	
+            string dbPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "ZennoLab", "ZP8", ".zp8", "ProfileManagement.db"
+            );
+    
+            if (!File.Exists(dbPath))
+            {
+                throw new FileNotFoundException(
+                    $"База данных не найдена по пути: {dbPath}"
+                );
+            }
+            project.Var("DBmode", "SQLite");
+            project.Var("acc0", 1);
+            project.Var("DBsqltPath", dbPath);
+
+            
+            project.Var("acc0",project.Var("zb_id")); 
+            string resp = project.DbGet(query,tableName, log:log );
+            
+            project.Var("DBmode",modeBkp);   
+            project.Var("DBsqltPath",pathBkp);  
+            project.Var("acc0",acc0Bkp); 
+            return resp;
+            
+        }
+        public static Dictionary<string,string> ZBIdDic(this IZennoPosterProjectModel project, string json, string folder = null)
+        {
+            var array = JArray.Parse(json);
+    
+            var filtered = string.IsNullOrEmpty(folder) 
+                ? array 
+                : array.Where(x => (string)x["FolderName"] == folder);
+    
+            var nameToId = filtered
+                .GroupBy(x => (string)x["Name"])
+                .ToDictionary(g => g.Key, g => (string)g.First()["Id"]);
+
+            return nameToId;
+        }
+        
+        public static List<string> ZBIdList(this IZennoPosterProjectModel project, string json, string folder = "Farm")
+        {
+            var dic = project.ZBIdDic(json, folder);
+            var res = new List<string>();
+            foreach(var p in dic){
+                res.Add(p.Value);
+            }
+
+            return res;
+        }
+        
+    }
+    
 }

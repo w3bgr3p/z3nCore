@@ -29,8 +29,6 @@ namespace z3nCore
             headers.Add("accept", "application/json");
             headers.Add("x-cg-pro-api-key", apiKey);
         }
-    
-        
         
         public async Task<string> CoinInfo(string CGid = "ethereum")
         {

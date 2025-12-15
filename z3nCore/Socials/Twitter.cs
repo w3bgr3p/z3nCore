@@ -862,7 +862,7 @@ namespace z3nCore
         /// </summary>
         public void ExtractTokens()
         {
-            var cookJson = new Cookies(_project, _instance).Get(".");
+            var cookJson = _instance.GetCookies(".");//new Cookies(_project, _instance).Get(".");
             JArray toParse = JArray.Parse(cookJson);
             
             string token = "";

@@ -8,24 +8,9 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
 {
-    public static class Utils
+    public static partial class ProjectExtensions
     {
         
-        public static void Clean(this IZennoPosterProjectModel project, Instance instance)
-        {
-            bool releaseResouses = true;
-            try { releaseResouses = project.Var("forceReleaseResouses") == "True"; } catch { }
-            
-            if (instance.BrowserType.ToString() == "Chromium" && releaseResouses)
-            {
-                try { instance.Launch(ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Firefox45, false); } catch { }
-                try { instance.ClearCookie(); instance.ClearCache(); } catch { }
-            }
-
-            if (!string.IsNullOrEmpty(project.Var("accRnd")))
-                new FS(project).RmRf(project.Var("pathProfileFolder"));
-        }
-
         public static bool RunZp(this IZennoPosterProjectModel project, List<string> vars = null)
         {
             string tempFilePath = project.Var("projectScript");
@@ -79,7 +64,6 @@ namespace z3nCore
             if (resetSessionId) project.Var("varSessionId",(DateTimeOffset.UtcNow.ToUnixTimeSeconds()).ToString());
         }
         
-       
     }
 
 }

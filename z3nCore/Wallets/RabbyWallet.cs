@@ -48,7 +48,7 @@ namespace z3nCore
                 default:
                     return key;
             }
-            if (string.IsNullOrEmpty(key)) throw new Exception("keyIsEmpy").Throw();
+            if (string.IsNullOrEmpty(key)) _project.warn("keyIsEmpy", true); 
 
             _expectedAddress = key.ToEvmAddress();
             return key;

@@ -1,11 +1,12 @@
-﻿using Dapper;
-using System;
+﻿using System;
 using System.Text;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using ZennoLab.InterfacesLibrary.ProjectModel;
-
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 namespace z3nCore
 {
     #region DbHelpers - Вспомогательные методы
@@ -83,7 +84,7 @@ namespace z3nCore
     }
     #endregion
 
-    #region DbGet - Методы получения данных
+    
     public static class Get
     {
         public static string DbGet(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", string acc = null, string where = "")
@@ -161,20 +162,13 @@ namespace z3nCore
             string decoded = !string.IsNullOrEmpty(project.Var("cfgPin")) ? SAFU.Decode(project, resp) : resp;
             return decoded;
         }
+        
+        
     }
-    #endregion
-
-    #region DbUpdate - Методы обновления данных
+    
     public static class DbUpdate
     {
-        public static void JsonToDb(this IZennoPosterProjectModel project, string json, string tableName = null, bool log = false, bool thrw = false)
-        {
-            tableName =  project.TableName(tableName);
-            
-            var dataDic = json.JsonToDic(true);
-            project.DicToDb(dataDic,tableName,log,thrw);
-        }
-        
+
         public static void DicToDb(this IZennoPosterProjectModel project, Dictionary<string,string> dataDic, string tableName = null, bool log = false, bool thrw = false)
         {
             if (string.IsNullOrWhiteSpace(tableName)) tableName = project.Var("projectTable");
@@ -206,40 +200,412 @@ namespace z3nCore
             try { project.Var("lastQuery", toUpd); } catch (Exception ex){ project.SendWarningToLog(ex.Message, true); }
             project.SqlUpd(toUpd, tableName, log, thrw, key, acc, where);
         }
-
         public static void DbDone(this IZennoPosterProjectModel project, string task = "daily", int cooldownMin = 0, string tableName = null, bool log = false, bool thrw = false, string key = "id", object acc = null, string where = "")
         {
             var cd = (cooldownMin == 0) ? Time.Cd() : Time.Cd(cooldownMin);
             project.DbUpd($"{task} = '{cd}'", tableName, log, thrw);
         }
+        
+    }
 
-        public static void DbSettings(this IZennoPosterProjectModel project, bool set = true, bool log = false)
+    public static class DbJson
+    {
+        public static void JsonToDb(this IZennoPosterProjectModel project, string json, string tableName = null, bool log = false, bool thrw = false)
         {
-            var dbConfig = new Dictionary<string, string>();
-            var resp = project.DbQ($"SELECT {DbHelpers.Quote("id")}, {DbHelpers.Quote("value")} FROM {DbHelpers.Quote("_settings")}", log);
-            foreach (string varData in resp.Split(DbHelpers.RawSeparator))
+            tableName = project.TableName(tableName);
+    
+            var structure = ExtractStructure(json);
+    
+            var dataDic = json.JsonToDic(true);
+            dataDic["_json_structure"] = structure; 
+    
+            project.DicToDb(dataDic, tableName, log, thrw);
+        }
+        private static string ExtractStructure(string json)
+        {
+            var structure = new Dictionary<string, string>();
+            var jObject = JObject.Parse(json);
+    
+            MapStructure(jObject, "");
+            return JsonConvert.SerializeObject(structure);
+    
+            void MapStructure(JToken token, string prefix)
             {
-                if (string.IsNullOrEmpty(varData)) continue;
-
-                var parts = varData.Split(DbHelpers.ColumnSeparator);
-                if (parts.Length >= 2)
+                switch (token.Type)
                 {
-                    string varName = parts[0];
-                    string varValue = string.Join($"{DbHelpers.ColumnSeparator}", parts.Skip(1)).Trim(); 
+                    case JTokenType.Object:
+                        if (!string.IsNullOrEmpty(prefix))
+                            structure[prefix] = "object";
+                    
+                        foreach (var property in token.Children<JProperty>())
+                        {
+                            var key = string.IsNullOrEmpty(prefix) 
+                                ? property.Name 
+                                : $"{prefix}_{property.Name}";
+                            MapStructure(property.Value, key);
+                        }
+                        break;
 
-                    dbConfig.Add(varName, varValue);
-                    if (set)
+                    case JTokenType.Array:
+                        structure[prefix] = "array";
+                        var index = 0;
+                        foreach (var item in token.Children())
+                        {
+                            MapStructure(item, $"{prefix}_{index}");
+                            index++;
+                        }
+                        break;
+                
+                    default:
+                        structure[prefix] = token.Type.ToString().ToLower();
+                        break;
+                }
+            }
+        }     
+        public static string DbToJson(this IZennoPosterProjectModel project, string tableName = null, bool log = false, bool thrw = false)
+        {
+            if (string.IsNullOrEmpty(tableName)) 
+                tableName = project.ProjectTable();
+            
+            project.SendInfoToLog("=== DbToJson START ===", true);
+            
+            var columns = project.TblColumns(tableName, log);
+            project.SendInfoToLog($"Columns in table: {string.Join(", ", columns)}", true);
+            
+            if (!columns.Contains("_json_structure"))
+            {
+                project.SendErrorToLog("ОШИБКА: Колонка _json_structure отсутствует в таблице!", true);
+                return "{}";
+            }
+            
+            var columnsString = string.Join(",", columns);
+            project.SendInfoToLog($"Fetching columns: {columnsString}", true);
+            
+            var allColumns = project.DbGetColumns(columnsString, tableName, log, thrw);
+            project.SendInfoToLog($"Fetched {allColumns.Count} columns", true);
+            
+            foreach (var col in allColumns)
+            {
+                var preview = col.Value.Length > 100 ? col.Value.Substring(0, 100) + "..." : col.Value;
+                project.SendInfoToLog($"  [{col.Key}] = {preview}", true);
+            }
+            
+            if (!allColumns.ContainsKey("_json_structure"))
+            {
+                project.SendErrorToLog("ОШИБКА: _json_structure отсутствует в результате!", true);
+                return "{}";
+            }
+            
+            var structureJson = allColumns["_json_structure"];
+            project.SendInfoToLog($"Structure JSON length: {structureJson.Length}", true);
+            
+            Dictionary<string, string> structure;
+            try
+            {
+                structure = JsonConvert.DeserializeObject<Dictionary<string, string>>(structureJson);
+                project.SendInfoToLog($"Structure parsed, elements: {structure.Count}", true);
+            }
+            catch (Exception ex)
+            {
+                project.SendErrorToLog($"Ошибка парсинга structure: {ex.Message}", true);
+                return "{}";
+            }
+            
+            // ИСПРАВЛЕНО: Удаляем ВСЕ служебные поля (начинающиеся с _)
+            var keysToRemove = allColumns.Keys.Where(k => k.StartsWith("_") || k == "id").ToList();
+            foreach (var key in keysToRemove)
+            {
+                project.SendInfoToLog($"Removing service field: {key}", true);
+                allColumns.Remove(key);
+            }
+            
+            project.SendInfoToLog($"Data fields for building: {allColumns.Count}", true);
+            
+            var result = BuildJson(project, allColumns, structure);
+            
+            project.SendInfoToLog($"=== Result ===\n{result}", true);
+            
+            return result;
+        }
+        private static string BuildJson(IZennoPosterProjectModel project, Dictionary<string, string> data, Dictionary<string, string> structure)
+        {
+            
+            var root = new JObject();
+            
+            foreach (var kvp in data)
+            {
+                if (!structure.ContainsKey(kvp.Key))
+                {
+                    project.SendInfoToLog($"  SKIP (not in structure): {kvp.Key}");
+                    continue;
+                }
+                
+                var type = structure[kvp.Key];
+                
+                if (type == "object" || type == "array")
+                {
+                    continue;
+                }
+                
+                project.SendInfoToLog($"  Processing: {kvp.Key}");
+                
+                var path = kvp.Key.Split('_');
+                JToken current = root;
+                
+                var containers = new List<(int segmentCount, string path, bool isArray)>();
+                
+                for (int i = 1; i < path.Length; i++)
+                {
+                    var testPath = string.Join("_", path.Take(i));
+                    if (structure.ContainsKey(testPath))
                     {
-                        try { project.Var(varName, varValue); }
-                        catch (Exception e) { e.Throw(project, throwEx: false); }
+                        var testType = structure[testPath];
+                        if (testType == "object" || testType == "array")
+                        {
+                            containers.Add((i, testPath, testType == "array"));
+                            project.SendInfoToLog($"    Found container: {testPath} ({testType})");
+                        }
                     }
+                }
+                
+                int lastContainerDepth = 0;
+                foreach (var (segmentCount, containerPath, isArray) in containers)
+                {
+                    var containerSegments = containerPath.Split('_');
+                    var containerKey = string.Join("_", containerSegments.Skip(lastContainerDepth));
+                    
+                    if (current is JObject jObj)
+                    {
+                        if (jObj[containerKey] == null)
+                        {
+                            jObj[containerKey] = isArray ? (JToken)new JArray() : (JToken)new JObject();
+                            project.SendInfoToLog($"      Created: {containerKey} as {(isArray ? "array" : "object")}");
+                        }
+                        current = jObj[containerKey];
+                    }
+                    else if (current is JArray jArr && int.TryParse(containerKey, out int idx))
+                    {
+                        while (jArr.Count <= idx)
+                        {
+                            jArr.Add(isArray ? (JToken)new JArray() : (JToken)new JObject());
+                        }
+                        current = jArr[idx];
+                    }
+                    
+                    lastContainerDepth = segmentCount;
+                }
+                
+                var finalKey = string.Join("_", path.Skip(lastContainerDepth));
+                project.SendInfoToLog($"    Final key: '{finalKey}'");
+                
+                var value = kvp.Value;
+                
+                // ИСПРАВЛЕНО: Парсим JSON только если тип НЕ string
+                JToken token;
+                if (type != "string" && IsJsonString(value))
+                {
+                    try
+                    {
+                        token = JToken.Parse(value);
+                        project.SendInfoToLog($"    Parsed as JSON (type={type})");
+                    }
+                    catch
+                    {
+                        token = CreateTypedToken(project, value, kvp.Key, structure);
+                    }
+                }
+                else
+                {
+                    token = CreateTypedToken(project, value, kvp.Key, structure);
+                }
+                
+                if (current is JObject jObj2)
+                {
+                    jObj2[finalKey] = token;
+                }
+                else if (current is JArray jArr2)
+                {
+                    jArr2.Add(token);
+                }
+            }
+            
+            return root.ToString(Formatting.None);
+        }
+        private static bool IsJsonString(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+            
+            var trimmed = value.Trim();
+            return (trimmed.StartsWith("{") && trimmed.EndsWith("}")) ||
+                   (trimmed.StartsWith("[") && trimmed.EndsWith("]"));
+        }
+                
+        private static void BuildPath(IZennoPosterProjectModel project, JToken parent, string[] path, int index, string fullKey, 
+            Dictionary<string, string> data, Dictionary<string, string> structure, HashSet<string> processed)
+        {
+            if (index >= path.Length)
+            {
+                project.SendInfoToLog($"      BuildPath: index >= path.Length, выход", true);
+                return;
+            }
+            
+            var segment = path[index];
+            var isLast = index == path.Length - 1;
+            
+            project.SendInfoToLog($"      BuildPath: segment={segment}, index={index}/{path.Length}, isLast={isLast}, parent type={parent.Type}", true);
+            
+            if (isLast)
+            {
+                var value = data[fullKey];
+                project.SendInfoToLog($"        LEAF: устанавливаю значение '{value}' для ключа '{fullKey}'", true);
+                
+                // НОВОЕ: проверяем, является ли значение JSON-строкой
+                JToken tokenValue;
+                if (IsJsonString(value))
+                {
+                    try
+                    {
+                        // Парсим JSON-строку в объект
+                        tokenValue = JToken.Parse(value);
+                        project.SendInfoToLog($"        Parsed JSON string into object/array", true);
+                    }
+                    catch
+                    {
+                        // Если не удалось распарсить, оставляем как строку
+                        tokenValue = CreateTypedToken(project, value, fullKey, structure);
+                    }
+                }
+                else
+                {
+                    tokenValue = CreateTypedToken(project, value, fullKey, structure);
+                }
+                
+                project.SendInfoToLog($"        Token создан: type={tokenValue.Type}, value={tokenValue}", true);
+                
+                if (parent is JObject jObj)
+                {
+                    project.SendInfoToLog($"        Добавляю в JObject[{segment}]", true);
+                    jObj[segment] = tokenValue;
+                }
+                else if (parent is JArray jArr)
+                {
+                    project.SendInfoToLog($"        Добавляю в JArray (count={jArr.Count})", true);
+                    jArr.Add(tokenValue);
+                }
+                else
+                {
+                    project.SendErrorToLog($"        ОШИБКА: неизвестный тип parent: {parent.GetType()}", true);
+                }
+                
+                processed.Add(fullKey);
+            }
+            else
+            {
+                var currentPath = string.Join("_", path.Take(index + 1));
+                bool isArray = structure.ContainsKey(currentPath) && structure[currentPath] == "array";
+                
+                project.SendInfoToLog($"        NODE: currentPath={currentPath}, isArray={isArray}", true);
+                
+                JToken child = null;
+                
+                if (parent is JObject jObj)
+                {
+                    child = jObj[segment];
+                    project.SendInfoToLog($"        Parent=JObject, child exists={child != null}", true);
+                    
+                    if (child == null)
+                    {
+                        child = isArray ? (JToken)new JArray() : (JToken)new JObject();
+                        project.SendInfoToLog($"        Создаю новый child: {child.Type}", true);
+                        jObj[segment] = child;
+                    }
+                }
+                else if (parent is JArray jArr)
+                {
+                    project.SendInfoToLog($"        Parent=JArray, count={jArr.Count}, segment={segment}", true);
+                    
+                    if (int.TryParse(segment, out int idx))
+                    {
+                        project.SendInfoToLog($"        Segment - число: {idx}", true);
+                        if (idx < jArr.Count)
+                        {
+                            child = jArr[idx];
+                            project.SendInfoToLog($"        Взял существующий элемент [{idx}]", true);
+                        }
+                        else
+                        {
+                            child = isArray ? (JToken)new JArray() : (JToken)new JObject();
+                            project.SendInfoToLog($"        Создаю новый элемент: {child.Type}", true);
+                            jArr.Add(child);
+                        }
+                    }
+                    else
+                    {
+                        project.SendErrorToLog($"        ОШИБКА: segment '{segment}' не число для массива!", true);
+                        child = isArray ? (JToken)new JArray() : (JToken)new JObject();
+                        jArr.Add(child);
+                    }
+                }
+                else
+                {
+                    project.SendErrorToLog($"        ОШИБКА: неизвестный тип parent: {parent.GetType()}", true);
+                    return;
+                }
+                
+                if (child != null)
+                {
+                    BuildPath(project, child, path, index + 1, fullKey, data, structure, processed);
+                }
+                else
+                {
+                    project.SendErrorToLog($"        ОШИБКА: child == null после обработки!", true);
                 }
             }
         }
+        
+        private static JToken CreateTypedToken(IZennoPosterProjectModel project, string value, string fullKey, Dictionary<string, string> structure)
+        {
+            if (structure.ContainsKey(fullKey))
+            {
+                var type = structure[fullKey];
+                project.SendInfoToLog($"          CreateToken: key={fullKey}, type={type}, value={value}", true);
+                
+                switch (type)
+                {
+                    case "integer":
+                        if (int.TryParse(value, out int intVal))
+                        {
+                            project.SendInfoToLog($"          -> Integer: {intVal}", true);
+                            return new JValue(intVal);
+                        }
+                        break;
+                    case "float":
+                        if (double.TryParse(value, out double dblVal))
+                        {
+                            project.SendInfoToLog($"          -> Float: {dblVal}", true);
+                            return new JValue(dblVal);
+                        }
+                        break;
+                    case "boolean":
+                        if (bool.TryParse(value, out bool boolVal))
+                        {
+                            project.SendInfoToLog($"          -> Boolean: {boolVal}", true);
+                            return new JValue(boolVal);
+                        }
+                        break;
+                    case "null":
+                        project.SendInfoToLog($"          -> Null", true);
+                        return JValue.CreateNull();
+                }
+            }
+            
+            project.SendInfoToLog($"          CreateToken: key={fullKey} -> String: {value}", true);
+            return new JValue(value);
+        }
+        
     }
-    #endregion
 
-    #region DbLine - Операции со строками таблицы
     public static class DbLine
     {
         public static void DbClearLine(this IZennoPosterProjectModel project, int id, string tableName = null, bool log = false, bool thrw = false)
@@ -310,9 +676,7 @@ namespace z3nCore
             if (log) project.SendInfoToLog($"Swapped data between rows id={id1} and id={id2} in table {tableName}", true);
         }
     }
-    #endregion
-
-    #region DbSql - Низкоуровневые SQL операции
+    
     public static class DbSql
     {
         public static string SqlGet(this IZennoPosterProjectModel project, string toGet, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
@@ -374,7 +738,6 @@ namespace z3nCore
         
         public static string SqlUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, string key = "id", object id = null, string where = "")
         {          
-            var parameters = new DynamicParameters();
             if (string.IsNullOrEmpty(tableName)) tableName = project.Var("projectTable");
             if (string.IsNullOrEmpty(tableName)) throw new Exception("TableName is null");
             
@@ -398,9 +761,7 @@ namespace z3nCore
             return project.DbQ(query, log:log, thrw: thrw);
         }
     }
-    #endregion
-
-    #region DbTable - Операции с таблицами
+    
     public static class DbTable
     {
         public static void TblAdd(this IZennoPosterProjectModel project,  Dictionary<string, string> tableStructure, string tblName, bool log = false)
@@ -562,9 +923,7 @@ namespace z3nCore
             }
         }
     }
-    #endregion
-
-    #region DbColumn - Операции со столбцами
+    
     public static class DbColumn
     {
         public static bool ClmnExist(this IZennoPosterProjectModel project, string clmnName, string tblName, bool log = false)
@@ -913,12 +1272,11 @@ namespace z3nCore
         }
         #endregion
     }
-    #endregion
-
-    #region DbRange - Операции с диапазонами
+    
+    
     public static class DbRange
     {
-        public static void AddRange(this IZennoPosterProjectModel project, string tblName, int range = 0, bool log = false)
+        public static void AddRange_(this IZennoPosterProjectModel project, string tblName, int range = 0, bool log = false)
         {
             tblName = DbHelpers.Quote(tblName);
             if (range == 0)
@@ -939,10 +1297,43 @@ namespace z3nCore
                 project.DbQ($@"INSERT INTO {tblName} ({DbHelpers.Quote("id")}) VALUES ({currentAcc0}) ON CONFLICT DO NOTHING;", log: log);
             }
         }
-    }
-    #endregion
+        public static void AddRange(this IZennoPosterProjectModel project, string tblName, int range = 0, bool log = false)
+        {
+            tblName = DbHelpers.Quote(tblName);
+            if (range == 0)
+                try
+                {
+                    range = int.Parse(project.Variables["rangeEnd"].Value);
+                }
+                catch
+                {
+                    project.SendWarningToLog("var rangeEnd is empty or 0, used default \"10\"", true);                  
+                    range = 10;
+                }
 
-    #region DbMigration - Миграция данных
+            int current = int.Parse(project.DbQ($@"SELECT COALESCE(MAX(CAST({DbHelpers.Quote("id")} AS INTEGER)), 0) FROM {tblName};"));
+    
+            if (current >= range) return; 
+    
+            var values = new List<string>();
+            for (int i = current + 1; i <= range; i++)
+            {
+                values.Add($"('{i}')");
+            }
+    
+            if (values.Count > 0)
+            {
+                const int batchSize = 500;
+                for (int i = 0; i < values.Count; i += batchSize)
+                {
+                    var batch = values.Skip(i).Take(batchSize);
+                    var batchValues = string.Join(", ", batch);
+                    project.DbQ($@"INSERT INTO {tblName} ({DbHelpers.Quote("id")}) VALUES {batchValues} ON CONFLICT DO NOTHING;", log: log);
+                }
+            }
+        }
+    }
+    
     public static class DbMigration
     {
         public static void MigrateTable(this IZennoPosterProjectModel project, string source, string dest)
@@ -1017,9 +1408,7 @@ namespace z3nCore
             }
         }
     }
-    #endregion
-
-    #region DbCore - Ядро работы с БД
+    
     public static class DbCore
     {
         public static string DbQ(this IZennoPosterProjectModel project, string query, bool log = false, string sqLitePath = null, string pgHost = null, string pgPort = null, string pgDbName = null, string pgUser = null, string pgPass = null, bool thrw = false, bool unSafe = false)
@@ -1041,29 +1430,42 @@ namespace z3nCore
             if (string.IsNullOrEmpty(pgPass)) pgPass = project.Var("DBpstgrPass");
 
             string result = string.Empty;
-            try
+            int maxRetries = 10;
+            int delay = 100;     
+            Random rnd = new Random();
+            for (int i = 0; i < maxRetries; i++)
             {
-                using (var db = dbMode == "PostgreSQL"
-                    ? new Sql($"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;")
-                    : new Sql(sqLitePath, null))
+                try
                 {
-                    if (Regex.IsMatch(query.TrimStart(), @"^\s*SELECT\b", RegexOptions.IgnoreCase))
-                        result = db.DbReadAsync(query, "¦","·").GetAwaiter().GetResult();
-                    else
-                        result = db.DbWriteAsync(query).GetAwaiter().GetResult().ToString();
+                    using (var db = dbMode == "PostgreSQL"
+                               ? new Sql(
+                                   $"Host={pgHost};Port={pgPort};Database={pgDbName};Username={pgUser};Password={pgPass};Pooling=true;Connection Idle Lifetime=10;")
+                               : new Sql(sqLitePath, null))
+                    {
+                        if (Regex.IsMatch(query.TrimStart(), @"^\s*SELECT\b", RegexOptions.IgnoreCase))
+                            result = db.DbReadAsync(query, "¦", "·").GetAwaiter().GetResult();
+                        else
+                            result = db.DbWriteAsync(query).GetAwaiter().GetResult().ToString();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (dbMode == "SQLite" && ex.Message.Contains("locked") && i < maxRetries - 1)
+                    {
+                        delay = 50 * (1 << i) + rnd.Next(10, 50); // Exponential: 50, 100, 200, 400, 800
+                        Thread.Sleep(delay);
+                        continue;
+                    }
+
+                    project.warn(ex.Message + $"\n [{query}]", thrw);
+                    return string.Empty;
                 }
             }
-            catch (Exception ex)
-            {
-                project.SendWarningToLog(ex.Message + $"\n [{query}]");
-                if (thrw) throw ex.Throw();
-                return string.Empty;
-            }
- 
+
             string toLog = (query.Contains("SELECT")) ? $"[{query}]\n[{result}]" : $"[{query}] - [{result}]";
             new Logger(project, log: log, classEmoji: dbMode == "PostgreSQL" ? "🐘" : "SQLite").Send(toLog);
             return result;
         }
     }
-    #endregion
+    
 }

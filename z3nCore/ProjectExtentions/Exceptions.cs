@@ -70,31 +70,9 @@ namespace z3nCore
                 return tracedEx.Message;
         }
 
-        public static Exception Throw(this Exception ex,
-            [CallerMemberName] string caller = null)
-        {
-            var tracedEx = new TracedException(ex, caller);
-            throw tracedEx;            
-        }
+
         
-        public static Exception Throw(this IZennoPosterProjectModel project, string exMessage = "",
-            [CallerMemberName] string caller = null)
-        {
-            var previous = project.LastExecutedActionId;
-            var ex = new Exception(exMessage);
-            var tracedEx = new TracedException(ex, caller);
-            project.SendWarningToLog($"Err: [{exMessage}] after [{previous}]", true);
-            throw tracedEx;
-        }
-        public static Exception Throw(this IZennoPosterProjectModel project, Exception ex,
-            [CallerMemberName] string caller = null)
-        {
-            var previous = project.LastExecutedActionId;
-            
-            var tracedEx = new TracedException(ex, caller);
-            project.SendWarningToLog($"Err: [{ex.Message}] after [{previous}]", true);
-            throw tracedEx;
-        }
+       
 
     }
 

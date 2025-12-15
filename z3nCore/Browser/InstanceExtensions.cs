@@ -28,9 +28,6 @@ namespace z3nCore
             public ElementNotFoundException(string message) : base(message) { }
         }
         
-        
-        
-        
         public static HtmlElement GetHe(this Instance instance, object obj, string method = "")
         {
 
@@ -494,8 +491,6 @@ namespace z3nCore
                 return $"Error: {ex.Message}";
             }
         }
- 
-        
         public static string JsPost(this Instance instance, string script, int delay = 0)
         {
             Thread.Sleep(1000 * delay);
@@ -512,7 +507,6 @@ namespace z3nCore
         }
 
         
-
         public static void ClearShit(this Instance instance, string domain)
         {
             instance.CloseAllTabs();
@@ -597,6 +591,34 @@ namespace z3nCore
             }
         }
         
+        
+        public static void UpFromFolder(this Instance instance, string pathProfile,
+            ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType browserType = ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium)
+        {
+            ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings settings =
+                (ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings)ZennoLab.CommandCenter.Classes.BrowserLaunchSettingsFactory.Create(browserType);
+            settings.CachePath = pathProfile; 
+            settings.ConvertProfileFolder = true;
+            settings.UseProfile = true;
+            instance.Launch(settings);
+        }
+        public static void UpEmpty(this Instance instance)
+        {
+            instance.Launch(ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium, false);
+        }       
+        public static void Down(this Instance instance, int pauseAfterMs = 5000)
+        {
+            try {instance.Launch(ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.WithoutBrowser, false);} catch{ }
+            Thread.Sleep(pauseAfterMs);
+        }
+        public static string SaveCookies(this Instance instance)
+        {
+            var tmp = Path.GetTempPath() + DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString() + "temp.txt";
+            instance.SaveCookie(tmp);
+            var cookieContent = File.ReadAllText(tmp);
+            File.Delete(tmp);
+            return cookieContent;
+        }
 
     }
 

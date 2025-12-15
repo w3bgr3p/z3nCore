@@ -1,4 +1,4 @@
-﻿using Dapper;
+﻿//using Dapper;
 using Npgsql;
 using System;
 using System.Collections.Generic;
@@ -611,7 +611,8 @@ namespace z3nCore
         
         public async Task<int> Upd(string toUpd, object id, string tableName = null, string where = null, bool last = false)
         {
-            var parameters = new DynamicParameters();
+            //var parameters = new DynamicParameters();
+            var parameters = new List<IDbDataParameter>();
             if (tableName == null) throw new Exception("TableName is null");
 
             toUpd = QuoteName(toUpd, true);
@@ -620,7 +621,8 @@ namespace z3nCore
             if (last)
             {
                 toUpd += ", last = @lastTime";
-                parameters.Add("lastTime", DateTime.UtcNow.ToString("MM-ddTHH:mm"));
+                //parameters.Add("lastTime", DateTime.UtcNow.ToString("MM-ddTHH:mm"));
+                parameters.Add(CreateParameter("@lastTime", DateTime.UtcNow.ToString("MM-ddTHH:mm")));
             }
 
             string query;
@@ -635,15 +637,16 @@ namespace z3nCore
 
             try
             {
-                return await _connection.ExecuteAsync(query, parameters, commandType: System.Data.CommandType.Text);
+                //return await _connection.ExecuteAsync(query, parameters, commandType: System.Data.CommandType.Text);
+                return await DbWriteAsync(query, parameters.ToArray());
             }
             catch (Exception ex)
             {
                 string formattedQuery = query;
-                foreach (var param in parameters.ParameterNames)
+                foreach (var param in parameters)
                 {
-                    var value = parameters.Get<dynamic>(param)?.ToString() ?? "NULL";
-                    formattedQuery = formattedQuery.Replace($"@{param}", $"'{value}'");
+                    var value = param.Value?.ToString() ?? "NULL";
+                    formattedQuery = formattedQuery.Replace(param.ParameterName, $"'{value}'");
                 }
                 throw new Exception ($"{ex.Message} : [{formattedQuery}]");
             }
@@ -661,7 +664,7 @@ namespace z3nCore
 
         public async Task<string> Get(string toGet, string id, string tableName = null, string where = null)
         {
-            var parameters = new DynamicParameters();
+            var parameters = new List<IDbDataParameter>();
             if (tableName == null) throw new Exception("TableName is null");
 
             toGet = QuoteName(toGet, true);
@@ -673,7 +676,7 @@ namespace z3nCore
             if (string.IsNullOrEmpty(where))
             {
                 query = $"SELECT {toGet} FROM {tableName} WHERE id = @id";
-                parameters.Add("id", id);
+                parameters.Add(CreateParameter("@id", id));
             }
             else
             {
@@ -682,7 +685,31 @@ namespace z3nCore
 
             try
             {
-                return await _connection.ExecuteScalarAsync<string>(query, parameters, commandType: System.Data.CommandType.Text);
+                EnsureConnection();
+                if (_connection is OdbcConnection odbcConn)
+                {
+                    using (var cmd = new OdbcCommand(query, odbcConn))
+                    {
+                        foreach (var param in parameters)
+                            cmd.Parameters.Add(param);
+                        var result = await cmd.ExecuteScalarAsync();
+                        return result?.ToString();
+                    }
+                }
+                else if (_connection is NpgsqlConnection npgsqlConn)
+                {
+                    using (var cmd = new NpgsqlCommand(query, npgsqlConn))
+                    {
+                        foreach (var param in parameters)
+                            cmd.Parameters.Add(param);
+                        var result = await cmd.ExecuteScalarAsync();
+                        return result?.ToString();
+                    }
+                }
+                else
+                {
+                    throw new NotSupportedException("Unsupported connection type");
+                }
             }
             catch (Exception ex)
             {
@@ -696,11 +723,29 @@ namespace z3nCore
 
             string query = $@"SELECT COALESCE(MAX(id), 0) FROM {tableName};";
 
-            int current = await _connection.ExecuteScalarAsync<int>(query, commandType: System.Data.CommandType.Text);
+            EnsureConnection();
+            int current = 0;
+    
+            if (_connection is OdbcConnection odbcConn)
+            {
+                using (var cmd = new OdbcCommand(query, odbcConn))
+                {
+                    var result = await cmd.ExecuteScalarAsync();
+                    current = Convert.ToInt32(result);
+                }
+            }
+            else if (_connection is NpgsqlConnection npgsqlConn)
+            {
+                using (var cmd = new NpgsqlCommand(query, npgsqlConn))
+                {
+                    var result = await cmd.ExecuteScalarAsync();
+                    current = Convert.ToInt32(result);
+                }
+            }
 
             for (int currentId = current + 1; currentId <= range; currentId++)
             {
-                await _connection.ExecuteAsync($@"INSERT INTO {tableName} (id) VALUES ({currentId}) ON CONFLICT DO NOTHING;");
+                await DbWriteAsync($@"INSERT INTO {tableName} (id) VALUES ({currentId}) ON CONFLICT DO NOTHING;");
             }
         }
         private string QuoteName(string name, bool isColumnList = false)

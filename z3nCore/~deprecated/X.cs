@@ -512,7 +512,7 @@ while (true)
             );
     
             // ct0 теперь в куках
-            var cookies = new Cookies(_project, _instance).Get(".");
+            var cookies = _instance.GetCookies(".");//new Cookies(_project, _instance).Get(".");
             JArray parsed = JArray.Parse(cookies);
     
             for (int i = 0; i < parsed.Count; i++)
@@ -528,7 +528,7 @@ while (true)
         }
         public string TokenGet()
         {
-            var cookJson = new Cookies(_project, _instance).Get(".");
+            var cookJson = _instance.GetCookies(".");
             JArray toParse = JArray.Parse(cookJson);
     
             string token = "";

@@ -7,14 +7,15 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 using z3nCore.Utilities;
 namespace z3nCore
 {
-
-   public class Discord
+    
+    public class Discord
     {
         #region Members & constructor
         private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
         private readonly Logger _log;
         private readonly Utilities.Sleeper _idle;
+        private readonly bool _enableLog;
         private string _status;
         private string _token;
         private string _login;
@@ -25,7 +26,8 @@ namespace z3nCore
         {
             _project = project;
             _instance = instance;
-            _log = new Logger(project, log: log, classEmoji: "👾");
+            _enableLog = log;
+            _log = new Logger(project, log: _enableLog, classEmoji: "👾");
             _idle = new Utilities.Sleeper(1337, 2078);
             LoadCreds();
         }
@@ -119,7 +121,33 @@ namespace z3nCore
                     return state;
             }
         }
-        
+        public string GetState(bool log = false)
+        {
+            string state = null;
+            _project.Deadline();
+            while (string.IsNullOrEmpty(state))
+            {
+                _project.Deadline(180);
+                _idle.Sleep();
+            
+                if (!_instance.ActiveTab.FindElementByAttribute("span", "innertext", "Continue\\ in\\ Browser", "regexp", 0).IsVoid) 
+                    state = "appDetected";
+                else if (!_instance.ActiveTab.FindElementByAttribute("section", "aria-label", "User\\ area", "regexp", 0).IsVoid) 
+                    state = "logged";
+                else if (!_instance.ActiveTab.FindElementByAttribute("div", "innertext", "Are\\ you\\ human\\?", "regexp", 0).IsVoid) 
+                    state = "capctha";
+                else if (!_instance.ActiveTab.FindElementByAttribute("input:text", "autocomplete", "one-time-code", "regexp", 0).IsVoid) 
+                    state = "input_otp";
+                else if (_instance.ActiveTab.FindElementByAttribute("div", "class", "helperTextContainer__", "regexp", 0).InnerText != "") 
+                    state = _instance.ActiveTab.FindElementByAttribute("div", "class", "helperTextContainer__", "regexp", 0).InnerText;
+                else if (!_instance.ActiveTab.FindElementByAttribute("input:text", "aria-label", "Email or Phone Number", "text", 0).IsVoid) 
+                    state = "input_credentials";
+                
+            }
+            return state;
+            
+        }
+
         private void LoadCreds()
         {
             var creds = _project.SqlGetDicFromLine("status, token, login, password, otpsecret", "_discord");
@@ -150,66 +178,11 @@ namespace z3nCore
             if (saveToDb) _project.DbUpd($"token = '{token}', status = 'ok'", "_discord");
             return token;
         }
-        
-        private string Login()
-        {
-            _project.Deadline();
-            _instance.HeSet(("input:text", "aria-label", "Email or Phone Number", "text", 0), _login);
-            _instance.HeSet(("input:password", "aria-label", "Password", "text", 0), _pass);
-            _instance.HeClick(("button", "type", "submit", "regexp", 0));
-
-        capcha:
-            while (_instance.ActiveTab.FindElementByAttribute("div", "innertext", "Are\\ you\\ human\\?", "regexp", 0).IsVoid &&
-                _instance.ActiveTab.FindElementByAttribute("input:text", "autocomplete", "one-time-code", "regexp", 0).IsVoid) Thread.Sleep(1000);
-
-            if (!_instance.ActiveTab.FindElementByAttribute("div", "innertext", "Are\\ you\\ human\\?", "regexp", 0).IsVoid)
-            {
-                _log.Send("Captcha detected, solving...");
-                _project.CapGuru();
-                Thread.Sleep(5000);
-                _project.Deadline(180);
-                goto capcha;
-            }
-            
-            _log.Send("2FA required, entering code...");
-            _instance.HeSet(("input:text", "autocomplete", "one-time-code", "regexp", 0), OTP.Offline(_2fa));
-            _instance.HeClick(("button", "type", "submit", "regexp", 0));
-            Thread.Sleep(3000);
-            return "ok";
-        }
         private void InputCredentials()
         {
             _instance.HeSet(("input:text", "aria-label", "Email or Phone Number", "text", 0), _login);
             _instance.HeSet(("input:password", "aria-label", "Password", "text", 0), _pass);
             _instance.HeClick(("button", "type", "submit", "regexp", 0));
-        }
-        public string GetState(bool log = false)
-        {
-            string state = null;
-            var d = new Time.Deadline();
-            //_project.Deadline();
-            while (string.IsNullOrEmpty(state))
-            {
-                d.Check(180);
-                //_project.Deadline(180);
-                _idle.Sleep();
-            
-                if (!_instance.ActiveTab.FindElementByAttribute("span", "innertext", "Continue\\ in\\ Browser", "regexp", 0).IsVoid) 
-                    state = "appDetected";
-                else if (!_instance.ActiveTab.FindElementByAttribute("section", "aria-label", "User\\ area", "regexp", 0).IsVoid) 
-                    state = "logged";
-                else if (!_instance.ActiveTab.FindElementByAttribute("div", "innertext", "Are\\ you\\ human\\?", "regexp", 0).IsVoid) 
-                    state = "capctha";
-                else if (!_instance.ActiveTab.FindElementByAttribute("input:text", "autocomplete", "one-time-code", "regexp", 0).IsVoid) 
-                    state = "input_otp";
-                else if (_instance.ActiveTab.FindElementByAttribute("div", "class", "helperTextContainer__", "regexp", 0).InnerText != "") 
-                    state = _instance.ActiveTab.FindElementByAttribute("div", "class", "helperTextContainer__", "regexp", 0).InnerText;
-                else if (!_instance.ActiveTab.FindElementByAttribute("input:text", "aria-label", "Email or Phone Number", "text", 0).IsVoid) 
-                    state = "input_credentials";
-                
-            }
-            return state;
-            
         }
         #endregion
         #region Stats & Info UI
@@ -353,7 +326,7 @@ namespace z3nCore
                 throw new Exception(response);
             var dict = response.JsonToDic(ignoreEmpty:true);
             if  (updateDb) 
-                _project.JsonToDb(response, "_discord");
+                _project.JsonToDb(response, "_discord", log:_enableLog);
             return dict;
         }
         
@@ -460,15 +433,12 @@ namespace z3nCore
             _instance.ActiveTab.FullEmulationMouseMove(700,350);
 
             _instance.HeGet(("button", "data-mana-component", "button", "regexp", 1));
-            var d1 = new Time.Deadline();
-            
-            
+            _project.Deadline();
             
             int scrollAttempts = 0;
             while (true)
             {
-                d1.Check(30);
-                
+                _project.Deadline(30);
                 if (!_instance.ActiveTab.FindElementByAttribute("button", "data-mana-component", "button", "regexp", 1).GetAttribute("innerhtml").Contains(d))
                     break;
                 _instance.ActiveTab.FullEmulationMouseWheel(0, 1000);
@@ -481,5 +451,5 @@ namespace z3nCore
         }
         
     }
-
+   
 }

@@ -564,8 +564,8 @@ namespace z3nCore
     
             _project.GET("https://api.twitter.com/1.1/account/verify_credentials.json", "+", headers);
     
-            var cookies = new Cookies(_project, _instance).Get(".");
-            JArray parsed = JArray.Parse(cookies);
+            var cookJson = _instance.GetCookies(".");//new Cookies(_project, _instance).Get(".");
+            JArray parsed = JArray.Parse(cookJson);
     
             for (int i = 0; i < parsed.Count; i++)
             {
@@ -581,7 +581,7 @@ namespace z3nCore
 
         public void TokenGet()
         {
-            var cookJson = new Cookies(_project, _instance).Get(".");
+            var cookJson = _instance.GetCookies(".");//new Cookies(_project, _instance).Get(".");
             JArray toParse = JArray.Parse(cookJson);
     
             string token = "";

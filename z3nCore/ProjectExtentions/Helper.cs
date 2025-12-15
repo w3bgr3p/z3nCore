@@ -3,7 +3,7 @@ using ZennoLab.InterfacesLibrary.ProjectModel;
 using System;
 
 
-namespace z3nCore.Utilities
+namespace z3nCore
 {
     public static class Helper
     {

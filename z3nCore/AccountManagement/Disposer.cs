@@ -1,6 +1,7 @@
 ﻿using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 using System;
+using System.IO;
 using ZennoLab.InterfacesLibrary.Enums.Log;
 using ZennoLab.InterfacesLibrary.Enums.Browser;
 
@@ -58,14 +59,12 @@ namespace z3nCore
 
             _logger.Send("Session finish sequence completed");
         }
-
-
+        
         public string ErrorReport(bool toLog = true, bool toTelegram = false, bool toDb = false, bool screenshot = false)
         {
             return _reporter.ReportError(toLog, toTelegram, toDb, screenshot);
         }
-
-
+        
         public string SuccessReport(bool toLog = true, bool toTelegram = false, bool toDb = false, string customMessage = null)
         {
             return _reporter.ReportSuccess(toLog, toTelegram, toDb, customMessage);
@@ -118,9 +117,8 @@ namespace z3nCore
             }
         }
 
-        private void SaveCookiesIfNeeded(string acc0, string accRnd)
+        private void SaveCookiesIfNeeded(string acc0, string accRnd , bool saveZpprofile = true)
         {
-
             try
             {
                 
@@ -135,10 +133,14 @@ namespace z3nCore
 
                 string cookiesPath = _project.PathCookies();
                 _logger.Send($"Saving cookies to: '{cookiesPath}'");
-
-                _project.SaveCookiesToDb();
-                //var cookieManager = new Cookies(_project, _instance, log:_showLog);
-                //cookieManager.Save("all", cookiesPath);
+                
+                _project.SaveAllCookies(_instance);
+                
+                if (saveZpprofile)
+                {
+                    var pathProfile = _project.PathProfileFolder();
+                    _project.Profile.Save(pathProfile, true,true, true ,true ,true, true,true ,true, true);
+                }
                 
                 _logger.Send($"Cookies saved successfully to: '{cookiesPath}'");
             }
@@ -213,26 +215,22 @@ namespace z3nCore
                 }
             }
         }
-
+        
         #endregion
     }
     
 
     public static partial class ProjectExtensions
     {
-
         public static void Finish(this IZennoPosterProjectModel project, Instance instance)
         {
             new Disposer(project, instance).FinishSession();
         }
-
         public static string ReportError(this IZennoPosterProjectModel project, Instance instance, 
             bool toLog = true, bool toTelegram = false, bool toDb = false, bool screenshot = false)
         {
             return new Disposer(project, instance).ErrorReport(toLog, toTelegram, toDb, screenshot);
         }
-
-
         public static string ReportSuccess(this IZennoPosterProjectModel project, Instance instance,
             bool toLog = true, bool toTelegram = false, bool toDb = false, string customMessage = null)
         {
