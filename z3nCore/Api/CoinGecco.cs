@@ -128,6 +128,11 @@ namespace z3nCore.Api
 
     }
 
+    
+}
+
+namespace z3nCore
+{
     public static partial class W3bTools
     {
         public static async Task<decimal> CGPriceAsync(string CGid = "ethereum",
@@ -135,7 +140,7 @@ namespace z3nCore.Api
         {
             try
             {
-                string result = await new CoinGecco().CoinInfo(CGid);
+                string result = await new Api.CoinGecco().CoinInfo(CGid);
 
                 var json = JObject.Parse(result);
                 JToken usdPriceToken = json["market_data"]?["current_price"]?["usd"];

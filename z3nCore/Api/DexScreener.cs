@@ -42,6 +42,11 @@ namespace z3nCore.Api
             
     }
 
+    
+}
+
+namespace z3nCore
+{
     public static partial class W3bTools
     {
 
@@ -50,7 +55,7 @@ namespace z3nCore.Api
         {
             try
             {
-                string result = await new DexScreener().CoinInfo(contract, chain);
+                string result = await new Api.DexScreener().CoinInfo(contract, chain);
 
                 var json = JArray.Parse(result);
                 JToken priceToken = json.FirstOrDefault()?["priceNative"];
