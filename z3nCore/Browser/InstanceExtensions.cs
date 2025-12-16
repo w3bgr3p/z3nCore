@@ -17,7 +17,7 @@ namespace z3nCore
 {
     public static partial class InstanceExtensions
     {
-        private static readonly object ClipboardLock = new object();
+        private static readonly object _clipboardLock = new object();
         private static readonly SemaphoreSlim ClipboardSemaphore = new SemaphoreSlim(1, 1);
         private static readonly object LockObject = new object();
         private static readonly Sleeper _clickSleep = new Sleeper(1008, 1337);
@@ -573,7 +573,7 @@ namespace z3nCore
         }
         public static void CtrlV(this Instance instance, string ToPaste)
         {
-            lock (new object())
+            lock (_clipboardLock)
             {
                 string originalClipboard = null;
                 try
@@ -613,11 +613,30 @@ namespace z3nCore
         }
         public static string SaveCookies(this Instance instance)
         {
-            var tmp = Path.GetTempPath() + DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString() + "temp.txt";
-            instance.SaveCookie(tmp);
-            var cookieContent = File.ReadAllText(tmp);
-            File.Delete(tmp);
-            return cookieContent;
+            string tmp = Path.Combine(
+                Path.GetTempPath(),
+                $"cookies_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}_{Guid.NewGuid().ToString("N").Substring(0, 8)}.txt"
+            );
+
+            try
+            {
+                instance.SaveCookie(tmp);
+                var cookieContent = File.ReadAllText(tmp);
+                return cookieContent;
+            }
+            finally
+            {
+                try
+                {
+                    if (File.Exists(tmp))
+                    {
+                        File.Delete(tmp);
+                    }
+                }
+                catch
+                {
+                }
+            }
         }
 
     }
