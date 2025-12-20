@@ -92,6 +92,7 @@
     <Compile Include="Api\AntiCapctha.cs" />
     <Compile Include="Api\BinanceApi.cs" />
     <Compile Include="Api\Bitget.cs" />
+    <Compile Include="Api\CapMonsterCloud.cs" />
     <Compile Include="Api\Capsolver.cs" />
     <Compile Include="Api\CoinGecco.cs" />
     <Compile Include="Api\DexScreener.cs" />

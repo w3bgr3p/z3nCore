@@ -784,6 +784,10 @@ namespace z3nCore
                     logger?.Send($"Proxy retrieved from SQL: [{proxyString}]");
                 }
             }
+            if (proxyString == "z")
+            {
+                proxyString = project.SqlGet("z_proxy", "_instance");
+            }
 
             try
             {

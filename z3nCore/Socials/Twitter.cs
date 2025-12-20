@@ -58,7 +58,7 @@ namespace z3nCore
             
             if (_instance != null)
             {
-                UI = new TwitterUI(_project, _instance, _log);
+                UI = new TwitterUI(_project, _instance, _log,API);
                 Auth = new TwitterAuth(_project, _instance, _log, API);
                 Content = new TwitterContent(_project, _instance, _log);
             }
@@ -231,9 +231,9 @@ namespace z3nCore
                         continue;
                     }
                     
-                    if (status == "suspended")
+                    if (status == "suspended" || status == "restricted")
                     {
-                        project.log($"[{login}] Suspended, skip");
+                        project.log($"[{login}] {status}, skip");
                         continue;
                     }
                     
@@ -259,19 +259,19 @@ namespace z3nCore
                                 break;
                                 
                             case "wrong_account":
-                                project.warn($"✖ [{login}] WRONG ACCOUNT - clearing cookies only");
+                                project.warn($"⚠️ [{login}] WRONG ACCOUNT - clearing cookies only");
                                 project.CleanDomainInDb("x.com");
                                 project.DbUpd("status = 'WrongCookies'", tableName);
                                 break;
                                 
                             case "suspended":
-                                project.warn($"✖ [{login}] Suspended in cookies = WRONG");
+                                project.warn($"☠ [{login}] Suspended in cookies = WRONG");
                                 project.CleanDomainInDb("x.com");
                                 project.DbUpd("status = 'WrongCookies'", tableName);
                                 break;
                                 
                             case "invalid":
-                                project.warn($"✖ [{login}] Invalid/expired cookies");
+                                project.warn($"☹ [{login}] Invalid/expired cookies");
                                 project.CleanDomainInDb("x.com");
                                 project.DbUpd("status = 'InvalidCookies'", tableName);
                                 break;
@@ -636,9 +636,9 @@ namespace z3nCore
             
         }
         
-       /// <summary>
+        /// <summary>
         /// Проверка что cookies принадлежат нужному аккаунту
-        /// Возвращает: "valid" | "wrong_account" | "invalid" | "error"
+        /// Возвращает: "valid" | "wrong_account" | "suspended" | "restricted" | "invalid" | "error"
         /// </summary>
         public string ValidateCookiesOwnership()
         {
@@ -649,65 +649,78 @@ namespace z3nCore
                 string[] headers = BuildHeaders();
                 
                 var url = TwitterGraphQLBuilder.BuildUserByScreenNameUrl(_login);
-                var resp = _project.GET(url, "+", headers, cookies, returnSuccessWithStatus: true);
+                var resp = _project.GET(url, "+", headers, cookies);
                 
-                // Теперь ВСЕГДА начинается с кода
-                if (resp.StartsWith("401") || resp.StartsWith("403"))
+                // Проверка на ошибки - ответ НАЧИНАЕТСЯ с кода
+                if (resp.StartsWith("401"))
                 {
                     _log.Warn(resp);
                     return "invalid";
                 }
-
-                if (!resp.StartsWith("200"))
+                
+                if (resp.StartsWith("403"))
                 {
-                    _log.Warn($"HTTP error: {resp.Substring(0, Math.Min(100, resp.Length))}");
+                    _log.Warn(resp);
+                    return "invalid";
+                }
+                
+                if (resp.StartsWith("4") || resp.StartsWith("5"))
+                {
+                    _log.Warn($"HTTP error: {resp}");
                     return "error";
                 }
                 
-                // Извлекаем body после "\r\n\r\n"
-                int bodyStart = resp.IndexOf("\r\n\r\n");
-                if (bodyStart == -1)
+                // Если не начинается с цифры - значит это JSON (успех)
+                if (!char.IsDigit(resp[0]))
                 {
-                    _log.Warn("Cannot parse response format");
-                    return "error";
+                    // Проверка на suspended
+                    if (resp.Contains("UserUnavailable") && resp.Contains("Suspended"))
+                    {
+                        _log.Warn(resp, show: true);
+                        return "suspended";
+                    }
+                    
+                    // Проверка на restricted (fake_account, временные ограничения)
+                    if (resp.Contains("\"profile_interstitial_type\":\"fake_account\"") ||
+                        resp.Contains("\"profile_interstitial_type\":\"temporary_locked\"") ||
+                        resp.Contains("\"profile_interstitial_type\":\"limited\""))
+                    {
+                        _log.Warn(resp, show: true);
+                        return "restricted";
+                    }
+                    
+                    // Парсинг
+                    var userInfo = resp.JsonToDic();
+                    
+                    string currentScreenName = "";
+                    if (userInfo.ContainsKey("data_user_result_legacy_screen_name"))
+                        currentScreenName = userInfo["data_user_result_legacy_screen_name"];
+                    
+                    if (string.IsNullOrEmpty(currentScreenName))
+                    {
+                        _log.Warn($"Cannot extract screen_name. Response: {resp}");
+                        return "error";
+                    }
+                    
+                    if (currentScreenName.ToLower() != _login.ToLower())
+                    {
+                        _log.Warn($"WRONG ACCOUNT: [{currentScreenName}] != [{_login}]", show: true);
+                        return "wrong_account";
+                    }
+                    
+                    _log.Send($"☺ Valid: [{currentScreenName}]");
+                    return "valid";
                 }
                 
-                string body = resp.Substring(bodyStart + 4);
-                
-                // Проверка на suspended
-                if (body.Contains("UserUnavailable") && body.Contains("Suspended"))
-                {
-                    _log.Warn("Account in cookies suspended");
-                    return "suspended";
-                }
-                
-                var userInfo = body.JsonToDic();
-                
-                string currentScreenName = "";
-                if (userInfo.ContainsKey("data_user_result_legacy_screen_name"))
-                    currentScreenName = userInfo["data_user_result_legacy_screen_name"];
-                
-                if (string.IsNullOrEmpty(currentScreenName))
-                {
-                    _log.Warn($"Cannot extract screen_name from [{body}]");
-                    return "error";
-                }
-                
-                if (currentScreenName.ToLower() != _login.ToLower())
-                {
-                    _log.Warn($"WRONG ACCOUNT: [{currentScreenName}] != [{_login}]", show: true);
-                    return "wrong_account";
-                }
-                
-                _log.Send($"☺ Valid: [{currentScreenName}]");
-                return "valid";
+                _log.Warn($"Unexpected response format: {resp}");
+                return "error";
             }
             catch (Exception ex)
             {
                 _log.Warn($"Exception: {ex.Message}");
                 return "error";
             }
-        }        
+        }
        /// <summary>
         /// Проверка аккаунта на suspended через API с использованием ЧУЖОГО токена
         /// </summary>
@@ -794,17 +807,17 @@ namespace z3nCore
         private readonly Instance _instance;
         private readonly Logger _log;
         private readonly Sleeper _idle;
-        
+        private readonly TwitterAPI _api;
         private string _login;
         private string _pass;
         
-        internal TwitterUI(IZennoPosterProjectModel project, Instance instance, Logger log)
+        internal TwitterUI(IZennoPosterProjectModel project, Instance instance, Logger log, TwitterAPI api)
         {
             _project = project ?? throw new ArgumentNullException(nameof(project));
             _instance = instance ?? throw new ArgumentNullException(nameof(instance));
             _log = log;
             _idle = new Sleeper(1337, 2078);
-            
+            _api = api;
             var creds = _project.DbGetColumns("login, password", "_twitter");
             _login = creds["login"];
             _pass = creds["password"];
@@ -1073,6 +1086,69 @@ namespace z3nCore
                 break;
             }
         }
+        
+        /// <summary>
+        /// Открыть профиль случайного валидного аккаунта для прогрева
+        /// Автоматически пропускает suspended/restricted аккаунты
+        /// </summary>
+        /// <param name="excludeLogin">Логин для исключения (обычно текущий аккаунт)</param>
+        /// <param name="maxAttempts">Максимальное количество попыток</param>
+        /// <returns>Логин открытого аккаунта или пустая строка если не найдено</returns>
+        public string OpenRandomProfile(string excludeLogin = null, int maxAttempts = 10)
+        {
+            if (string.IsNullOrEmpty(excludeLogin))
+                excludeLogin = _login;
+            
+            string targetAccount = "";
+            int attempts = 0;
+            
+            while (string.IsNullOrEmpty(targetAccount) && attempts < maxAttempts)
+            {
+                attempts++;
+                
+                var candidate = _project.DbGet("login", "_twitter", 
+                    where: $"login != '' AND login != '{excludeLogin}' AND status NOT LIKE '%suspended%' AND status NOT LIKE '%restricted%' ORDER BY RANDOM() LIMIT 1;");
+                
+                if (string.IsNullOrEmpty(candidate))
+                {
+                    _log.Warn("No more candidates in DB");
+                    break;
+                }
+                
+                // API проверка перед открытием
+                var userInfo = _api.GetUserInfoByGraph(candidate);
+                
+                if (userInfo.Contains("UserUnavailable") && userInfo.Contains("Suspended"))
+                {
+                    _project.DbUpd($"status = 'suspended'", "_twitter", where: $"login = '{candidate}'");
+                    _log.Warn($"[{candidate}] suspended, selecting another...");
+                    continue;
+                }
+                
+                if (userInfo.Contains("\"profile_interstitial_type\":\"fake_account\"") ||
+                    userInfo.Contains("\"profile_interstitial_type\":\"temporary_locked\"") ||
+                    userInfo.Contains("\"profile_interstitial_type\":\"limited\""))
+                {
+                    _project.DbUpd($"status = 'restricted'", "_twitter", where: $"login = '{candidate}'");
+                    _log.Warn($"[{candidate}] restricted, selecting another...");
+                    continue;
+                }
+                
+                targetAccount = candidate;
+            }
+            
+            if (string.IsNullOrEmpty(targetAccount))
+            {
+                _log.Warn("No valid target accounts found after all attempts", thrw: true);
+                return "";
+            }
+            
+            _log.Send($"Opening profile: [{targetAccount}]");
+            GoToProfile(targetAccount);
+            
+            return targetAccount;
+        }
+        
         
         #region Intent Links
         
@@ -1783,7 +1859,7 @@ namespace z3nCore
         /// <summary>
         /// Найти случайный ОРИГИНАЛЬНЫЙ твит таргет-аккаунта (исключая репосты, с фильтром по дате)
         /// </summary>
-        private (HtmlElement Element, string Text) GetRandomOriginalTweet(string targetAccount, int maxDaysOld = 7)
+        private (HtmlElement Element, string Text) GetRandomOriginalTweet(string targetAccount, int maxDaysOld = 21)
         {
             _project.Deadline();
             
