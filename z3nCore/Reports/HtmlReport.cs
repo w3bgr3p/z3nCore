@@ -203,8 +203,10 @@ namespace z3nCore.Utilities
            html.AppendLine("</html>");
             return html.ToString();
        }
-        #region Social Report Section
-        private string GenerateSocialReportSection(List<AccountSocialData> accounts)
+       
+#region Social Report Section
+       
+       private string GenerateSocialReportSection(List<AccountSocialData> accounts)
        {
            var sb = new StringBuilder();
             // Подсчет статистики
@@ -261,7 +263,8 @@ namespace z3nCore.Utilities
            sb.AppendLine("                        <div class='legend-item'><div class='legend-box' style='background: #FFFFFF; border-color: #666;'></div> GitHub</div>");
            sb.AppendLine("                        <div class='legend-item'><div class='legend-box' style='background: #5865F2;'></div> Discord</div>");
            sb.AppendLine("                        <div class='legend-item'><div class='legend-box' style='background: #0088CC;'></div> Telegram</div>");
-           sb.AppendLine("                        <div class='legend-item'><div class='legend-box' style='opacity: 0.3; background: #666;'></div> Not OK</div>");
+           sb.AppendLine("                        <div class='legend-item'><div class='legend-box' style='opacity: 0.3; background: #da3633;'></div> Error</div>");
+           sb.AppendLine("                        <div class='legend-item'><div class='legend-box' style='opacity: 0.3; background: #666;'></div> Not connected</div>");
            sb.AppendLine("                    </div>");
             // Heatmap cells
            sb.AppendLine("                    <div class='cells-grid social-grid'>");
@@ -282,7 +285,7 @@ namespace z3nCore.Utilities
            sb.AppendLine("        </div>");
             return sb.ToString();
        }
-        private string GenerateSocialSquare(string socialName, SocialStatus social, int accountId)
+       private string GenerateSocialSquare(string socialName, SocialStatus social, int accountId)
        {
            string color;
            switch (socialName)
@@ -303,11 +306,29 @@ namespace z3nCore.Utilities
                    color = "#30363d";
                    break;
            }
-            bool hasData = social?.IsActive == true;
+           bool hasData = social?.IsActive == true;
            bool isOk = social?.IsOk == true;
-           string opacity = (!hasData || !isOk) ? "opacity: 0.3;" : "";
-           string background = hasData ? $"background: {color};" : "background: transparent;";
-            string tooltipData = "";
+           
+           string opacity = "";
+           string background = "";
+    
+           if (!hasData)
+           {
+               background = "background: transparent;";
+               opacity = "opacity: 0.3;";
+           }
+           else if (!isOk)
+           {
+               background = "background: #da3633;"; // красный для ошибок
+               opacity = "opacity: 0.3;";
+           }
+           else
+           {
+               background = $"background: {color};";
+               opacity = "";
+           }
+    
+           string tooltipData = "";
            if (hasData)
            {
                string status = social.IsOk ? "ok" : social.Status;
@@ -317,11 +338,12 @@ namespace z3nCore.Utilities
            {
                tooltipData = $"account #{accountId}||{socialName}||||not connected||social";
            }
-            return $"<div class='social-square' style='{background}{opacity}' " +
+    
+           return $"<div class='social-square' style='{background}{opacity}' " +
                   $"data-social='{socialName}' " +
                   $"data-tooltip='{HtmlEncoder.HtmlAttributeEncode(tooltipData)}'></div>\n";
        }
-        #endregion
+#endregion
         #region Daily Report Section (оригинальная реализация из DailyReport)
         private string GenerateDailyReportSection(
            List<ProjectData> projects,
@@ -1182,7 +1204,7 @@ namespace z3nCore
        {
            new HtmlReport(project, log: false).ShowUnionReport(socialAccounts, dailyProjects, call);
        }
-       public static void GenerateFullHtmlReport(this IZennoPosterProjectModel project)
+       public static void GenerateFullHtmlReport(this IZennoPosterProjectModel project, string sortBy = "lastActivity")
         {
             var rangeStart = project.Int("rangeStart");
             var rangeEnd = project.Int("rangeEnd");
@@ -1244,16 +1266,57 @@ namespace z3nCore
                 socialAccounts.Add(account);
             }
             
-            // ===== ЧАСТЬ 2: Собираем данные Daily Projects (без изменений) =====
+            // ===== ЧАСТЬ 2: Собираем данные Daily Projects =====
             var projectTables = project.TblList();
             var dailyProjects = new List<ProjectData>();
-            
+    
             foreach (var pj in projectTables)
             {
                 if (!pj.StartsWith("__")) continue;
                 if (pj.StartsWith("__|")) continue;
                 var projectData = ProjectData.CollectData(project, pj);
                 dailyProjects.Add(projectData);
+            }
+    
+            // Сортировка
+            if (!string.IsNullOrEmpty(sortBy))
+            {
+                switch (sortBy)
+                {
+                    case "name":
+                        dailyProjects = dailyProjects.OrderBy(p => p.ProjectName).ToList();
+                        break;
+            
+                    case "accountsTotal":
+                        dailyProjects = dailyProjects.OrderByDescending(p => p.All.Count).ToList();
+                        break;
+            
+                    case "rate":
+                        dailyProjects = dailyProjects.OrderByDescending(p => {
+                            var success = p.All.Values.Count(v => v[0].Trim() == "+");
+                            return p.All.Count > 0 ? (double)success / p.All.Count : 0;
+                        }).ToList();
+                        break;
+            
+                    case "lastActivity":
+                    default:
+                        dailyProjects = dailyProjects.OrderByDescending(p => {
+                            DateTime latestDate = DateTime.MinValue;
+                    
+                            foreach (var data in p.All.Values)
+                            {
+                                var ts = data[1]; // timestamp column
+                                if (DateTime.TryParse(ts, null, System.Globalization.DateTimeStyles.RoundtripKind, out DateTime timestamp))
+                                {
+                                    if (timestamp > latestDate)
+                                        latestDate = timestamp;
+                                }
+                            }
+                    
+                            return latestDate;
+                        }).ToList();
+                        break;
+                }
             }
             
             // ===== ЧАСТЬ 3: Генерируем объединённый отчёт (без изменений) =====

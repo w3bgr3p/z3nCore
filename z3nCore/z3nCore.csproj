@@ -165,7 +165,7 @@
     <Compile Include="Wallets\RabbyWallet.cs" />
     <Compile Include="Wallets\BackpackWallet.cs" />
     <Compile Include="W3b\Blockchain.cs" />
-    <Compile Include="Socials\Google.cs" />
+    <Compile Include="Socials\Google_.cs" />
     <Compile Include="Socials\Discord.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Wallets\SuietWallet.cs" />

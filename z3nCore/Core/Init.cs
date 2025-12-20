@@ -301,6 +301,12 @@ namespace z3nCore
             if (string.IsNullOrEmpty(acc0)) 
                 throw new ArgumentException("acc0 can't be null or empty");
             var pathProfile = _project.PathProfileFolder();
+            _logger.Send($"Profile path: {pathProfile}, exists: {Directory.Exists(pathProfile)}");
+            if (Directory.Exists(pathProfile))
+            {
+                var size = new DirectoryInfo(pathProfile).EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length);
+                _logger.Send($"Profile size: {size / 1024 / 1024}MB");
+            }
             _project.Var("pathProfileFolder", pathProfile);
             
             if (string.IsNullOrEmpty(cfgBrowser))
@@ -484,31 +490,62 @@ namespace z3nCore
                 _logger.Warn(ex.Message);
             }
         }
-        private bool ProxySet( string proxyString = null)
+        private bool ProxySet(string proxyString = null)
         {
-            
             if (string.IsNullOrWhiteSpace(proxyString)) 
                 proxyString = _project.DbGet("proxy", "_instance");
             if (string.IsNullOrWhiteSpace(proxyString))
-                throw new ArgumentException(proxyString);
-            
-            string ipLocal = _project.GET("http://api.ipify.org/", null);
-            string ipProxified = _project.GET("http://api.ipify.org/", proxyString, useNetHttp:true);
-
+                throw new ArgumentException("Proxy string is empty");
+    
+            // Список сервисов для проверки (fallback)
+            var ipServices = new[] {
+                "https://api.ipify.org/",
+                "https://icanhazip.com/",
+                "https://ifconfig.me/ip",
+                "https://checkip.amazonaws.com/",
+                "https://ident.me/"
+            };
+    
+            string ipLocal = null;
+            string ipProxified = null;
+    
+            // Пробуем разные сервисы
+            foreach (var service in ipServices)
+            {
+                try
+                {
+                    ipLocal = _project.GET(service, null)?.Trim();
+                    if (!string.IsNullOrEmpty(ipLocal) && System.Net.IPAddress.TryParse(ipLocal, out _))
+                    {
+                        ipProxified = _project.GET(service, proxyString, useNetHttp: false)?.Trim();
+                        if (!string.IsNullOrEmpty(ipProxified) && System.Net.IPAddress.TryParse(ipProxified, out _))
+                        {
+                            break; // Нашли рабочий сервис
+                        }
+                    }
+                }
+                catch 
+                {
+                    continue; // Пробуем следующий
+                }
+            }
+    
             if (string.IsNullOrEmpty(ipProxified) || !System.Net.IPAddress.TryParse(ipProxified, out _))
             {
                 _logger.Warn($"Proxy check failed: proxy={proxyString}, ip={ipProxified}");
                 return false;
             }
+    
             if (ipProxified != ipLocal)
             {
                 _instance.SetProxy(proxyString, true, true, true, true);
                 _logger.Send($"Proxy set: ip={ipProxified}, local={ipLocal}");
                 return true;
             }
+    
             _logger.Warn($"Proxy matches local: proxy={proxyString}, ip={ipProxified}");
             return false;
-        } 
+        }
         #endregion
         
         #region Filters & Validation
@@ -833,7 +870,7 @@ namespace z3nCore
         public static void RunBrowser(this IZennoPosterProjectModel project, Instance instance, string browserToLaunch = "Chromium", bool debug = false)
         {
             var browser = instance.BrowserType;
-            var brw = new Init(project,instance, false);
+            var brw = new Init(project,instance, debug);
             if (browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium && browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.ChromiumFromZB)
             {	
                 brw.PrepareInstance(browserToLaunch);

@@ -122,7 +122,7 @@ namespace z3nCore
             ":scheme"
         };
         
-        public static string GET(
+       public static string GET(
             this IZennoPosterProjectModel project,
             string url,
             string proxy = "",
@@ -133,7 +133,8 @@ namespace z3nCore
             bool parseJson = false,
             int deadline = 30,
             bool thrw = false,
-            bool useNetHttp = false)  
+            bool useNetHttp = false,
+            bool returnSuccessWithStatus = false)  // ← НОВЫЙ ПАРАМЕТР
         {
             if (project == null) throw new ArgumentNullException(nameof(project));
             if (parseJson)
@@ -193,6 +194,12 @@ namespace z3nCore
                     return errorMessage;
                 }
 
+                // ← НОВАЯ ЛОГИКА
+                if (returnSuccessWithStatus)
+                {
+                    return $"{statusCode}\r\n\r\n{body.Trim()}";
+                }
+
                 if (parse)
                 {
                     ParseJson(project, body, logger);
@@ -221,7 +228,8 @@ namespace z3nCore
             bool parseJson = false,
             int deadline = 30,
             bool thrw = false,
-            bool useNetHttp = false) 
+            bool useNetHttp = false,
+            bool returnSuccessWithStatus = false) // ← НОВЫЙ ПАРАМЕТР
         {
             if (project == null) throw new ArgumentNullException(nameof(project));
             if (parseJson)
@@ -281,6 +289,12 @@ namespace z3nCore
                         throw new Exception(errorMessage);
                     }
                     return errorMessage;
+                }
+
+                // ← НОВАЯ ЛОГИКА
+                if (returnSuccessWithStatus)
+                {
+                    return $"{statusCode}\r\n\r\n{responseBody.Trim()}";
                 }
 
                 if (parse)

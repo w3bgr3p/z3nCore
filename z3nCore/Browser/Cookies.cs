@@ -306,6 +306,109 @@ namespace z3nCore
             }
         }
 
+        /// <summary>
+        /// Очистить cookies для конкретного домена в БД
+        /// </summary>
+        /// <param name="project">Project model</param>
+        /// <param name="domain">Домен для очистки (например, "x.com" или "twitter.com")</param>
+        /// <param name="table">Таблица БД (по умолчанию "_instance")</param>
+        /// <param name="column">Колонка с cookies (по умолчанию "cookies")</param>
+        public static void CleanDomainInDb(this IZennoPosterProjectModel project, string domain, string table = "_instance", string column = "cookies")
+        {
+            if (string.IsNullOrEmpty(domain))
+                throw new ArgumentException("Domain cannot be null or empty");
+            
+            // Читаем cookies из БД
+            string cookiesBase64 = project.DbGet(column, table);
+            
+            if (string.IsNullOrEmpty(cookiesBase64))
+                return; // Нет cookies - ничего не делаем
+            
+            // Декодируем из base64
+            string cookiesDecoded = cookiesBase64.FromBase64();
+            
+            // Определяем формат (JSON или Netscape)
+            bool isJson = cookiesDecoded.TrimStart().StartsWith("[") || cookiesDecoded.TrimStart().StartsWith("{");
+            
+            string cleanedCookies;
+            
+            if (isJson)
+            {
+                // Работаем с JSON
+                var cookies = Newtonsoft.Json.JsonConvert.DeserializeObject<List<dynamic>>(cookiesDecoded);
+                
+                // Фильтруем - оставляем только те, что НЕ принадлежат домену
+                var filtered = cookies.Where(c => 
+                {
+                    string cookieDomain = c.domain.ToString();
+                    // Удаляем если домен точно совпадает или является поддоменом
+                    return !IsDomainMatch(cookieDomain, domain);
+                }).ToList();
+                
+                cleanedCookies = Newtonsoft.Json.JsonConvert.SerializeObject(filtered);
+            }
+            else
+            {
+                // Работаем с Netscape
+                var lines = cookiesDecoded.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                var filteredLines = new List<string>();
+                
+                foreach (var line in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(line))
+                        continue;
+                    
+                    var parts = line.Split('\t');
+                    if (parts.Length < 7)
+                        continue;
+                    
+                    string cookieDomain = parts[0];
+                    
+                    // Оставляем только те, что НЕ принадлежат домену
+                    if (!IsDomainMatch(cookieDomain, domain))
+                    {
+                        filteredLines.Add(line);
+                    }
+                }
+                
+                cleanedCookies = string.Join("\n", filteredLines);
+            }
+            
+            // Кодируем обратно в base64
+            string cleanedBase64 = cleanedCookies.ToBase64();
+            
+            // Записываем в БД
+            project.DbUpd($"{column} = '{cleanedBase64}'", table);
+        }
+
+        /// <summary>
+        /// Проверка соответствия домена
+        /// </summary>
+        private static bool IsDomainMatch(string cookieDomain, string targetDomain)
+        {
+            if (string.IsNullOrEmpty(cookieDomain) || string.IsNullOrEmpty(targetDomain))
+                return false;
+            
+            // Нормализуем домены (убираем точку в начале для сравнения)
+            string normalizedCookieDomain = cookieDomain.TrimStart('.');
+            string normalizedTargetDomain = targetDomain.TrimStart('.');
+            
+            // Точное совпадение
+            if (normalizedCookieDomain.Equals(normalizedTargetDomain, StringComparison.OrdinalIgnoreCase))
+                return true;
+            
+            // Cookie домен с точкой (.x.com) - проверяем поддомены
+            if (cookieDomain.StartsWith("."))
+            {
+                // Проверяем что target является поддоменом
+                return normalizedCookieDomain.Equals(normalizedTargetDomain, StringComparison.OrdinalIgnoreCase) ||
+                       normalizedTargetDomain.EndsWith("." + normalizedCookieDomain, StringComparison.OrdinalIgnoreCase);
+            }
+            
+            return false;
+        }
+        
+        
     }
 }
 

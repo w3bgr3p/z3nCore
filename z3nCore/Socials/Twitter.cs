@@ -133,6 +133,163 @@ namespace z3nCore
         }
     
         #endregion
+
+        /// <summary>
+    /// Batch операции над множеством аккаунтов
+    /// </summary>
+        public static class Batch
+        {
+            /// <summary>
+            /// Проверка всех аккаунтов на suspended
+            /// </summary>
+            public static void CheckSuspended(IZennoPosterProjectModel project, string tableName = "_twitter", bool removeSuspended = false, int startRange = 0)
+            {
+                // 1. Найти валидный аккаунт
+                Twitter validTwitter = null;
+                if  (startRange == 0) startRange = project.Int("rangeStart");
+                int endRange = project.Int("rangeEnd");
+                
+                for (int i = startRange; i <= endRange; i++)
+                {
+                    project.Var("acc0", i);
+                    
+                    if (string.IsNullOrEmpty(project.DbGet("cookies", "_instance")))
+                        continue;
+                    
+                    try
+                    {
+                        var tw = new Twitter(project, log: false);
+                        if (tw.API.ValidateCookiesOwnership() == "valid")
+                        {
+                            validTwitter = tw;
+                            project.log($"☺ Using account [{project.DbGet("login", tableName)}] for batch check");
+                            break;
+                        }
+                    }
+                    catch { }
+                }
+                
+                if (validTwitter == null)
+                {
+                    project.warn("!!! No valid accounts found for batch operations");
+                    return;
+                }
+                
+                // 2. Проверить все аккаунты
+                project.log("=== Checking accounts for suspended status ===");
+                startRange = project.Int("rangeStart");
+                for (int i = startRange; i <= endRange; i++)
+                {
+                    Thread.Sleep(500);
+                    
+                    var login = project.DbGet("login", tableName, where: $"id = {i}");
+                    
+                    if (string.IsNullOrEmpty(login))
+                        continue;
+                    
+                    try
+                    {
+                        var data = validTwitter.API.GetUserInfoByGraph(login);
+                        
+                        if (data.Contains("User is suspended"))
+                        {
+                            project.DbUpd("status = 'suspended'", tableName, where: $"id = {i}");
+                            project.warn($"☠ [{i}]: {login} SUSPENDED");
+                            if (removeSuspended) project.DbClearLine(i,tableName);
+                        }
+                        else
+                        {
+                            project.log($"✌ [{i}]: {login} Alive");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        project.warn($"[{login}] Error: {ex.Message}");
+                    }
+                }
+            }
+            
+            /// <summary>
+            /// Валидация cookies для всех аккаунтов
+            /// </summary>
+            public static void ValidateAllCookies(IZennoPosterProjectModel project, string tableName = "_twitter")
+            {
+                int startRange = project.Int("rangeStart");
+                int endRange = project.Int("rangeEnd");
+                
+                project.log("=== Validating cookies ownership ===");
+                
+                for (int i = startRange; i <= endRange; i++)
+                {
+                    project.Var("acc0", i);
+                    var login = project.DbGet("login", tableName);
+                    var status = project.DbGet("status", tableName);
+
+                    if (string.IsNullOrEmpty(login))
+                    {
+                        project.CleanDomainInDb("x.com");
+                        continue;
+                    }
+                    
+                    if (status == "suspended")
+                    {
+                        project.log($"[{login}] Suspended, skip");
+                        continue;
+                    }
+                    
+                    if (string.IsNullOrEmpty(project.DbGet("cookies", "_instance")))
+                    {
+                        project.log($"[{login}] No cookies, skip");
+                        continue;
+                    }
+                    
+                    Thread.Sleep(1000);
+                    
+                    try
+                    {
+                        var tw = new Twitter(project, log: true);
+                        string result = tw.API.ValidateCookiesOwnership();
+                        
+                        switch (result)
+                        {
+                            case "valid":
+                                project.log($"☺ [{login}] Valid");
+                                var data = tw.API.GetUserInfo(null, TwitterAPI.ToGet.Info);
+                                project.DicToDb(data, tableName);
+                                break;
+                                
+                            case "wrong_account":
+                                project.warn($"✖ [{login}] WRONG ACCOUNT - clearing cookies only");
+                                project.CleanDomainInDb("x.com");
+                                project.DbUpd("status = 'WrongCookies'", tableName);
+                                break;
+                                
+                            case "suspended":
+                                project.warn($"✖ [{login}] Suspended in cookies = WRONG");
+                                project.CleanDomainInDb("x.com");
+                                project.DbUpd("status = 'WrongCookies'", tableName);
+                                break;
+                                
+                            case "invalid":
+                                project.warn($"✖ [{login}] Invalid/expired cookies");
+                                project.CleanDomainInDb("x.com");
+                                project.DbUpd("status = 'InvalidCookies'", tableName);
+                                break;
+                                
+                            case "error":
+                                project.warn($"✖ [{login}] Validation error");
+                                project.DbUpd("status = 'ValidationError'", tableName);
+                                break;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        project.warn($"[{login}] Exception: {ex.Message}");
+                    }
+                }
+            }
+                        
+        }
     }
     
     #endregion
@@ -194,6 +351,7 @@ namespace z3nCore
         {
             var c = _project.DbGet("cookies", "_instance");
             var cookJson = c.FromBase64();
+            cookJson = Cookies.ConvertCookieFormat(cookJson, "json");
             JArray toParse = JArray.Parse(cookJson);
             
             string guest_id = "";
@@ -230,9 +388,11 @@ namespace z3nCore
             _idle.Sleep();
             string cookies = MakeCookieFromDb();
             string[] headers = BuildHeaders();
-            
+    
             var url = TwitterGraphQLBuilder.BuildUserByScreenNameUrl(_login);
-            var resp = _project.GET(url, "+", headers, cookies, parse: true);
+            var resp = _project.GET(url, "+", headers, cookies, returnSuccessWithStatus: true);
+    
+            // Теперь при успехе resp начинается с "200"
             return resp.StartsWith("200");
         }
         
@@ -241,7 +401,7 @@ namespace z3nCore
         /// </summary>
         /// <param name="targetUsername">Username для поиска</param>
         /// <param name="fieldsToKeep">Какие поля вернуть (null = ToGet.Scraping по умолчанию)</param>
-        public Dictionary<string, string> GetUserInfo(string targetUsername = null, string[] fieldsToKeep = null)
+        public string GetUserInfoByGraph(string targetUsername = null)
         {
             if (string.IsNullOrEmpty(targetUsername)) targetUsername = _login;
             _idle.Sleep();
@@ -249,10 +409,21 @@ namespace z3nCore
             string[] headers = BuildHeaders();
     
             var url = TwitterGraphQLBuilder.BuildUserByScreenNameUrl(targetUsername);
-            var resp = _project.GET(url, "+", headers, cookies);
-    
-            var fullResult = resp.JsonToDic();
-    
+            return _project.GET(url, "+", headers, cookies);
+        }
+        public Dictionary<string, string> GetUserInfo(string targetUsername = null, string[] fieldsToKeep = null)
+        {
+            var resp = GetUserInfoByGraph(targetUsername);
+            var fullResult = new Dictionary<string, string>();
+            try
+            {
+                fullResult = resp.JsonToDic();
+            }
+            catch 
+            {
+                _project.warn(resp, true);
+            }
+
             if (fieldsToKeep == null)
                 return fullResult;
     
@@ -263,7 +434,6 @@ namespace z3nCore
                     filtered[kvp.Key] = kvp.Value;
             }
             
-    
             return BeautifyDic(filtered);
             
         }
@@ -278,6 +448,7 @@ namespace z3nCore
                 "data_user_result_rest_id",
                 "data_user_result_legacy_screen_name",
                 "data_user_result_legacy_description",
+                "data_user_result_legacy_location",
                 "data_user_result_legacy_profile_banner_url",
                 "data_user_result_legacy_profile_image_url_https",
                 "data_user_result_legacy_followers_count",
@@ -431,7 +602,6 @@ namespace z3nCore
                 "data_user_result_creator_subscriptions_count"
             };
         }
-
         private static Dictionary<string, string> BeautifyDic(Dictionary<string, string> dic)
         {
             var beauty = new Dictionary<string, string>();
@@ -465,6 +635,150 @@ namespace z3nCore
             return beauty;
             
         }
+        
+       /// <summary>
+        /// Проверка что cookies принадлежат нужному аккаунту
+        /// Возвращает: "valid" | "wrong_account" | "invalid" | "error"
+        /// </summary>
+        public string ValidateCookiesOwnership()
+        {
+            try
+            {
+                _idle.Sleep();
+                string cookies = MakeCookieFromDb();
+                string[] headers = BuildHeaders();
+                
+                var url = TwitterGraphQLBuilder.BuildUserByScreenNameUrl(_login);
+                var resp = _project.GET(url, "+", headers, cookies, returnSuccessWithStatus: true);
+                
+                // Теперь ВСЕГДА начинается с кода
+                if (resp.StartsWith("401") || resp.StartsWith("403"))
+                {
+                    _log.Warn(resp);
+                    return "invalid";
+                }
+
+                if (!resp.StartsWith("200"))
+                {
+                    _log.Warn($"HTTP error: {resp.Substring(0, Math.Min(100, resp.Length))}");
+                    return "error";
+                }
+                
+                // Извлекаем body после "\r\n\r\n"
+                int bodyStart = resp.IndexOf("\r\n\r\n");
+                if (bodyStart == -1)
+                {
+                    _log.Warn("Cannot parse response format");
+                    return "error";
+                }
+                
+                string body = resp.Substring(bodyStart + 4);
+                
+                // Проверка на suspended
+                if (body.Contains("UserUnavailable") && body.Contains("Suspended"))
+                {
+                    _log.Warn("Account in cookies suspended");
+                    return "suspended";
+                }
+                
+                var userInfo = body.JsonToDic();
+                
+                string currentScreenName = "";
+                if (userInfo.ContainsKey("data_user_result_legacy_screen_name"))
+                    currentScreenName = userInfo["data_user_result_legacy_screen_name"];
+                
+                if (string.IsNullOrEmpty(currentScreenName))
+                {
+                    _log.Warn($"Cannot extract screen_name from [{body}]");
+                    return "error";
+                }
+                
+                if (currentScreenName.ToLower() != _login.ToLower())
+                {
+                    _log.Warn($"WRONG ACCOUNT: [{currentScreenName}] != [{_login}]", show: true);
+                    return "wrong_account";
+                }
+                
+                _log.Send($"☺ Valid: [{currentScreenName}]");
+                return "valid";
+            }
+            catch (Exception ex)
+            {
+                _log.Warn($"Exception: {ex.Message}");
+                return "error";
+            }
+        }        
+       /// <summary>
+        /// Проверка аккаунта на suspended через API с использованием ЧУЖОГО токена
+        /// </summary>
+        /// <param name="username">Username для проверки</param>
+        /// <param name="validToken">Любой валидный токен для запроса</param>
+        /// <param name="validCt0">ct0 для этого токена</param>
+        public static string CheckAccountStatus(IZennoPosterProjectModel project, string username, string validToken, string validCt0)
+        {
+            var logger = new Logger(project, log: true, classEmoji: "X");
+            var idle = new Sleeper(1337, 2078);
+            
+            try
+            {
+                idle.Sleep();
+                
+                // Формируем cookies с чужим токеном
+                string cookies = $"auth_token={validToken}; ct0={validCt0};";
+                
+                string[] headers = new[]
+                {
+                    $"User-Agent: {project.Profile.UserAgent}",
+                    "authorization: Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA",
+                    "content-type: application/json",
+                    $"x-csrf-token: {validCt0}",
+                    "x-twitter-active-user: yes",
+                    "x-twitter-auth-type: OAuth2Session",
+                    "x-twitter-client-language: en"
+                };
+                
+                var url = TwitterGraphQLBuilder.BuildUserByScreenNameUrl(username);
+                var resp = project.GET(url, "+", headers, cookies, returnSuccessWithStatus: true);
+                
+                if (resp.StartsWith("401") || resp.StartsWith("403"))
+                {
+                    logger.Warn($"[{username}] Token validation failed");
+                    return "error";
+                }
+                
+                if (!resp.StartsWith("200"))
+                {
+                    logger.Warn($"[{username}] HTTP error: {resp.Substring(0, Math.Min(50, resp.Length))}");
+                    return "error";
+                }
+                
+                int bodyStart = resp.IndexOf("\r\n\r\n");
+                string body = resp.Substring(bodyStart + 4);
+                
+                // Проверка на suspended
+                if (body.Contains("UserUnavailable") && body.Contains("Suspended"))
+                {
+                    logger.Warn($"[{username}] SUSPENDED");
+                    return "suspended";
+                }
+                
+                // Проверка что аккаунт существует и доступен
+                if (body.Contains("\"__typename\":\"User\""))
+                {
+                    logger.Send($"[{username}] OK (alive)");
+                    return "ok";
+                }
+                
+                logger.Warn($"[{username}] Unknown status");
+                return "error";
+            }
+            catch (Exception ex)
+            {
+                logger.Warn($"[{username}] Exception: {ex.Message}");
+                return "error";
+            }
+        }
+       
     }
     
     #endregion
@@ -559,22 +873,21 @@ namespace z3nCore
                 SendTweet(title, accountToMention);
                 return;
             }
-            
-            _instance.JsClick("[data-testid='SideNav_NewTweet_Button']");
+            _instance.HeClick(("*", "data-testid", "SideNav_NewTweet_Button", "regexp", 0), emu:1);
             _instance.JsSet("[data-testid='tweetTextarea_0']", title);
             _idle.Sleep();
 
             int tIndex = 1;
             foreach (var add in tweets)
             {
-                _instance.JsClick("[data-testid='addButton']");
+                _instance.HeClick(("*", "data-testid", "addButton", "regexp", 0), emu:1);
                 _idle.Sleep();
                 _instance.JsSet($"[data-testid='tweetTextarea_{tIndex}']", add);
                 _idle.Sleep();
                 tIndex++;
             }
-            
-            _instance.JsClick("[data-testid='tweetButton']");
+            _instance.HeClick(("*", "data-testid", "tweetButton", "regexp", 0), emu:1);
+
             try
             {
                 var toast = _instance.HeGet(("*", "data-testid", "toast", "regexp", 0));
@@ -740,6 +1053,27 @@ namespace z3nCore
             return email.ToLower();
         }
         
+        /// <summary>
+        /// Проверка и нажатие кнопки Retry если страница сломалась
+        /// </summary>
+        public void Retry()
+        {
+            _project.Deadline();
+            Thread.Sleep(2000);
+            while (true)
+            {
+                _project.Deadline(60);
+                if (!_instance.ActiveTab.FindElementByAttribute("button", "innertext", "Retry", "regexp", 0).IsVoid)
+                {
+                    _log.Send("Page fucked up, clicking Retry...");
+                    _instance.HeClick(("button", "innertext", "Retry", "regexp", 0), emu: 1);
+                    Thread.Sleep(5000);
+                    continue;
+                }
+                break;
+            }
+        }
+        
         #region Intent Links
         
         public void FollowByLink(string screen_name)
@@ -748,7 +1082,7 @@ namespace z3nCore
             _instance.Go($"https://x.com/intent/follow?screen_name={screen_name}");
             _idle.Sleep();
             _instance.HeGet(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
-            _instance.JsClick("[data-testid='confirmationSheetConfirm']");
+            _instance.HeClick(("*", "data-testid", "confirmationSheetConfirm", "regexp", 0), emu:1);
             _idle.Sleep();
             tab.Close();
         }
@@ -760,7 +1094,7 @@ namespace z3nCore
             _instance.Go($"https://x.com/intent/post?text={text}");
             _idle.Sleep();
             _instance.HeGet(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
-            _instance.JsClick("[data-testid='confirmationSheetConfirm']");
+            _instance.HeClick(("*", "data-testid", "confirmationSheetConfirm", "regexp", 0), emu:1);
             _idle.Sleep();
             tab.Close();
         }
@@ -771,7 +1105,7 @@ namespace z3nCore
             _instance.Go($"https://x.com/intent/retweet?tweet_id={tweet_id}");
             _idle.Sleep();
             _instance.HeGet(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
-            _instance.JsClick("[data-testid='confirmationSheetConfirm']");
+            _instance.HeClick(("*", "data-testid", "confirmationSheetConfirm", "regexp", 0), emu:1);
             _idle.Sleep();
             tab.Close();
         }
@@ -782,7 +1116,7 @@ namespace z3nCore
             _instance.Go($"https://x.com/intent/like?tweet_id={tweet_id}");
             _idle.Sleep();
             _instance.HeGet(("button", "data-testid", "confirmationSheetConfirm", "regexp", 0));
-            _instance.JsClick("[data-testid='confirmationSheetConfirm']");
+            _instance.HeClick(("*", "data-testid", "confirmationSheetConfirm", "regexp", 0), emu:1);
             _idle.Sleep();
             tab.Close();
         }
@@ -794,7 +1128,7 @@ namespace z3nCore
             _instance.Go($"https://x.com/intent/post?in_reply_to={tweet_id}&text={escapedText}");
             _idle.Sleep();
             _instance.HeGet(("button", "data-testid", "tweetButton", "regexp", 0));
-            _instance.JsClick("[data-testid='tweetButton']");
+            _instance.HeClick(("*", "data-testid", "tweetButton", "regexp", 0), emu:1);
             _idle.Sleep();
             tab.Close();
         }
@@ -1089,91 +1423,7 @@ namespace z3nCore
     
     #region Content Subclass
     
-    /// <summary>
-    /// Генерация контента через AI
-    /// </summary>
-    public class TwitterContent_
-    {
-        private readonly IZennoPosterProjectModel _project;
-        private readonly Instance _instance;
-        private readonly Logger _log;
-        
-        private string _login;
-        
-        internal TwitterContent_(IZennoPosterProjectModel project, Instance instance, Logger log)
-        {
-            _project = project ?? throw new ArgumentNullException(nameof(project));
-            _instance = instance ?? throw new ArgumentNullException(nameof(instance));
-            _log = log;
-            
-            _login = _project.DbGet("login", "_twitter");
-        }
-        
-        /// <summary>
-        /// Генерация контента на основе новостной статьи через AI
-        /// </summary>
-        /// <param name="purpose">tweet, thread, или opinionThread</param>
-        public string Generate(string purpose = "tweet", string model = "meta-llama/Llama-3.3-70B-Instruct")
-        {
-            var randomNews = Rnd.RndFile(Path.Combine(_project.Path, ".data", "news"), "json");
-            _project.ToJson(File.ReadAllText(randomNews));
-            var article = _project.Json.FullText;
-            var ai = new Api.AI(_project, "aiio", model:model, false);
-            var bio = _project.DbGet("bio", "_profile");
-            
-            string system = "";
-            if (purpose == "tweet")
-                system = $"You are an individual assistant with your own background. Your way of thinking and responding: {bio}. Your task is to summarize the provided article and express your personal opinion on its subject in a single statement, no longer than 280 characters. The statement must be a self-contained insight that summarizes the article's key points, followed by a clear attribution of your bio-informed opinion on the subject using phrases like \"I think,\" \"As for me,\" or \"I suppose.\" The opinion must be explicitly yours, not a detached thesis. Your response must be a clean JSON object with a single key 'statement' containing one string, with no nesting, no additional comments, no extra characters, and no text outside the JSON structure.";
-            else if (purpose == "thread") 
-                system = $"You are an individual assistant with your own background. Your way of thinking and responding: {bio}. Your task is to summarize the provided article in a series of short, concise statements, each no longer than 280 characters. Start with an engaging statement to capture attention and lead into the summary. End the summary with a concluding statement that wraps up the key takeaway. Then, provide your personal opinion as a few short theses, each no longer than 280 characters. Your response must be a clean JSON object with two keys: 'summary_statements' as an array of strings for the summary parts (starting with the lead-in and ending with the conclusion), and 'opinion_theses' as an array of strings for the theses. Include no nesting beyond these arrays, no additional comments, no extra characters, and no text outside the JSON structure.";
-            else if (purpose == "opinionThread") 
-                system = $"You are an individual assistant with your own background. Your way of thinking and responding: {bio}. Your task is to summarize the provided article in one concise statement, no longer than 280 characters, capturing its key points. Then, provide your personal opinion on the subject in a second statement, no longer than 280 characters, using phrases like \"I think,\" \"As for me,\" or \"I suppose\" to clearly attribute it as your bio-informed perspective, not a detached thesis. Your response must be a clean JSON object with two keys: 'summary_statement' containing the summary string, and 'opinion_statement' containing the opinion string, with no nesting, no additional comments, no extra characters, and no text outside the JSON structure.";
-            else
-                _log.Warn($"UNKNOWN PURPOSE: {purpose}");
-            
-            string result = ai.Query(system, article).Replace("```json", "").Replace("```", "");
-            _project.ToJson(result);
-            return result;
-        }
-        
-        /// <summary>
-        /// Сгенерировать и опубликовать твит
-        /// </summary>
-        public void PostGeneratedTweet()
-        {
-            if (!_instance.ActiveTab.URL.Contains(_login))
-                _instance.HeClick(("*", "data-testid", "AppTabBar_Profile_Link", "regexp", 0));
 
-            int tries = 5;
-            gen:
-            tries--;
-            if (tries == 0) throw new Exception("generation problem");
-
-            Generate("tweet");
-            string tweet = _project.Json.statement;
-
-            if (tweet.Length > 280)
-            {
-                _log.Warn($"Regenerating (tries: {tries}) (Exceed 280char): {tweet}");
-                goto gen;
-            }
-            
-            _instance.HeClick(("a", "data-testid", "SideNav_NewTweet_Button", "regexp", 0));
-            _instance.HeClick(("div", "class", "notranslate\\ public-DraftEditor-content", "regexp", 0), delay: 2);
-            _instance.CtrlV(tweet);
-            _instance.HeClick(("button", "data-testid", "tweetButton", "regexp", 0), delay: 2);
-            
-            try
-            {
-                var toast = _instance.HeGet(("*", "data-testid", "toast", "regexp", 0));
-                _project.log(toast);
-            }
-            catch (Exception ex)
-            {
-                _log.Warn(ex.Message, thrw: true);
-            }
-        }
-    }
     /// <summary>
     /// Генерация контента через AI
     /// </summary>
@@ -1427,6 +1677,430 @@ namespace z3nCore
                 _log.Warn(ex.Message, thrw: true);
             }
         }
+        
+
+        /// <summary>
+        /// Генерация ответа на твит таргет-аккаунта
+        /// </summary>
+        /// <param name="tweetText">Текст твита на который отвечаем</param>
+        /// <param name="withNewsContext">Использовать контекст из новостной статьи</param>
+        public string GenerateReply(string tweetText, bool withNewsContext = false)
+        {
+            var ai = new Api.AI(_project, "aiio", "meta-llama/Llama-3.3-70B-Instruct", false);
+            var bio = _project.DbGet("bio", "_profile");
+            
+            // Рандомизация подхода к ответу
+            var replyApproaches = new[] {
+                "Agree with the main point and add your own specific example or observation",
+                "Share a personal experience that relates to what they said",
+                "Ask a thoughtful follow-up question that shows you engaged with their point",
+                "Offer a different perspective or counterpoint in a friendly way",
+                "Add a specific detail or fact that builds on their observation",
+                "Share why this resonates with you personally"
+            };
+            var randomApproach = replyApproaches[new Random().Next(replyApproaches.Length)];
+            
+            string system;
+            string user;
+            
+            if (withNewsContext)
+            {
+                var randomNews = Rnd.RndFile(Path.Combine(_project.Path, ".data", "news"), "json");
+                _project.ToJson(File.ReadAllText(randomNews));
+                var article = _project.Json.FullText;
+                
+                system = $@"You are an individual with your own perspective. Your personality: {bio}
+
+                Reply approach: {randomApproach}
+
+                Your task: Write a thoughtful reply to the tweet below, optionally using relevant context from the article.
+
+                CRITICAL REQUIREMENTS:
+                - Maximum 280 characters total
+                - Write naturally in first person (""I think"", ""I've noticed"", ""In my experience"")
+                - Sound like a REAL conversation - like replying to a friend's post
+                - Reference specific details when relevant (from tweet or article)
+                - NO generic reactions: avoid ""Great point!"", ""This is so true!"", ""Couldn't agree more!""
+                - NO marketing language: avoid ""revolutionizing"", ""game-changing"", ""unlocking""
+                - NO hashtags or @mentions - they're added automatically
+                - Be genuine - ask questions, share observations, add value to the conversation
+                - Vary your phrasing naturally
+
+                Return ONLY a clean JSON object:
+                {{
+                  ""reply"": ""your reply text here""
+                }}
+
+                No markdown formatting, no extra text, just the JSON.";
+
+                        user = $@"Article context (use if relevant):
+                {article}
+
+                Tweet to reply to:
+                {tweetText}";
+            }
+            else
+            {
+                system = $@"You are an individual with your own perspective. Your personality: {bio}
+
+                Reply approach: {randomApproach}
+
+                Your task: Write a thoughtful reply to the tweet below.
+
+                CRITICAL REQUIREMENTS:
+                - Maximum 280 characters total
+                - Write naturally in first person (""I think"", ""I've noticed"", ""In my experience"")
+                - Sound like a REAL conversation - like replying to a friend's post
+                - Engage meaningfully with what they said - don't just agree
+                - NO generic reactions: avoid ""Great point!"", ""This is so true!"", ""Couldn't agree more!""
+                - NO marketing language: avoid ""revolutionizing"", ""game-changing"", ""unlocking""
+                - NO hashtags or @mentions - they're added automatically
+                - Be genuine - share your take, ask questions, add specific observations
+                - Vary your phrasing naturally - don't start every reply the same way
+
+                Return ONLY a clean JSON object:
+                {{
+                  ""reply"": ""your reply text here""
+                }}
+
+                No markdown formatting, no extra text, just the JSON.";
+
+                        user = $@"Tweet to reply to:
+                {tweetText}";
+            }
+            
+            string result = ai.Query(system, user)
+                .Replace("```json", "")
+                .Replace("```", "")
+                .Trim();
+            
+            _project.ToJson(result);
+            _log.Send($"Reply generated: approach={randomApproach}, len={_project.Json.reply.ToString().Length}");
+            
+            return result;
+        }
+                
+        /// <summary>
+        /// Найти случайный ОРИГИНАЛЬНЫЙ твит таргет-аккаунта (исключая репосты, с фильтром по дате)
+        /// </summary>
+        private (HtmlElement Element, string Text) GetRandomOriginalTweet(string targetAccount, int maxDaysOld = 7)
+        {
+            _project.Deadline();
+            
+            // Небольшой скролл для загрузки твитов
+            for (int i = 0; i < 2; i++)
+            {
+                _instance.ScrollDown();
+                Thread.Sleep(1000);
+            }
+            
+            var wall = _instance.ActiveTab.FindElementsByAttribute("div", "data-testid", "cellInnerDiv", "regexp").ToList();
+            
+            // Извлекаем username из URL если не передан
+            if (string.IsNullOrEmpty(targetAccount))
+            {
+                var url = _instance.ActiveTab.URL;
+                targetAccount = Regex.Match(url, @"https://x\.com/([^/]+)").Groups[1].Value;
+            }
+            
+            var originalTweets = new List<(HtmlElement Element, string Text, DateTime Date)>();
+            var now = DateTime.Now;
+            
+            foreach (HtmlElement cell in wall)
+            {
+                // Проверяем что это пост от нужного аккаунта
+                var userNameElement = cell.FindChildByAttribute("div", "data-testid", "User-Name", "regexp", 0);
+                if (userNameElement.IsVoid) continue;
+                
+                var userName = userNameElement.InnerText;
+                
+                // Пропускаем если это не наш таргет
+                if (!userName.Contains($"@{targetAccount}")) continue;
+                
+                // Проверяем что это НЕ репост
+                var cellText = cell.InnerText;
+                if (cellText.Contains("Reposted") || cellText.Contains("retweeted")) continue;
+                
+                var retweetIcon = cell.FindChildByAttribute("*", "data-testid", "socialContext", "regexp", 0);
+                if (!retweetIcon.IsVoid && retweetIcon.InnerText.Contains("Reposted")) continue;
+                
+                // Парсим дату твита
+                var timeElement = cell.FindChildByTag("time", 0);
+                if (timeElement.IsVoid) continue;
+                
+                var dateTimeStr = timeElement.GetAttribute("datetime");
+                if (string.IsNullOrEmpty(dateTimeStr)) continue;
+                
+                DateTime tweetDate;
+                if (!DateTime.TryParse(dateTimeStr, out tweetDate)) continue;
+                
+                // Проверяем что твит не старше N дней
+                var daysOld = (now - tweetDate).TotalDays;
+                if (daysOld > maxDaysOld)
+                {
+                    _log.Send($"Tweet too old: {daysOld:F1} days (max {maxDaysOld})");
+                    continue;
+                }
+                
+                // Получаем текст твита
+                var tweetText = cell.FindChildByAttribute("div", "data-testid", "tweetText", "regexp", 0);
+                if (!tweetText.IsVoid && !string.IsNullOrWhiteSpace(tweetText.InnerText))
+                {
+                    originalTweets.Add((cell, tweetText.InnerText, tweetDate));
+                }
+            }
+            
+            _project.Deadline(30);
+            
+            if (originalTweets.Count == 0)
+            {
+                _log.Warn($"No recent original tweets found from @{targetAccount} (max {maxDaysOld} days old)");
+                throw new Exception($"No recent tweets found from @{targetAccount}");
+            }
+            
+            // Выбираем случайный свежий твит
+            Random rand = new Random();
+            var selected = originalTweets[rand.Next(originalTweets.Count)];
+            
+            _log.Send($"Selected tweet from @{targetAccount}: {selected.Date:yyyy-MM-dd HH:mm}, text: {selected.Text.Substring(0, Math.Min(50, selected.Text.Length))}...");
+            return (selected.Element, selected.Text);
+        }
+
+        /// <summary>
+        /// Ответить на случайный оригинальный твит таргет-аккаунта
+        /// </summary>
+        public string ReplyToRandomTweet(string targetAccount = null, bool withNewsContext = false, int maxDaysOld = 7)
+        {
+            // Если указан аккаунт - переходим на него
+            if (!string.IsNullOrEmpty(targetAccount))
+            {
+                _instance.Go($"https://x.com/{targetAccount}");
+                Thread.Sleep(2000);
+            }
+            
+            // Получаем случайный оригинальный твит
+            var selectedTweet = GetRandomOriginalTweet(targetAccount, maxDaysOld);
+            
+            // Генерируем ответ
+            GenerateReply(selectedTweet.Text, withNewsContext);
+            string reply = _project.Json.reply.ToString();
+            
+            // Кликаем reply на выбранном твите
+            var replyButton = selectedTweet.Element.FindChildByAttribute("button", "data-testid", "reply", "regexp", 0);
+            if (replyButton.IsVoid)
+            {
+                _log.Warn("Reply button not found");
+                throw new Exception("Reply button not found");
+            }
+            
+            _instance.HeClick(replyButton, emu: 1);
+            Thread.Sleep(2000);
+            
+            // Вставляем ответ
+            _instance.JsSet("[data-testid='tweetTextarea_0']", reply);
+            Thread.Sleep(1000);
+            
+            // Отправляем
+            _instance.HeClick(("*", "data-testid", "tweetButton", "regexp", 0), emu:1);
+            
+            _log.Send($"Reply posted: len={reply.Length}");
+            return reply;
+        }
+
+        /// <summary>
+        /// Quote случайного оригинального твита таргет-аккаунта
+        /// </summary>
+        public string QuoteRandomTweet(string targetAccount = null, bool withNewsContext = false, int maxDaysOld = 7)
+        {
+            // Если указан аккаунт - переходим на него
+            if (!string.IsNullOrEmpty(targetAccount))
+            {
+                _instance.Go($"https://x.com/{targetAccount}");
+                Thread.Sleep(2000);
+            }
+            
+            // Получаем случайный оригинальный твит
+            var selectedTweet = GetRandomOriginalTweet(targetAccount, maxDaysOld);
+            
+            // Генерируем комментарий
+            GenerateReply(selectedTweet.Text, withNewsContext);
+            string quote = _project.Json.reply.ToString();
+            
+            // Кликаем retweet на выбранном твите
+            var retweetButton = selectedTweet.Element.FindChildByAttribute("button", "data-testid", "retweet", "regexp", 0);
+            if (retweetButton.IsVoid)
+            {
+                _log.Warn("Retweet button not found");
+                throw new Exception("Retweet button not found");
+            }
+            
+            _instance.HeClick(retweetButton, emu: 1);
+            Thread.Sleep(1000);
+            
+            // Кликаем "Quote" в выпадающем меню
+            _instance.HeClick(("a", "href", "https://x.com/compose/post", "regexp", 0));
+            Thread.Sleep(1000);
+            
+            // Вставляем комментарий
+            _instance.JsSet("[data-testid='tweetTextarea_0']", quote);
+            Thread.Sleep(1000);
+            
+            // Отправляем
+            
+            _instance.HeClick(("*", "data-testid", "tweetButton", "regexp", 0), emu:1);
+            
+            _log.Send($"Quote posted: len={quote.Length}");
+            return quote;
+        }
+        
+        /// <summary>
+        /// Bio Generation
+        /// </summary>
+        public string GenerateSimpleBio()
+        {
+            var professions = new[] {
+                "Software developer", "Graphic designer", "Marketing specialist",
+                "Teacher", "Freelance writer", "Product manager", "Data analyst",
+                "UX designer", "Sales professional", "Consultant", "Engineer",
+                "Content creator", "Small business owner", "Photographer"
+            };
+
+            var hobbies = new[] {
+                "Coffee enthusiast", "Runner", "Photography lover", "Gamer",
+                "Avid reader", "Fitness junkie", "Foodie", "Travel lover",
+                "Dog person", "Cat person", "Music fan", "Podcast addict",
+                "Movie buff", "Sports fan", "Amateur chef", "Plant parent"
+            };
+
+            var extras = new[] {
+                "Opinions my own", "Always learning", "Weekend warrior",
+                "Just here for the vibes", "Dad jokes enthusiast",
+                "Lifelong learner", "Curious about everything"
+            };
+    
+            var emojis = new[] { "☕", "🐕", "🐱", "📸", "🎮", "📚", "🏃", "🌱", "🎵", "🍕" };
+
+            var rand = new Random();
+    
+            // Паттерн 1: Profession. Hobby. Extra
+            if (rand.Next(0, 2) == 0)
+            {
+                var emoji = rand.Next(0, 100) > 60 ? " " + emojis[rand.Next(emojis.Length)] : "";
+                return $"{professions[rand.Next(professions.Length)]}. {hobbies[rand.Next(hobbies.Length)]}. {extras[rand.Next(extras.Length)]}{emoji}";
+            }
+            // Паттерн 2: Profession | Hobby | Extra
+            else
+            {
+                var emoji = rand.Next(0, 100) > 60 ? " " + emojis[rand.Next(emojis.Length)] : "";
+                return $"{professions[rand.Next(professions.Length)]} | {hobbies[rand.Next(hobbies.Length)]} | {extras[rand.Next(extras.Length)]}{emoji}";
+            }
+        }
+        public string GenerateNormalBioAI()
+        {
+            var ai = new Api.AI(_project, "aiio", "meta-llama/Llama-3.3-70B-Instruct", false);
+    
+            // Рандомные constraints для разнообразия
+            var professionTypes = new[] { 
+                "tech industry", "creative field", "education", "healthcare", 
+                "business", "trades", "retail", "freelance work" 
+            };
+            var tones = new[] { 
+                "casual and funny", "professional", "minimalist", 
+                "enthusiastic", "laid-back" 
+            };
+            var focuses = new[] {
+                "hobbies and interests", "family life", "career growth",
+                "location and lifestyle", "pop culture references"
+            };
+    
+            var rand = new Random();
+            var profType = professionTypes[rand.Next(professionTypes.Length)];
+            var tone = tones[rand.Next(tones.Length)];
+            var focus = focuses[rand.Next(focuses.Length)];
+    
+            string system = $@"Generate a realistic Twitter bio for a regular person in {profType}.
+
+Style: {tone}
+Focus on: {focus}
+
+CRITICAL REQUIREMENTS:
+- Maximum 160 characters
+- Sound like a REAL person, not a crypto bot
+- Include 2-3 diverse elements: profession, hobbies, location, personal details
+- Use simple, everyday language
+- Can include 1-2 emojis (optional)
+- NO crypto/NFT/blockchain/DeFi/Web3
+- NO fancy titles: maven, guru, ninja, connoisseur
+- BE CREATIVE - avoid common phrases like ""coffee addict"", ""always learning""
+
+Return ONLY:
+{{
+  ""bio"": ""your bio text here""
+}}";
+
+            string user = "Generate ONE unique bio.";
+    
+            string result = ai.Query(system, user)
+                .Replace("```json", "")
+                .Replace("```", "")
+                .Trim();
+    
+            _project.ToJson(result);
+            return _project.Json.bio.ToString();
+        }
+        public string GenerateNormalBio()
+        {
+            var rand = new Random();
+    
+            // 50% AI генерация, 50% hardcoded рандом
+            if (rand.Next(0, 100) > 50)
+            {
+                return GenerateNormalBioAI();
+            }
+            else
+            {
+                return GenerateSimpleBio(); // Твой hardcoded метод
+            }
+        }
+        /// <summary>
+        /// Проверка bio на палево. Возвращает true если нужно менять
+        /// </summary>
+        public bool ShouldChangeBio(string bio)
+        {
+            if (string.IsNullOrWhiteSpace(bio)) return true;
+    
+            var bioLower = bio.ToLower();
+            int score = 0;
+    
+            // Crypto keywords (+30 каждое)
+            string[] cryptoWords = { 
+                "crypto", "nft", "defi", "blockchain", "web3", "metaverse",
+                "staking", "yield", "farming", "degen", "token", "dapp",
+                "ethereum", "bitcoin", "solana", "polygon"
+            };
+            foreach (var word in cryptoWords)
+                if (bioLower.Contains(word)) score += 30;
+    
+            // Bot titles (+25 каждое)
+            string[] botTitles = { 
+                "maven", "guru", "connoisseur", "ninja", "wizard", "alchemist",
+                "yakuza", "samurai", "prophet", "visionary", "maestro", "sensei"
+            };
+            foreach (var title in botTitles)
+                if (bioLower.Contains(title)) score += 25;
+    
+            // Marketing phrases (+15 каждое)
+            string[] marketing = { 
+                "navigating", "exploring", "championing", "revolutionizing",
+                "unlocking", "maximizing", "optimizing", "curating", "crafting"
+            };
+            foreach (var phrase in marketing)
+                if (bioLower.Contains(phrase)) score += 15;
+    
+            _log.Send($"Bio score: {score} - {(score >= 30 ? "CHANGE" : "OK")}");
+    
+            return score >= 30;
+        }
     }
     
     
@@ -1468,4 +2142,12 @@ namespace z3nCore
     }
     
     #endregion
+
+   
 }
+
+
+
+
+
+
