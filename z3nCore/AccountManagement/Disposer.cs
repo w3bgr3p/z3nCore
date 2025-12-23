@@ -16,6 +16,7 @@ namespace z3nCore
         private readonly Instance _instance;
         private readonly Reporter _reporter;
         private readonly Logger _logger;
+        private readonly InstanceManager _instanceMgr;
         private readonly bool _showLog;
         
         public Disposer(IZennoPosterProjectModel project, Instance instance, bool log = false)
@@ -24,6 +25,7 @@ namespace z3nCore
             _instance = instance ?? throw new ArgumentNullException(nameof(instance));
             _showLog = log;
             _reporter = new Reporter(project, instance);
+            _instanceMgr = new InstanceManager(project, instance, log);
             _logger = new Logger(project, _showLog, "♻️", true);
         }
 
@@ -31,31 +33,30 @@ namespace z3nCore
 
         #region Public API
 
-
-        public void FinishSession()
+        public void FinishSession( bool useLegacy = true)
         {
             _logger.Send("Starting session finish sequence");
 
             string acc0 = _project.Var("acc0");
-            string accRnd = _project.Var("accRnd");
-
             bool isSuccess = IsSessionSuccessful();
-            _logger.Send($"Session status determined: {(isSuccess ? "SUCCESS" : "FAILED")}");
+            
+            _logger.Send($"Session status: {(isSuccess ? "SUCCESS" : "FAILED")}");
 
             if (!string.IsNullOrEmpty(acc0))
             {
                 GenerateReports(isSuccess);
             }
-            else
+
+            if (useLegacy)
             {
-                _logger.Send("Skipping report generation: acc0 is empty");
+                _instanceMgr.SaveProfile(saveCookies: true, saveZpProfile: true);
             }
 
-            SaveCookiesIfNeeded(acc0, accRnd);
-
+            _instanceMgr._SaveProfile();
+            
             LogSessionComplete(isSuccess);
 
-            CleanupAndStop(acc0);
+            _instanceMgr.Cleanup();
 
             _logger.Send("Session finish sequence completed");
         }
@@ -72,7 +73,7 @@ namespace z3nCore
 
         #endregion
 
-        #region Private Methods - Session Management
+        #region Private Methods
 
         private bool IsSessionSuccessful()
         {
@@ -86,74 +87,28 @@ namespace z3nCore
 
         private void GenerateReports(bool isSuccess)
         {
-            _logger.Send($"Starting report generation for {(isSuccess ? "SUCCESS" : "ERROR")} status");
+            _logger.Send($"Generating {(isSuccess ? "SUCCESS" : "ERROR")} report");
             
             try
             {
                 if (isSuccess)
                 {
-                    _reporter.ReportSuccess(
-                        toLog: true,
-                        toTelegram: true,
-                        toDb: true
-                    );
-                    _logger.Send("Success report generated successfully");
+                    _reporter.ReportSuccess(toLog: true, toTelegram: true, toDb: true);
                 }
                 else
                 {
-                    _reporter.ReportError(
-                        toLog: true,
-                        toTelegram: true,
-                        toDb: true,
-                        screenshot: true
-                    );
-                    _logger.Send("Error report generated successfully");
+                    _reporter.ReportError(toLog: true, toTelegram: true, toDb: true, screenshot: true);
                 }
+                _logger.Send("Report generated successfully");
             }
             catch (Exception ex)
             {
-                _logger.Send($"Report generation FAILED: {ex.GetType().Name} - {ex.Message}");
-                _project.SendWarningToLog($"Report generation failed: {ex.Message}");
-            }
-        }
-
-        private void SaveCookiesIfNeeded(string acc0, string accRnd , bool saveZpprofile = true)
-        {
-            try
-            {
-                
-                bool shouldSave = _instance.BrowserType == BrowserType.Chromium &&
-                                !string.IsNullOrEmpty(acc0) &&
-                                string.IsNullOrEmpty(accRnd);
-
-                if (!shouldSave)
-                {
-                    return;
-                }
-
-                string cookiesPath = _project.PathCookies();
-                _logger.Send($"Saving cookies to: '{cookiesPath}'");
-                
-                _project.SaveAllCookies(_instance);
-                
-                if (saveZpprofile)
-                {
-                    var pathProfile = _project.PathProfileFolder();
-                    _project.Profile.Save(pathProfile, true,true, true ,true ,true, true,true ,true, true);
-                }
-                
-                _logger.Send($"Cookies saved successfully to: '{cookiesPath}'");
-            }
-            catch (Exception ex)
-            {
-                _logger.Warn($"Cookie save FAILED: {ex.GetType().Name} - {ex.Message}");
+                _logger.Send($"Report generation failed: {ex.GetType().Name} - {ex.Message}");
             }
         }
 
         private void LogSessionComplete(bool isSuccess)
         {
-            _logger.Send("Generating final session log entry");
-            
             try
             {
                 double elapsed = _project.TimeElapsed();
@@ -169,73 +124,12 @@ namespace z3nCore
             }
             catch (Exception ex)
             {
-                _logger.Send($"Session log entry FAILED: {ex.GetType().Name} - {ex.Message}");
-                _project.SendWarningToLog($"Session logging failed: {ex.Message}");
-            }
-        }
-
-        private void CleanupAndStop(string acc0)
-        {
-            _logger.Send($"Starting cleanup: acc0='{acc0}'");
-            
-            try
-            {
-                if (!string.IsNullOrEmpty(acc0))
-                {
-                    _logger.Send($"Clearing global variable 'acc{acc0}'");
-                    _project.GVar($"acc{acc0}", string.Empty);
-                }
-                else
-                {
-                    _logger.Send("Skipping global variable cleanup: acc0 is empty");
-                }
-
-                _logger.Send("Clearing local variable 'acc0'");
-                _project.Var("acc0", string.Empty);
-
-                _logger.Send("Stopping instance");
-                _instance.Stop();
-                
-                _logger.Send("Cleanup completed successfully");
-            }
-            catch (Exception ex)
-            {
-                _logger.Send($"Cleanup FAILED: {ex.GetType().Name} - {ex.Message}");
-                _project.SendWarningToLog($"Cleanup failed: {ex.Message}");
-                
-                try
-                {
-                    _logger.Send("Attempting emergency instance stop");
-                    _instance.Stop();
-                    _logger.Send("Emergency instance stop succeeded");
-                }
-                catch (Exception stopEx)
-                {
-                    _logger.Send($"Emergency instance stop FAILED: {stopEx.GetType().Name} - {stopEx.Message}");
-                }
+                _logger.Send($"Session log entry failed: {ex.Message}");
             }
         }
         
         #endregion
     }
     
-
-    public static partial class ProjectExtensions
-    {
-        public static void Finish(this IZennoPosterProjectModel project, Instance instance)
-        {
-            new Disposer(project, instance).FinishSession();
-        }
-        public static string ReportError(this IZennoPosterProjectModel project, Instance instance, 
-            bool toLog = true, bool toTelegram = false, bool toDb = false, bool screenshot = false)
-        {
-            return new Disposer(project, instance).ErrorReport(toLog, toTelegram, toDb, screenshot);
-        }
-        public static string ReportSuccess(this IZennoPosterProjectModel project, Instance instance,
-            bool toLog = true, bool toTelegram = false, bool toDb = false, string customMessage = null)
-        {
-            return new Disposer(project, instance).SuccessReport(toLog, toTelegram, toDb, customMessage);
-        }
-    }
     
 }

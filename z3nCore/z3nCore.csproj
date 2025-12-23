@@ -87,6 +87,7 @@
   <ItemGroup>
     <Compile Include="AccountManagement\AccountManager.cs" />
     <Compile Include="AccountManagement\Disposer.cs" />
+    <Compile Include="AccountManagement\InstanceManager.cs" />
     <Compile Include="AccountManagement\ProfileSync.cs" />
     <Compile Include="AccountManagement\PropertyManager.cs" />
     <Compile Include="Api\AntiCapctha.cs" />
@@ -108,8 +109,9 @@
     <Compile Include="Browser\HtmlExtensions.cs" />
     <Compile Include="Browser\Traffic.cs" />
     <Compile Include="Browser\ZB.cs" />
-    <Compile Include="Core\Init.cs" />
     <Compile Include="Core\Logger.cs" />
+    <Compile Include="Core\Vars.cs" />
+    <Compile Include="Core\Init.cs" />
     <Compile Include="Diagnostic\Debug.cs" />
     <Compile Include="Diagnostic\ProcAcc.cs" />
     <Compile Include="Diagnostic\Running.cs" />
@@ -123,6 +125,7 @@
     <Compile Include="ProjectExtentions\ExternalCode.cs" />
     <Compile Include="Reports\Accountant.cs" />
     <Compile Include="Reports\HtmlReport.cs" />
+    <Compile Include="Reports\JsonReportGenerator.cs" />
     <Compile Include="Reports\Reporter.cs" />
     <Compile Include="Requests\NetHttp.cs" />
     <Compile Include="Requests\Requests.cs" />
@@ -132,6 +135,7 @@
     <Compile Include="Sql\Db.cs" />
     <Compile Include="Utilities\Converter.cs" />
     <Compile Include="Utilities\F0rms.cs" />
+    <Compile Include="Utilities\LogDisabler.cs" />
     <Compile Include="Utilities\OTP.cs" />
     <Compile Include="Utilities\Rss.cs" />
     <Compile Include="Utilities\Sleeper.cs" />
@@ -147,7 +151,6 @@
     <Compile Include="Wallets\Keplr.cs" />
     <Compile Include="Browser\InstanceExtensions.cs" />
     <Compile Include="ProjectExtentions\Rnd.cs" />
-    <Compile Include="ProjectExtentions\Vars.cs" />
     <Compile Include="Properties\VersionInfo.cs" />
     <Compile Include="Api\AI.cs" />
     <Compile Include="Socials\Guild.cs" />
@@ -172,6 +175,7 @@
     <Compile Include="Wallets\SuietWallet.cs" />
     <Compile Include="Wallets\ZerionWallet.cs" />
     <Compile Include="~deprecated\Fallback.cs" />
+    <Compile Include="~deprecated\Init.cs" />
     <Compile Include="~deprecated\X.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

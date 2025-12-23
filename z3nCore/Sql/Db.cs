@@ -1088,46 +1088,29 @@ namespace z3nCore
                 
                 throw new Exception($"Failed to rearrange table {tblName}: {ex.Message}", ex);
             }
+            finally
+            {
+                // Гарантированная очистка
+                try
+                {
+                    var tempExists = _pstgr 
+                        ? project.DbQ($"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = '{DbHelpers.SchemaName}' AND table_name = '{DbHelpers.UnQuote(tempTable)}')", log: false)
+                        : project.DbQ($"SELECT name FROM sqlite_master WHERE type='table' AND name='{DbHelpers.UnQuote(tempTable)}'", log: false);
+                
+                    if (!string.IsNullOrEmpty(tempExists) && tempExists != "0" && tempExists.ToLower() != "false")
+                    {
+                        project.DbQ($"DROP TABLE {tempTable}", log: false, unSafe: true);
+                    }
+                }
+                catch { }
+            }
         }
         
         public static void ClmnRearrange(this IZennoPosterProjectModel project, List<string> projectColumns, string tblName = null, bool log = false)
         {
-            tblName =  project.TableName(tblName);
             var tableStructure = project.TblForProject(projectColumns);
-            DbHelpers.ValidateName(tblName, "table name");
-            
-            bool _pstgr = project.Var("DBmode") == "PostgreSQL";
-            string quotedTable = DbHelpers.Quote(tblName);
-            string tempTable = DbHelpers.Quote($"{tblName}_temp_{DateTime.Now.Ticks}");
-            
-            try
-            {
-                var currentColumns = project.TblColumns(tblName, log: log);
-                var idType = GetIdType(project, tblName, _pstgr, log);
-                var newTableStructure = BuildNewStructure(project, tableStructure, currentColumns, idType, tblName, _pstgr, log);
-                
-                CreateTempTable(project, tempTable, newTableStructure, _pstgr, log);
-                CopyDataToTemp(project, quotedTable, tempTable, newTableStructure, log);
-                DropOldTable(project, quotedTable, log);
-                RenameTempTable(project, tempTable, quotedTable, tblName, _pstgr, log);
-                
-                if (log)
-                {
-                    project.SendInfoToLog($"Table {tblName} rearranged successfully. New column order: {string.Join(", ", newTableStructure.Keys)}", true);
-                }
-            }
-            catch (Exception ex)
-            {
-                try
-                {
-                    project.DbQ($"DROP TABLE IF EXISTS {tempTable}", log: false, unSafe: true);
-                }
-                catch { }
-                
-                throw new Exception($"Failed to rearrange table {tblName}: {ex.Message}", ex);
-            }
+            project.ClmnRearrange(tableStructure, tblName, log);
         }
-
         #region _ClmnRearrange_private
         private static string GetIdType(IZennoPosterProjectModel project, string tblName, bool _pstgr, bool log)
         {

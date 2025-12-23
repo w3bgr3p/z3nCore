@@ -11,6 +11,8 @@ namespace z3nCore
 {
     public static class AccountManager
     {
+        
+        
         private static List<string> ParseRangeGroups(IZennoPosterProjectModel project, string cfgAccRange)
         {
             var groups = new List<string>();
@@ -210,20 +212,23 @@ namespace z3nCore
             bool filterTwitter = false, 
             bool filterDiscord = false, 
             string tableName = null, 
-            bool debugLog = false)
+            bool debugLog = false,
+            bool useLegacy = true)
         {
             
             while (true)
             {
-                try{
-                    project.ChooseAccountByCondition(condition,sortByTaskAge,useRange,filterTwitter,filterDiscord,tableName,debugLog); 
+                try
+                {
+                    project.ChooseAccountByCondition(condition, sortByTaskAge, useRange, filterTwitter, filterDiscord,
+                        tableName, debugLog);  
 
                     if (string.IsNullOrEmpty(project.Var("acc0"))) 
                         throw new Exception("");
                     
                     var browserMode = browser ? "Chromium" : "WithoutBrowser";
                     //run
-                    project.RunBrowser(instance,browserMode);
+                    project.RunBrowser(instance,browserMode, useLegacy:useLegacy);
                     return;
 		
                 }

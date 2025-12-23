@@ -4,15 +4,15 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Globalization;
+using System.Diagnostics;
+using z3nCore.Utilities;
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.Enums.Browser;
-using ZennoLab.InterfacesLibrary.ProjectModel;
-using System.Diagnostics;
 using ZennoLab.InterfacesLibrary.Enums.Log;
+using ZennoLab.InterfacesLibrary.ProjectModel;
+
 namespace z3nCore
 {
-    
     public class Init
     {
         #region Fields & Constructor
@@ -21,9 +21,6 @@ namespace z3nCore
         private readonly Instance _instance;
         private readonly Logger _logger;
         private readonly bool _log;
-        private static readonly object _disableLogsLock = new object();
-        private static readonly object _randomLock = new object();
-        private static readonly Random _random = new Random();
 
         public Init(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
@@ -36,53 +33,6 @@ namespace z3nCore
         #endregion
 
         #region Public API - Main Entry Points
-
-        
-        public void PrepareInstance(string browserToLaunch = null, bool getscore = false)
-        {
-            if (_project.Var("wkMode") == "UpdBalance")
-            {
-                _instance.Launch(ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.WithoutBrowser, false);
-                return;
-            }
-            try
-            {
-                LaunchBrowser(browserToLaunch);
-            }
-            catch (Exception e)
-            {
-                _logger.Warn(e.Message);
-                throw;
-            }
-            
-            int exCnt = 0;
-            string browserType = _instance.BrowserType.ToString();
-            bool browser = browserType == "Chromium";
-
-            SetInstance:
-            try 
-            {
-                if (browser && _project.Variables["acc0"].Value != "") //if browser					
-                    SetBrowser(getscore:getscore);	
-                else
-                {
-                    ProxySet();
-                }
-            }
-            catch (Exception ex)
-            {
-                _instance.CloseAllTabs();
-                exCnt++;
-                _logger.Warn($"SetInstance failed: attempt={exCnt}/3, acc={_project.Variables["acc0"].Value}, error={ex.Message}");
-                if (exCnt > 3)
-                {
-                    _project.GVar($"acc{_project.Variables["acc0"].Value}", "");
-                    throw;
-                }
-                goto SetInstance;
-            }
-            _instance.CloseExtraTabs(true);
-        }
         
         public bool RunProject(List<string> additionalVars = null, bool add = true)
         {
@@ -164,10 +114,10 @@ namespace z3nCore
 
         public void InitVariables(string author = "")
         {
-            DisableLogs();
+            LogDisabler.DisableLogs();
             _SAFU();
-                //if (string.IsNullOrEmpty()
-            string fileName = System.IO.Path.GetFileName(_project.Variables["projectScript"].Value);
+            
+            string fileName = Path.GetFileName(_project.Variables["projectScript"].Value);
             
             string sessionId = _project.SetSessionId();
             string projectName = _project.ProjectName();
@@ -183,54 +133,17 @@ namespace z3nCore
             SAFU.Initialize(_project);
             Logo(author, dllTitle, projectName);
         }
-
-        private void DisableLogs_()
-        {
-            string currentProcessPath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
-            string processDir = Path.GetDirectoryName(currentProcessPath);
-            string pathLogs = Path.Combine(processDir, "Logs");
-            
-            try
-            {
-                lock (_disableLogsLock)
-                {
-                    if (Directory.Exists(pathLogs))
-                    {
-                        Directory.Delete(pathLogs, true);
-                        using (Process process = new Process())
-                        {
-                            process.StartInfo.FileName = "cmd.exe";
-                            process.StartInfo.Arguments = $"/c mklink /d \"{pathLogs}\" \"NUL\"";
-                            process.StartInfo.UseShellExecute = false;
-                            process.StartInfo.CreateNoWindow = true;
-                            process.StartInfo.RedirectStandardOutput = true;
-                            process.StartInfo.RedirectStandardError = true;
-
-                            process.Start();
-                            string output = process.StandardOutput.ReadToEnd();
-                            string error = process.StandardError.ReadToEnd();
-                            process.WaitForExit();
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Warn(ex.Message);
-            }
-        }
-
         private void Logo(string author, string dllTitle, string projectName)
         {
             var v = GetVersions();
-            string DllVer = v[0];
-            string ZpVer = v[1];
+            string dllVer = v[0];
+            string zpVer = v[1];
             
             if (author != "") author = $" script author: @{author}";
             string frameworkVersion = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription;
             
-            string logo = $@"using ZennoPoster v{ZpVer} && {frameworkVersion}; 
-             using {dllTitle} v{DllVer}  
+            string logo = $@"using ZennoPoster v{zpVer} && {frameworkVersion}; 
+             using {dllTitle} v{dllVer}  
             ┌by─┐					
             │    w3bgr3p;		
             └─→┘
@@ -294,265 +207,10 @@ namespace z3nCore
         
         #endregion
 
-        #region Browser & Instance Management
-        private string LaunchBrowser(string cfgBrowser = null)
-        {
-            string acc0 = _project.Var("acc0");
-            if (string.IsNullOrEmpty(acc0)) 
-                throw new ArgumentException("acc0 can't be null or empty");
-            var pathProfile = _project.PathProfileFolder();
-            _logger.Send($"Profile path: {pathProfile}, exists: {Directory.Exists(pathProfile)}");
-            if (Directory.Exists(pathProfile))
-            {
-                var size = new DirectoryInfo(pathProfile).EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length);
-                _logger.Send($"Profile size: {size / 1024 / 1024}MB");
-            }
-            _project.Var("pathProfileFolder", pathProfile);
-            
-            if (string.IsNullOrEmpty(cfgBrowser))
-                cfgBrowser = _project.Var("cfgBrowser");
-            var browser = BrowserType.Chromium;
-
-            switch (cfgBrowser)
-            {
-                case "WithoutBrowser":
-                    browser = BrowserType.WithoutBrowser;
-                    break;
-                case "ZB":
-                    break;
-                case "Chromium":
-                    break;	
-                
-                default:
-                    _logger.Warn($"unknown browser config {cfgBrowser}");
-                    throw new Exception($"unknown browser config {cfgBrowser}");
-            }
-            
-            int pid = 0;
-            int port = 0;
-
-            if (cfgBrowser == "WithoutBrowser")
-            {
-                _instance.Launch(BrowserType.WithoutBrowser, false);
-            }
-            else if (cfgBrowser == "ZB")
-            {
-                var path = Path.Combine(_project.Path,".internal","_launchZB.zp");
-                if (!File.Exists(path)) throw new Exception($"file {path} is required to rub ZB");
-                var launchTime = DateTime.Now; // ИЛИ ВАРИАНТ 2: Запоминаем время перед запуском
-                _project.RunZp(path);
-                pid = Utilities.ProcAcc.FindFirstNewPid(acc0, launchTime); // ИЛИ ВАРИАНТ 2: Поиск по времени запуска
-                port = _instance.Port;
-            }
-            else if (cfgBrowser == "Chromium")
-            {
-               
-                var pidsBeforeLaunch = Utilities.ProcAcc.GetPidSnapshot();  // ВАРИАНТ 1: Используем снимок PID до запуска
-                
-                ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings settings = 
-                    (ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings)
-                    ZennoLab.CommandCenter.Classes.BrowserLaunchSettingsFactory.Create(browser);
-                settings.CachePath = pathProfile; 
-                settings.ConvertProfileFolder = true;
-                settings.UseProfile = true;
-                _instance.Launch(settings);
-                
-                pid = Utilities.ProcAcc.GetNewlyLaunchedPid(acc0, pidsBeforeLaunch); // ВАРИАНТ 1: Быстрый поиск среди новых процессов
-                
-                if (pid == 0)
-                {
-                    _logger.Send("PID search fallback: fast method failed, using slow search");
-                    pid = Utilities.ProcAcc.GetNewest(acc0);
-                }
-        
-                port = _instance.Port;
-            }
-            _project.Variables["instancePort"].Value = $"port: {port}, pid: {pid}";
-            _logger.Send($"Browser launched: type={cfgBrowser}, port={port}, pid={pid}, acc={acc0}");
-            BindPid(pid,port);
-            return pid.ToString();
-        }
-
-        private void SetBrowser(bool strictProxy = true, string cookies = null, bool getscore = false, bool log = false)
-        {
-            string acc0 = _project.Var("acc0");
-            if (string.IsNullOrEmpty(acc0)) throw new ArgumentException("acc0 can't be null or empty");
-            
-            string instanceType = "WithoutBrowser";
-            try
-            {
-                instanceType = _instance.BrowserType.ToString();
-            }
-            finally
-            {
-                
-            }
-            
-            if (instanceType == "Chromium")
-            {
-                string webGlData = _project.SqlGet("webgl", "_instance");
-                SetDisplay(webGlData);
-                bool goodProxy = ProxySet();
-                if (strictProxy && !goodProxy) throw new Exception($"!E bad proxy");
-                var cookiePath = _project.PathCookies();
-                _project.Var("pathCookies", cookiePath);
-
-                if (cookies != null) 
-                    _instance.SetCookie(cookies);
-                else
-                    try
-                    {
-                        cookies = _project.SqlGet("cookies", "_instance");
-                        _instance.SetCookie(cookies);
-                    }
-                    catch (Exception Ex)
-                    {
-                        _logger.Warn($"Cookies set failed: source=database, path={cookiePath}, error={Ex.Message}");
-                        try
-                        {
-                            cookies = File.ReadAllText(cookiePath);
-                            _instance.SetCookie(cookies);
-                        }
-                        catch (Exception E)
-                        {
-                            _logger.Warn($"Cookies set failed: source=file, path={cookiePath}, error={E.Message}");
-                        }
-                    }
-            }
-            //_project.Var("skipBrowserScan") != "True"
-            
-            if (getscore)
-            {
-                var bs = new BrowserScan(_project, _instance);
-                if (bs.GetScore().Contains("time")) bs.FixTime();
-            }
-        }
-        private void SetDisplay(string webGl)
-        {
-            if (!string.IsNullOrEmpty(webGl))
-            {
-                var jsonObject = JObject.Parse(webGl);
-                var mapping = new Dictionary<string, string>
-                {
-                    {"Renderer", "RENDERER"},
-                    {"Vendor", "VENDOR"},
-                    {"Version", "VERSION"},
-                    {"ShadingLanguageVersion", "SHADING_LANGUAGE_VERSION"},
-                    {"UnmaskedRenderer", "UNMASKED_RENDERER_WEBGL"},
-                    {"UnmaskedVendor", "UNMASKED_VENDOR"},
-                    {"MaxCombinedTextureImageUnits", "MAX_COMBINED_TEXTURE_IMAGE_UNITS"},
-                    {"MaxCubeMapTextureSize", "MAX_CUBE_MAP_TEXTURE_SIZE"},
-                    {"MaxFragmentUniformVectors", "MAX_FRAGMENT_UNIFORM_VECTORS"},
-                    {"MaxTextureSize", "MAX_TEXTURE_SIZE"},
-                    {"MaxVertexAttribs", "MAX_VERTEX_ATTRIBS"}
-                };
-
-                foreach (var pair in mapping)
-                {
-                    string value = "";
-                    if (jsonObject["parameters"]["default"][pair.Value] != null) value = jsonObject["parameters"]["default"][pair.Value].ToString();
-                    else if (jsonObject["parameters"]["webgl"][pair.Value] != null) value = jsonObject["parameters"]["webgl"][pair.Value].ToString();
-                    else if (jsonObject["parameters"]["webgl2"][pair.Value] != null) value = jsonObject["parameters"]["webgl2"][pair.Value].ToString();
-                    if (!string.IsNullOrEmpty(value)) _instance.WebGLPreferences.Set((WebGLPreference)Enum.Parse(typeof(WebGLPreference), pair.Key), value);
-                }
-            }
-            else _logger.Send("!W WebGL string is empty. Please parse WebGL data into the database. Otherwise, any antifraud system will fuck you up like it's a piece of cake.");
-
-            try
-            {
-                _instance.SetWindowSize(1280, 720);
-                _project.Profile.AcceptLanguage = "en-US,en;q=0.9";
-                _project.Profile.Language = "EN";
-                _project.Profile.UserAgentBrowserLanguage = "en-US";
-                _instance.UseMedia = false;
-            }
-            catch (Exception ex)
-            {
-                _logger.Send(ex.Message, thrw: true);
-            }
-        }
-        private void BindPid(int pid, int port)
-        {
-            if (pid == 0) return;
-            try
-            {
-                string acc0 = _project.Var("acc0");
-                using (var proc = Process.GetProcessById(pid))
-                {
-                    var memoryMb = proc.WorkingSet64 / (1024 * 1024);
-                    var runtimeMinutes = (int)(DateTime.Now - proc.StartTime).TotalMinutes;
-                    var name = _project.ProjectName();
-                    Running.Add(pid, new List<object> { memoryMb, runtimeMinutes, port, name, acc0 });
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Warn(ex.Message);
-            }
-        }
-        private bool ProxySet(string proxyString = null)
-        {
-            if (string.IsNullOrWhiteSpace(proxyString)) 
-                proxyString = _project.DbGet("proxy", "_instance");
-            if (string.IsNullOrWhiteSpace(proxyString))
-                throw new ArgumentException("Proxy string is empty");
-    
-            // Список сервисов для проверки (fallback)
-            var ipServices = new[] {
-                "https://api.ipify.org/",
-                "https://icanhazip.com/",
-                "https://ifconfig.me/ip",
-                "https://checkip.amazonaws.com/",
-                "https://ident.me/"
-            };
-    
-            string ipLocal = null;
-            string ipProxified = null;
-    
-            // Пробуем разные сервисы
-            foreach (var service in ipServices)
-            {
-                try
-                {
-                    ipLocal = _project.GET(service, null)?.Trim();
-                    if (!string.IsNullOrEmpty(ipLocal) && System.Net.IPAddress.TryParse(ipLocal, out _))
-                    {
-                        ipProxified = _project.GET(service, proxyString, useNetHttp: false)?.Trim();
-                        if (!string.IsNullOrEmpty(ipProxified) && System.Net.IPAddress.TryParse(ipProxified, out _))
-                        {
-                            break; // Нашли рабочий сервис
-                        }
-                    }
-                }
-                catch 
-                {
-                    continue; // Пробуем следующий
-                }
-            }
-    
-            if (string.IsNullOrEmpty(ipProxified) || !System.Net.IPAddress.TryParse(ipProxified, out _))
-            {
-                _logger.Warn($"Proxy check failed: proxy={proxyString}, ip={ipProxified}");
-                return false;
-            }
-    
-            if (ipProxified != ipLocal)
-            {
-                _instance.SetProxy(proxyString, true, true, true, true);
-                _logger.Send($"Proxy set: ip={ipProxified}, local={ipLocal}");
-                return true;
-            }
-    
-            _logger.Warn($"Proxy matches local: proxy={proxyString}, ip={ipProxified}");
-            return false;
-        }
-        #endregion
-        
         #region Filters & Validation
 
         private void BlockchainFilter()
         {
-            //gasprice
             if (!string.IsNullOrEmpty(_project.Var("acc0Forced"))) return;
             string[] chains = _project.Var("gateOnchainChain").Split(',');
             
@@ -569,7 +227,6 @@ namespace z3nCore
             }
             
             native:
-            //native
             if (_project.Var("gateOnchainMinNative") != "")
             {
                 decimal minNativeInUsd = decimal.Parse(_project.Var("gateOnchainMinNative"));
@@ -662,7 +319,7 @@ namespace z3nCore
                 _logger.Warn(errorMessage);
             }
             
-            string currentProcessPath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
+            string currentProcessPath = Process.GetCurrentProcess().MainModule.FileName;
             string processDir = Path.GetDirectoryName(currentProcessPath);
             string DllVer = referencedVersion;
             string ZpVer = processDir.Split('\\')[5];
@@ -670,214 +327,50 @@ namespace z3nCore
             return new[] { DllVer, ZpVer };
         }
 
-        private static string Quote(string name)
-        {
-            return $"\"{name.Replace("\"", "\"\"")}\"";
-        }
-        
-        private void DisableLogs(bool aggressive = false)
-        {
-            string currentProcessPath = System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName;
-            string processDir = Path.GetDirectoryName(currentProcessPath);
-            string pathLogs = Path.Combine(processDir, "Logs");
-            
-            lock (_disableLogsLock)
-            {
-                // Проверяем, не выполнена ли операция уже
-                if (IsLogsAlreadyDisabled(pathLogs))
-                {
-                    return; // Операция уже выполнена
-                }
-                
-                if (aggressive)
-                {
-                    for (int attempt = 0; attempt < 3; attempt++)
-                    {
-                        if (IsLogsAlreadyDisabled(pathLogs))
-                            return; // Проверяем после каждой попытки
-                            
-                        TryDisableWithStrategy(pathLogs, true);
-                        System.Threading.Thread.Sleep(50 * (attempt + 1));
-                    }
-                }
-                else
-                {
-                    TryDisableWithStrategy(pathLogs, false);
-                }
-            }
-        }
-
-        private bool IsLogsAlreadyDisabled(string pathLogs)
-        {
-            try
-            {
-                // Проверка 1: Путь не существует (может быть уже удален)
-                if (!Directory.Exists(pathLogs) && !File.Exists(pathLogs))
-                {
-                    return false; // Ничего нет, можно продолжать
-                }
-                
-                // Проверка 2: Это файл-блокировщик (fallback уже сработал)
-                if (File.Exists(pathLogs) && !Directory.Exists(pathLogs))
-                {
-                    return true; // Это файл, значит блокировка уже установлена
-                }
-                
-                // Проверка 3: Это символическая ссылка
-                if (Directory.Exists(pathLogs))
-                {
-                    var dirInfo = new DirectoryInfo(pathLogs);
-                    if (dirInfo.Attributes.HasFlag(FileAttributes.ReparsePoint))
-                    {
-                        return true; // Это симлинк, операция уже выполнена
-                    }
-                }
-                
-                // Проверка 4: Существуют lock-файлы
-                if (File.Exists(pathLogs + ".lock"))
-                {
-                    return true; // Lock-файл существует
-                }
-                
-                return false; // Это обычная папка, нужно выполнять операцию
-            }
-            catch
-            {
-                return false; // При ошибке считаем, что нужно выполнять операцию
-            }
-        }
-
-        private void TryDisableWithStrategy(string pathLogs, bool useAggressiveCommands)
-        {
-            try
-            {
-                // Повторная проверка перед выполнением
-                if (IsLogsAlreadyDisabled(pathLogs))
-                {
-                    return;
-                }
-                
-                if (useAggressiveCommands)
-                {
-                    // Только если это обычная папка
-                    if (Directory.Exists(pathLogs) && !IsSymbolicLink(pathLogs))
-                    {
-                        ExecuteCommand(string.Format("rd /s /q \"{0}\" 2>nul", pathLogs));
-                    }
-                    
-                    // Создаем симлинк только если его еще нет
-                    if (!Directory.Exists(pathLogs))
-                    {
-                        ExecuteCommand(string.Format("mklink /d \"{0}\" \"NUL\" 2>nul", pathLogs));
-                    }
-                }
-                else
-                {
-                    // Удаляем только если это обычная папка
-                    if (Directory.Exists(pathLogs) && !IsSymbolicLink(pathLogs))
-                    {
-                        foreach (string file in Directory.GetFiles(pathLogs, "*", SearchOption.AllDirectories))
-                        {
-                            try { File.SetAttributes(file, FileAttributes.Normal); } catch { }
-                        }
-                        foreach (string dir in Directory.GetDirectories(pathLogs, "*", SearchOption.AllDirectories))
-                        {
-                            try { File.SetAttributes(dir, FileAttributes.Normal); } catch { }
-                        }
-                        Directory.Delete(pathLogs, true);
-                    }
-                    
-                    // Создаем симлинк только если путь свободен
-                    if (!Directory.Exists(pathLogs) && !File.Exists(pathLogs))
-                    {
-                        ExecuteCommand(string.Format("mklink /d \"{0}\" \"NUL\"", pathLogs));
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                try
-                {
-                    _logger.Warn("Primary strategy failed, using fallback: " + ex.Message);
-                }
-                catch { }
-                
-                // Fallback только если еще ничего не заблокировано
-                if (!IsLogsAlreadyDisabled(pathLogs))
-                {
-                    try 
-                    { 
-                        // Удаляем папку если она есть
-                        if (Directory.Exists(pathLogs) && !IsSymbolicLink(pathLogs))
-                        {
-                            Directory.Delete(pathLogs, true);
-                        }
-                        
-                        // Создаем файл-блокировщик
-                        File.WriteAllText(pathLogs, "BLOCKED"); 
-                    } 
-                    catch { }
-                    
-                    try { File.SetAttributes(pathLogs, FileAttributes.Hidden | FileAttributes.ReadOnly | FileAttributes.System); } catch { }
-                    try { File.WriteAllText(pathLogs + ".lock", ""); } catch { }
-                }
-            }
-        }
-
-        private bool IsSymbolicLink(string path)
-        {
-            try
-            {
-                if (Directory.Exists(path))
-                {
-                    var dirInfo = new DirectoryInfo(path);
-                    return dirInfo.Attributes.HasFlag(FileAttributes.ReparsePoint);
-                }
-                return false;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private void ExecuteCommand(string command)
-        {
-            using (Process process = new Process())
-            {
-                process.StartInfo.FileName = "cmd.exe";
-                process.StartInfo.Arguments = "/c " + command;
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.CreateNoWindow = true;
-                process.StartInfo.RedirectStandardOutput = true;
-                process.StartInfo.RedirectStandardError = true;
-                process.Start();
-                process.WaitForExit();
-            }
-        }
         
         #endregion
     }
+    
+}
 
 
-
+namespace z3nCore //ProjectExtensions
+{
     public static partial class ProjectExtensions
     {
-        public static void InitVariables(this IZennoPosterProjectModel project,Instance instance, string author = "w3bgr3p")
+        public static void InitVariables(this IZennoPosterProjectModel project, Instance instance, string author = "w3bgr3p")
         {
             new Init(project, instance).InitVariables(author);
         }
-        public static void RunBrowser(this IZennoPosterProjectModel project, Instance instance, string browserToLaunch = "Chromium", bool debug = false)
+        
+        public static void RunBrowser(this IZennoPosterProjectModel project, Instance instance, string browserToLaunch = "Chromium", bool debug = false, bool fixTimezone = false,bool useLegacy = true)
         {
             var browser = instance.BrowserType;
-            var brw = new Init(project,instance, debug);
-            if (browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium && browser !=  ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.ChromiumFromZB)
+            var brw = new InstanceManager(project, instance, debug);
+            
+            
+            if (browser != BrowserType.Chromium && browser != BrowserType.ChromiumFromZB)
             {	
-                brw.PrepareInstance(browserToLaunch);
+                //brw.PrepareInstance(browserToLaunch);
+                brw.Initialize(browserToLaunch, fixTimezone, useLegacy:useLegacy);
             }
         }
         
+        public static void Finish(this IZennoPosterProjectModel project, Instance instance,bool useLegacy = true)
+        {
+            new Disposer(project, instance).FinishSession(useLegacy);
+        }
         
+        public static string ReportError(this IZennoPosterProjectModel project, Instance instance, 
+            bool toLog = true, bool toTelegram = false, bool toDb = false, bool screenshot = false)
+        {
+            return new Disposer(project, instance).ErrorReport(toLog, toTelegram, toDb, screenshot);
+        }
+        
+        public static string ReportSuccess(this IZennoPosterProjectModel project, Instance instance,
+            bool toLog = true, bool toTelegram = false, bool toDb = false, string customMessage = null)
+        {
+            return new Disposer(project, instance).SuccessReport(toLog, toTelegram, toDb, customMessage);
+        }
     }
-
 }

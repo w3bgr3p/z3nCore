@@ -127,9 +127,18 @@ namespace z3nCore
 
             throw new ArgumentException($"Unsupported type: {obj?.GetType()?.ToString() ?? "null"}");
         }
-        
+
+        public static void WriteToScript(this HtmlElement he, string pathToScript, string action )
+        {
+            if (!string.IsNullOrEmpty(pathToScript))
+            {
+                string line = action + "\t" + he.GetXPath() + "\n"; 
+                File.AppendAllText(pathToScript, line);
+            }
+        }
+
         //new
-        public static string HeGet(this Instance instance, object obj, string method = "", int deadline = 10, string atr = "innertext", int delay = 1, bool thrw = true, bool thr0w = true, bool waitTillVoid = false)
+        public static string HeGet(this Instance instance, object obj, string method = "", int deadline = 10, string atr = "innertext", int delay = 1, bool thrw = true, bool thr0w = true, bool waitTillVoid = false, string pathToScript = null)
         {
             DateTime functionStart = DateTime.Now;
             string lastExceptionMessage = "";
@@ -138,7 +147,7 @@ namespace z3nCore
             {
                 thrw = thr0w;
             }
-    
+            
             while (true)
             {
                 if ((DateTime.Now - functionStart).TotalSeconds > deadline)
@@ -161,6 +170,7 @@ namespace z3nCore
                 try
                 {
                     HtmlElement he = instance.GetHe(obj, method);
+                    he.WriteToScript(pathToScript, "get");
                     if (waitTillVoid)
                     {
                         throw new Exception($"element detected when it should not be: {atr}='{he.GetAttribute(atr)}'");
@@ -192,7 +202,7 @@ namespace z3nCore
                 Thread.Sleep(500);
             }
         }
-        public static string HeCatch(this Instance instance, object obj, string method = "", int deadline = 10, string atr = "innertext", int delay = 1)
+        public static string HeCatch(this Instance instance, object obj, string method = "", int deadline = 10, string atr = "innertext", int delay = 1, string pathToScript = null)
         {
             DateTime functionStart = DateTime.Now;
             string lastExceptionMessage = "";
@@ -235,7 +245,7 @@ namespace z3nCore
             foreach (var selector in selectors) instance.HeClick(selector);
         }
 
-        public static void HeClick(this Instance instance, object obj, string method = "", int deadline = 10, double delay = 1, string comment = "", bool thrw = true , bool thr0w = true, int emu = 0)
+        public static void HeClick(this Instance instance, object obj, string method = "", int deadline = 10, double delay = 1, string comment = "", bool thrw = true , bool thr0w = true, int emu = 0, string pathToScript = null)
         {
             bool emuSnap = instance.UseFullMouseEmulation;
             if (emu > 0) instance.UseFullMouseEmulation = true;
@@ -260,7 +270,7 @@ namespace z3nCore
                 try
                 {
                     HtmlElement he = instance.GetHe(obj, method);
-                    //Thread.Sleep(delay * 1000);
+                    he.WriteToScript(pathToScript, "click");
                     _clickSleep.Sleep(delay);
                     he.RiseEvent("click", instance.EmulationLevel);
                     instance.UseFullMouseEmulation = emuSnap;
@@ -302,7 +312,7 @@ namespace z3nCore
             }
 
         }
-        public static void HeSet(this Instance instance, object obj, string value, string method = "id", int deadline = 10, double delay = 1, string comment = "", bool thrw = true, bool thr0w = true)
+        public static void HeSet(this Instance instance, object obj, string value, string method = "id", int deadline = 10, double delay = 1, string comment = "", bool thrw = true, bool thr0w = true, string pathToScript = null)
         {
             DateTime functionStart = DateTime.Now;
             string lastExceptionMessage = "";
@@ -323,8 +333,7 @@ namespace z3nCore
                 {
                     HtmlElement he = instance.GetHe(obj, method);
                     _inputSleep.Sleep(delay);
-
-                    //Thread.Sleep(delay * 1000);
+                    he.WriteToScript(pathToScript, "set");
                     instance.WaitFieldEmulationDelay(); // Mimics WaitSetValue behavior
                     he.SetValue(value, "Full", false);
                     break;
@@ -352,6 +361,7 @@ namespace z3nCore
                 try
                 {
                     HtmlElement he = instance.GetHe(obj, method);
+                    
                     HtmlElement heParent = he.ParentElement; heParent.RemoveChild(he);
                     break;
                 }
