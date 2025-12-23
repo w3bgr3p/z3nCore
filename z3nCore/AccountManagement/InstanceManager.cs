@@ -114,21 +114,6 @@ namespace z3nCore
             if (cfgBrowser == null) cfgBrowser = _project.Var("cfgBrowser");
             
             
-            var browser = BrowserType.Chromium;
-
-            switch (cfgBrowser)
-            {
-                case "":
-                case "WithoutBrowser":
-                    browser = BrowserType.WithoutBrowser;
-                    break;
-                case "Chromium":
-                    break;	
-                default:
-                    _logger.Warn($"unknown browser config {cfgBrowser}");
-                    throw new Exception($"unknown browser config {cfgBrowser}");
-            }
-            
             int pid = 0;
             int port = 0;
 

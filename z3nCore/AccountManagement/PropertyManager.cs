@@ -52,13 +52,13 @@ namespace z3nCore.Utilities
                     string valueStr = value != null ? value.ToString().Replace("'", "''") : string.Empty;
                     data.Add(column, valueStr);
                 }
-                catch (Exception ex)
+                catch
                 {
-                    project.SendWarningToLog($"Error on field '{column}': {ex.Message}");
+                    //project.SendWarningToLog($"Error on field '{column}': {ex.Message}");
                 }
             }
     
-            if (!string.IsNullOrEmpty(tableToUpd)) project.DicToDb(data, tableToUpd, log:true);
+            if (!string.IsNullOrEmpty(tableToUpd)) project.DicToDb(data, tableToUpd);
             return data;
         }
         #endregion

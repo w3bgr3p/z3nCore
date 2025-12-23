@@ -94,11 +94,77 @@ namespace z3nCore.Utilities
             {
                 string webglData =  _instance.WebGLPreferences.Save();
                
-                _project.DbUpd($"_preferences = '{webglData}'",sourse + "webgl");
+                _project.DbUpd($"_preferences = '{webglData}'",sourse + "webgl", saveToVar:"");
                 _project.JsonToDb(webglData, sourse + "webgl");
             }
             
         }
+        
+
+        public void AddStructureToDb(  bool log = false)
+        {
+            if (_project.TblExist("folder_profile") && _project.TblExist("zb_profile"))
+            {
+                return;
+            }
+            
+            string[] tables = {
+                "folder_profile","folder_instance","folder_webgl", 
+                "zpprofile_profile","zpprofile_instance","zpprofile_webgl", };
+
+            string primary = "INTEGER PRIMARY KEY";
+            string defaultType = "TEXT DEFAULT ''";	
+		
+            var tableStructure = new Dictionary<string, string>
+                {{ "id", primary },};
+		
+            foreach(var tablename in tables)
+            {
+                _project.TblAdd(tableStructure, tablename);
+                _project.AddRange(tablename);	
+            }
+
+            _project.ClmnAdd("cookies","folder_profile");
+            _project.ClmnAdd("cookies","zpprofile_profile");
+            _project.ClmnAdd("_preferences","zpprofile_webgl");
+            _project.ClmnAdd("_preferences","folder_webgl");
+            
+            string[] zb_tables = {"zb_profile","zb_instance"};
+            string zb_primary = "TEXT PRIMARY KEY";
+		
+            var zb_tableStructure = new Dictionary<string, string>
+                {{ "zb_id", zb_primary },{ "id", defaultType },{ "_name", defaultType }};
+		
+            foreach(var tablename in zb_tables)
+            {
+                _project.TblAdd(zb_tableStructure, tablename);
+            }
+
+            _project.ClmnAdd("cookies","zb_profile");
+            
+            var IProfileList = z3nCore.Utilities.PropertyManager.GetTypeProperties(typeof(IProfile));
+            string[] tables_profile = {
+                "zpprofile_profile", "folder_profile","zb_profile",
+            };
+
+            foreach(var tablename in tables_profile)
+            {
+                _project.ClmnAdd("cookies",tablename);
+                _project.ClmnAdd(IProfileList,tablename);
+            }
+
+
+            var instanceList = z3nCore.Utilities.PropertyManager.GetTypeProperties(typeof(Instance));
+            string[] tables_instance = {
+                "zpprofile_instance", "folder_instance","zb_instance",
+            };
+            foreach(var tablename in tables_instance)
+            {
+                _project.ClmnAdd(instanceList,tablename);
+            }
+            
+        }
+        
         
     }
 }

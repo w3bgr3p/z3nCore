@@ -169,7 +169,7 @@ namespace z3nCore
     public static class DbUpdate
     {
 
-        public static void DicToDb(this IZennoPosterProjectModel project, Dictionary<string,string> dataDic, string tableName = null, bool log = false, bool thrw = false)
+        public static void DicToDb(this IZennoPosterProjectModel project, Dictionary<string,string> dataDic, string tableName = null, bool log = false, bool thrw = false, string where = "")
         {
             if (string.IsNullOrWhiteSpace(tableName)) tableName = project.Var("projectTable");
             
@@ -192,12 +192,13 @@ namespace z3nCore
             {
                 updString.Append($"{p.Key} = '{p.Value.Replace("'","")}',");
             }
-            project.DbUpd(updString.ToString().Trim(','), tableName, log, thrw);
+            project.DbUpd(updString.ToString().Trim(','), tableName, log, thrw, where:where, saveToVar : "");
         }
     
-        public static void DbUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, string key = "id", object acc = null, string where = "")
+        public static void DbUpd(this IZennoPosterProjectModel project, string toUpd, string tableName = null, bool log = false, bool thrw = false, string key = "id", object acc = null, string where = "", string saveToVar = "lastQuery")
         {
-            try { project.Var("lastQuery", toUpd); } catch (Exception ex){ project.SendWarningToLog(ex.Message, true); }
+            if (!string.IsNullOrEmpty(saveToVar))
+                project.Var(saveToVar, toUpd);
             project.SqlUpd(toUpd, tableName, log, thrw, key, acc, where);
         }
         public static void DbDone(this IZennoPosterProjectModel project, string task = "daily", int cooldownMin = 0, string tableName = null, bool log = false, bool thrw = false, string key = "id", object acc = null, string where = "")
@@ -210,7 +211,7 @@ namespace z3nCore
 
     public static class DbJson
     {
-        public static void JsonToDb(this IZennoPosterProjectModel project, string json, string tableName = null, bool log = false, bool thrw = false)
+        public static void JsonToDb(this IZennoPosterProjectModel project, string json, string tableName = null, bool log = false, bool thrw = false, string where = "")
         {
             tableName = project.TableName(tableName);
     
@@ -219,7 +220,7 @@ namespace z3nCore
             var dataDic = json.JsonToDic(true);
             dataDic["_json_structure"] = structure; 
     
-            project.DicToDb(dataDic, tableName, log, thrw);
+            project.DicToDb(dataDic, tableName, log, thrw,where:where);
         }
         private static string ExtractStructure(string json)
         {

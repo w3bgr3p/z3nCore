@@ -114,6 +114,7 @@
     <Compile Include="Core\Init.cs" />
     <Compile Include="Diagnostic\Debug.cs" />
     <Compile Include="Diagnostic\ProcAcc.cs" />
+    <Compile Include="Diagnostic\ResourceMonitor.cs" />
     <Compile Include="Diagnostic\Running.cs" />
     <Compile Include="MethodExtensions\ListExtentions.cs" />
     <Compile Include="MethodExtensions\StringExtentions.cs" />
@@ -133,6 +134,7 @@
     <Compile Include="Security\ISAFU.cs" />
     <Compile Include="Socials\Twitter.cs" />
     <Compile Include="Sql\Db.cs" />
+    <Compile Include="Sql\TaskManager.cs" />
     <Compile Include="Utilities\Converter.cs" />
     <Compile Include="Utilities\F0rms.cs" />
     <Compile Include="Utilities\LogDisabler.cs" />
@@ -175,7 +177,6 @@
     <Compile Include="Wallets\SuietWallet.cs" />
     <Compile Include="Wallets\ZerionWallet.cs" />
     <Compile Include="~deprecated\Fallback.cs" />
-    <Compile Include="~deprecated\Init.cs" />
     <Compile Include="~deprecated\X.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
