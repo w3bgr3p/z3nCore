@@ -19,6 +19,7 @@ namespace z3nCore.Api
         private readonly string _username;
         private readonly string _organization;
         private readonly string _branch;
+        private readonly Db _db;
         
         private const long MAX_FILE_SIZE_MB = 100;
         private const long MAX_TOTAL_SIZE_MB = 1000;
@@ -60,6 +61,11 @@ namespace z3nCore.Api
             _project = project ?? throw new ArgumentNullException(nameof(project));
             _log = new Logger(_project, true);
             
+            _db = new Db(project, dbMode: "PostgreSQL", 
+                pgHost: "localhost", pgPort: "5432", pgDbName: "postgres", pgUser: "postgres", pgPass: project.Var("dbPass"), 
+                defaultTable: "!projects"
+            );
+            
             if (string.IsNullOrWhiteSpace(token) || !token.StartsWith("ghp_"))
                 throw new ArgumentException("Invalid GitHub token. Must start with 'ghp_'", nameof(token));
                 
@@ -70,11 +76,6 @@ namespace z3nCore.Api
             _username = username;
             _organization = organization;
             _branch = branch;
-        }
-
-        public Git(IZennoPosterProjectModel project) : this(project, "", "", null)
-        {
-            // Оставлен для совместимости, но потребует передачи данных в SyncRepositories
         }
         
         public void SyncRepositories(string baseDir, string commitMessage = "ts")
@@ -123,15 +124,7 @@ namespace z3nCore.Api
             LogSummary(stats);
             #endregion
         }
-
-        [Obsolete("Используйте конструктор с параметрами авторизации и SyncRepositories()")]
-        public void Main(string baseDir, string token, string username, string commitMessage = "ts")
-        {
-            // Временный объект для совместимости
-            var tempGit = new Git(_project, token, username);
-            tempGit.SyncRepositories(baseDir, commitMessage);
-        }
-
+        
         public static string GetFileHash(string filePath)
         {
             try
@@ -148,28 +141,28 @@ namespace z3nCore.Api
                 return string.Empty;
             }
         }
-   
-
-  
+        
        private List<string> LoadProjectsConfiguration(string baseDir)
 		{
-		    var syncConfig = Path.Combine(baseDir, ".sync.txt");
-		    var projectsList = new List<string>();
-		    
-		    try
-		    {
-		        projectsList = File.ReadAllLines(syncConfig)
-		            .Where(line => !string.IsNullOrWhiteSpace(line))           // Убираем пустые
-		            .Where(line => !line.TrimStart().StartsWith("#"))          // Убираем комментарии
-		            .Select(line => line.Trim())                                // Убираем пробелы
-		            .ToList();
-		    }
-		    catch (Exception ex)
-		    {
-		        _project.SendWarningToLog(ex.Message);
-		    }
-		    
-		    return projectsList;
+            var projectsList = new List<string>();
+    
+            try
+            {
+                // Читаем из БД вместо файла
+                var allProjects = _project.DbGetLines("name", "!projects", where: "\"name\" != ''");
+        
+                foreach (var projectName in allProjects)
+                {
+                    var ghSynced = _db.Get("gh_synced", "!projects", where: $"\"name\" = '{projectName}'");
+                    projectsList.Add($"{projectName} : {ghSynced}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _project.SendWarningToLog(ex.Message);
+            }
+    
+            return projectsList;
 		}
 
         private void ProcessSingleProject(string baseDir, string projectToSync, string commitMessage, SyncStatistics stats)
