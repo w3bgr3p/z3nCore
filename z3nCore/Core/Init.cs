@@ -219,7 +219,7 @@ namespace z3nCore
                 decimal maxGas = decimal.Parse(_project.Var("gateOnchainMaxGas"));
                 foreach (string chain in chains)
                 {
-                    decimal gas = W3bTools.GasPrice(Rpc.Get(chain));
+                    decimal gas = _project.GasPrice(Rpc.Get(chain));
                     if (gas >= maxGas) 
                         goto native;
                 }
@@ -343,7 +343,7 @@ namespace z3nCore //ProjectExtensions
             new Init(project, instance).InitVariables(author);
         }
         
-        public static void RunBrowser(this IZennoPosterProjectModel project, Instance instance, string browserToLaunch = "Chromium", bool debug = false, bool fixTimezone = false,bool useLegacy = true)
+        public static void RunBrowser(this IZennoPosterProjectModel project, Instance instance, string browserToLaunch = "Chromium", bool debug = false, bool fixTimezone = false, bool useLegacy = true, bool useZpprofile = false, bool useFolder = true)
         {
             var browser = instance.BrowserType;
             var brw = new InstanceManager(project, instance, debug);
@@ -352,7 +352,7 @@ namespace z3nCore //ProjectExtensions
             if (browser != BrowserType.Chromium && browser != BrowserType.ChromiumFromZB)
             {	
                 //brw.PrepareInstance(browserToLaunch);
-                brw.Initialize(browserToLaunch, fixTimezone, useLegacy:useLegacy);
+                brw.Initialize(browserToLaunch, fixTimezone, useLegacy:useLegacy,useZpprofile, useFolder);
             }
         }
         

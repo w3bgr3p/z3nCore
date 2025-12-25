@@ -1,5 +1,4 @@
-﻿
-using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -35,30 +34,43 @@ namespace z3nCore
         
 
 
-        public void Initialize(string browserToLaunch = null, bool fixTimezone = false, bool useLegacy = true)
+        public void Initialize(string browserToLaunch = null, bool fixTimezone = false, bool useLegacy = true, bool useZpprofile = false, bool useFolder = true)
         {
+            _logger.Send($"[DIAG] Initialize START. Args: browserToLaunch='{browserToLaunch}', fixTimezone={fixTimezone}, useLegacy={useLegacy}");
             try
             {
-                LaunchBrowser(browserToLaunch);
+                LaunchBrowser(browserToLaunch, useZpprofile, useFolder);
             }
             catch (Exception e)
             {
+                _logger.Warn($"[DIAG] LaunchBrowser threw exception: {e.Message}");
                 _logger.Warn(e.Message);
                 throw;
             }
             
             int exCnt = 0;
             string browserType = _instance.BrowserType.ToString();
+            _logger.Send($"[DIAG] Browser launched. _instance.BrowserType='{browserType}'");
+
             bool browser = browserType == "Chromium";
+            _logger.Send($"[DIAG] Flag: browser={browser} (is Chromium)");
+
             if (useLegacy)
             {
                 SetInstance:
                 try 
                 {
-                    if (browser && _project.Variables["acc0"].Value != "")
-                        SetBrowser(fixTimezone: fixTimezone);	
+                    string acc0Val = _project.Variables["acc0"].Value;
+                    _logger.Send($"[DIAG] Legacy path. Attempt={exCnt}. acc0='{acc0Val}'");
+
+                    if (browser && acc0Val != "")
+                    {
+                        _logger.Send($"[DIAG] Condition met (browser && acc0!=''). Calling SetBrowser(fixTimezone: {fixTimezone})");
+                        SetBrowser(fixTimezone: fixTimezone);   
+                    }
                     else
                     {
+                        _logger.Send($"[DIAG] Condition else. Calling ProxySet()");
                         ProxySet();
                     }
                 }
@@ -66,10 +78,14 @@ namespace z3nCore
                 {
                     _instance.CloseAllTabs();
                     exCnt++;
-                    _logger.Warn($"SetInstance failed: attempt={exCnt}/3, acc={_project.Variables["acc0"].Value}, error={ex.Message}");
+                    string currentAcc = _project.Variables["acc0"].Value;
+                    _logger.Warn($"SetInstance failed: attempt={exCnt}/3, acc={currentAcc}, error={ex.Message}");
+                    _logger.Send($"[DIAG] Exception details: {ex.ToString()}");
+                    
                     if (exCnt > 3)
                     {
-                        _project.GVar($"acc{_project.Variables["acc0"].Value}", "");
+                        _logger.Send($"[DIAG] Max attempts reached. Clearing GVar acc{currentAcc}");
+                        _project.GVar($"acc{currentAcc}", "");
                         throw;
                     }
                     goto SetInstance;
@@ -77,7 +93,9 @@ namespace z3nCore
                 _instance.CloseExtraTabs(true);
                 return;
             }
-            _SetBrowser(fixTimezone: fixTimezone);	
+
+            _logger.Send($"[DIAG] Non-Legacy path. Calling _SetBrowser(fixTimezone: {fixTimezone})");
+            _SetBrowser(fixTimezone: fixTimezone);  
             
            
         }
@@ -85,6 +103,8 @@ namespace z3nCore
         private string LaunchBrowser(string cfgBrowser = null, bool useZpprofile = true, bool useFolder = true)
         {
             string acc0 = _project.Var("acc0");
+            _logger.Send($"[DIAG] LaunchBrowser START. acc0='{acc0}', cfgBrowser='{cfgBrowser}', useZpprofile={useZpprofile}, useFolder={useFolder}");
+
             if (string.IsNullOrEmpty(acc0)) 
                 throw new ArgumentException("acc0 can't be null or empty");
             
@@ -92,15 +112,27 @@ namespace z3nCore
             var pathToZpprofile = pathToProfileFolder + ".zpprofile";
             
             _logger.Send($"Profile path: {pathToProfileFolder}, exists: {Directory.Exists(pathToProfileFolder)}");
+            _logger.Send($"[DIAG] ZPProfile path: '{pathToZpprofile}', exists: {File.Exists(pathToZpprofile)}");
             
 
             if (useZpprofile && File.Exists(pathToZpprofile))
             {
                 
                 _logger.Send($"Profile path: {pathToZpprofile}, exists: {File.Exists(pathToZpprofile)}");
-                _project.Profile.Load(pathToZpprofile, true);
-
+                try
+                {
+                    _logger.Send($"[DIAG] Loading profile from '{pathToZpprofile}'");
+                    _project.Profile.Load(pathToZpprofile, true);
+                }
+                catch (Exception ex)
+                {
+                    _project.warn(ex);
+                    useZpprofile = false;
+                }
+                
             }
+            else 
+                useZpprofile = false;
 
             if (Directory.Exists(pathToProfileFolder) && useFolder)
             {
@@ -112,6 +144,7 @@ namespace z3nCore
             
             
             if (cfgBrowser == null) cfgBrowser = _project.Var("cfgBrowser");
+            _logger.Send($"[DIAG] Resolved cfgBrowser='{cfgBrowser}'");
             
             
             int pid = 0;
@@ -119,29 +152,39 @@ namespace z3nCore
 
             if (cfgBrowser == "WithoutBrowser"|| cfgBrowser == "")
             {
+                _logger.Send("[DIAG] Launching WithoutBrowser");
                 _instance.Launch(BrowserType.WithoutBrowser, true);
             }
             else if (cfgBrowser == "Chromium")
             {
                 var pidsBeforeLaunch = Utilities.ProcAcc.GetPidSnapshot();
+                _logger.Send($"[DIAG] PIDs before launch count: {pidsBeforeLaunch.Count}");
+
                 if (useFolder)
                 {
-                    _instance.UpFromFolder(pathToProfileFolder);
+                    _logger.Send($"[DIAG] Launching UpFromFolder: '{pathToProfileFolder}'");
+                    _instance.UpFromFolder(pathToProfileFolder , useZpprofile);
                 }
                 else
                 {
+                    _logger.Send($"[DIAG] Launching standard Chromium");
                     _instance.Launch(BrowserType.Chromium, true);
                 }
                 pid = Utilities.ProcAcc.GetNewlyLaunchedPid(acc0, pidsBeforeLaunch);
+                _logger.Send($"[DIAG] GetNewlyLaunchedPid result: {pid}");
+
                 if (pid == 0)
                 {
                     _logger.Send("PID search fallback: fast method failed, using slow search");
                     pid = Utilities.ProcAcc.GetNewest(acc0);
+                    _logger.Send($"[DIAG] GetNewest result: {pid}");
                 }
                 port = _instance.Port;
             }
             _project.Variables["instancePort"].Value = $"port: {port}, pid: {pid}";
             _logger.Send($"Browser launched: type={cfgBrowser}, port={port}, pid={pid}, acc={acc0}");
+            
+            _logger.Send($"[DIAG] Calling BindPid({pid}, {port})");
             BindPid(pid, port);
             return pid.ToString();
         }
@@ -149,6 +192,7 @@ namespace z3nCore
         #region Obsolete
         private void SetDisplay(string webGl)
         {
+            _logger.Send($"[DIAG] SetDisplay. webGl length: {webGl?.Length ?? 0}");
             if (!string.IsNullOrEmpty(webGl))
             {
                 var jsonObject = JObject.Parse(webGl);
@@ -194,6 +238,8 @@ namespace z3nCore
         private void SetBrowser(bool strictProxy = true, string cookies = null, bool fixTimezone = false)
         {
             string acc0 = _project.Var("acc0");
+            _logger.Send($"[DIAG] SetBrowser START. acc0='{acc0}', strictProxy={strictProxy}, cookies input='{cookies}', fixTimezone={fixTimezone}");
+
             if (string.IsNullOrEmpty(acc0)) throw new ArgumentException("acc0 can't be null or empty");
             
             string instanceType = "WithoutBrowser";
@@ -202,17 +248,22 @@ namespace z3nCore
                 instanceType = _instance.BrowserType.ToString();
             }
             finally { }
+            _logger.Send($"[DIAG] Instance Type: {instanceType}");
             
             if (instanceType == "Chromium")
             {
                 string webGlData = _project.SqlGet("webgl", "_instance");
+                _logger.Send($"[DIAG] Fetched WebGL from SQL. Length: {webGlData?.Length ?? 0}");
                 SetDisplay(webGlData);
                 
                 bool goodProxy = ProxySet();
+                _logger.Send($"[DIAG] ProxySet result: {goodProxy}");
+
                 if (strictProxy && !goodProxy) throw new Exception($"!E bad proxy");
                 
                 var cookiePath = _project.PathCookies();
                 _project.Var("pathCookies", cookiePath);
+                _logger.Send($"[DIAG] Cookie path: {cookiePath}");
 
                 if (cookies != null) 
                     _instance.SetCookie(cookies);
@@ -220,6 +271,7 @@ namespace z3nCore
                     try
                     {
                         cookies = _project.SqlGet("cookies", "_instance");
+                        _logger.Send($"[DIAG] Cookies from SQL length: {cookies?.Length ?? 0}");
                         _instance.SetCookie(cookies);
                     }
                     catch (Exception Ex)
@@ -228,6 +280,7 @@ namespace z3nCore
                         try
                         {
                             cookies = File.ReadAllText(cookiePath);
+                            _logger.Send($"[DIAG] Cookies from File length: {cookies?.Length ?? 0}");
                             _instance.SetCookie(cookies);
                         }
                         catch (Exception E)
@@ -239,6 +292,7 @@ namespace z3nCore
             
             if (fixTimezone)
             {
+                _logger.Send("[DIAG] Fixing timezone via BrowserScan");
                 var bs = new BrowserScan(_project, _instance);
                 if (bs.GetScore().Contains("time")) bs.FixTime();
             }
@@ -247,12 +301,16 @@ namespace z3nCore
         private void _SetBrowser(bool strictProxy = true, string restoreFrom = "folder", bool fixTimezone = false)
         {
             string acc0 = _project.Var("acc0");
+            _logger.Send($"[DIAG] _SetBrowser START. acc0='{acc0}', strictProxy={strictProxy}, restoreFrom='{restoreFrom}'");
+
             if (string.IsNullOrEmpty(acc0)) throw new ArgumentException("acc0 can't be null or empty");
-            var syncer = new ProfileSync(_project, _instance);
+            var syncer = new ProfileSync(_project, _instance,_log);
             string instanceType = "WithoutBrowser";
             try
             {
                 instanceType = _instance.BrowserType.ToString();
+                _logger.Send($"[DIAG] _SetBrowser: Pre-restore check. Type: {instanceType}");
+                
                 syncer.RestoreProfile(restoreFrom: "folder", restoreProfile: true,
                     restoreCookies: true, restoreInstance: false,
                     restoreWebgl: false, rebuildWebgl: false);
@@ -261,7 +319,7 @@ namespace z3nCore
             
             if (instanceType == "Chromium")
             {
-                
+                _logger.Send("[DIAG] _SetBrowser: Chromium path. Restoring full profile.");
                 syncer.RestoreProfile(restoreFrom: "folder", restoreProfile: true,
                     restoreCookies: true, restoreInstance: true,
                     restoreWebgl: true, rebuildWebgl: false);
@@ -269,10 +327,12 @@ namespace z3nCore
 
                 try
                 {
+                    _logger.Send("[DIAG] _SetBrowser: Calling ProxySet");
                     ProxySet();
                 }
                 catch (Exception ex)
                 {
+                    _logger.Send($"[DIAG] _SetBrowser: ProxySet failed. Error: {ex.Message}");
                     _project.warn(ex,strictProxy);
                 }
                 
@@ -302,6 +362,9 @@ namespace z3nCore
         {
             if (string.IsNullOrWhiteSpace(proxyString)) 
                 proxyString = _project.DbGet("proxy", "_instance");
+            
+            _logger.Send($"[DIAG] ProxySet logic. ProxyString='{proxyString}'");
+
             if (string.IsNullOrWhiteSpace(proxyString))
                 throw new ArgumentException("Proxy string is empty");
     
@@ -335,6 +398,8 @@ namespace z3nCore
                     continue;
                 }
             }
+            
+            _logger.Send($"[DIAG] Proxy Check Result: ipLocal={ipLocal}, ipProxified={ipProxified}");
     
             if (string.IsNullOrEmpty(ipProxified) || !System.Net.IPAddress.TryParse(ipProxified, out _))
             {
@@ -353,6 +418,7 @@ namespace z3nCore
 
         private void BindPid(int pid, int port)
         {
+            _logger.Send($"[DIAG] BindPid Entering. pid={pid}, port={port}");
             if (pid == 0) return;
             try
             {
@@ -363,10 +429,12 @@ namespace z3nCore
                     var runtimeMinutes = (int)(DateTime.Now - proc.StartTime).TotalMinutes;
                     var name = _project.ProjectName();
                     Running.Add(pid, new List<object> { memoryMb, runtimeMinutes, port, name, acc0 });
+                    _logger.Send($"[DIAG] BindPid Success. Mem={memoryMb}, Time={runtimeMinutes}");
                 }
             }
             catch (Exception ex)
             {
+                _logger.Warn($"[DIAG] BindPid ERROR: {ex.Message}");
                 _logger.Warn(ex.Message);
             }
         }
@@ -429,7 +497,7 @@ namespace z3nCore
                     return;
                 }
 
-                var syncer = new ProfileSync(_project, _instance);
+                var syncer = new ProfileSync(_project, _instance,_log);
         
                 syncer.SaveProfile(
                     saveTo: saveTo,

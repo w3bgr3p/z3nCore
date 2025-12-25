@@ -45,7 +45,7 @@ namespace z3nCore.W3b
                 true             // wait for confirmation
             );
     
-            bool result = W3bTools.WaitTx(_rpc, hash);
+            bool result = _project.WaitTx(_rpc, hash);
             _log.Send($"Request tokens from faucet: {result}: {hash}");
         }
         public void Deposit(decimal ethAmount)
@@ -64,7 +64,7 @@ namespace z3nCore.W3b
                 true
             );
     
-            bool result = W3bTools.WaitTx(_rpc, hash);
+            bool result = _project.WaitTx(_rpc, hash);
             _log.Send($"Deposit {ethAmount} ETH to faucet: {result}: {hash}");
         }
         public void SetWithdrawAmount(decimal ethAmount)
@@ -95,7 +95,7 @@ namespace z3nCore.W3b
                 true
             );
             
-            bool result = W3bTools.WaitTx(_rpc, hash);
+            bool result = _project.WaitTx(_rpc, hash);
             _log.Send($"Set withdraw amount to {ethAmount} ETH: {result}: {hash}");
         }
         public void SetCooldownTime(uint timeInSeconds)
@@ -122,7 +122,7 @@ namespace z3nCore.W3b
                 true
             );
             
-            bool result = W3bTools.WaitTx(_rpc, hash);
+            bool result = _project.WaitTx(_rpc, hash);
             _log.Send($"Set cooldown time to {timeInSeconds} seconds: {result}: {hash}");
         }
         public void WithdrawAllFromFaucet()
@@ -142,7 +142,7 @@ namespace z3nCore.W3b
                 true
             );
             
-            bool result = W3bTools.WaitTx(_rpc, hash);
+            bool result = _project.WaitTx(_rpc, hash);
             _log.Send($"Withdraw all from faucet: {result}: {hash}");
         }
         BigInteger DecimalToWei(decimal amount, int decimals) {

@@ -17,9 +17,8 @@ namespace z3nCore
         {
             project.GenerateFullHtmlReport();
         }
-
-
-
+        
+        
         
     }
 }

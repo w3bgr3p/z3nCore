@@ -213,7 +213,7 @@ namespace z3nCore
             bool filterDiscord = false, 
             string tableName = null, 
             bool debugLog = false,
-            bool useLegacy = true)
+            bool useLegacy = true, bool useZpprofile = false, bool useFolder = true)
         {
             
             while (true)
@@ -228,7 +228,7 @@ namespace z3nCore
                     
                     var browserMode = browser ? "Chromium" : "WithoutBrowser";
                     //run
-                    project.RunBrowser(instance,browserMode, useLegacy:useLegacy);
+                    project.RunBrowser(instance,browserMode, debug:debugLog, useLegacy:useLegacy, useZpprofile:useZpprofile, useFolder:useFolder);
                     return;
 		
                 }
@@ -244,6 +244,92 @@ namespace z3nCore
             }
 
 
+        }
+        
+       public static int QuantityByCondition(this IZennoPosterProjectModel project,
+            string condition,
+            bool useRange = true,
+            bool filterTwitter = false,
+            bool filterDiscord = false,
+            string tableName = null,
+            bool debugLog = false)
+        {
+            if (string.IsNullOrEmpty(tableName)) 
+                tableName = project.ProjectTable();
+            
+            // Parse priority groups from cfgAccRange
+            List<string> rangeGroups = new List<string>();
+            if (useRange)
+            {
+                var cfgAccRange = project.Var("cfgAccRange");
+                rangeGroups = ParseRangeGroups(project, cfgAccRange);
+            }
+            else
+            {
+                rangeGroups.Add(null); // Single iteration without range
+            }
+            
+            int totalCount = 0;
+            
+            // Iterate through each priority group
+            foreach (var rangeGroup in rangeGroups)
+            {
+                var fullCondition = useRange
+                    ? $"{condition} AND id in ({rangeGroup})"
+                    : condition;
+
+                var accounts = project.DbGetLines("id", tableName: tableName, log: debugLog, where: fullCondition)
+                    .Where(acc => !string.IsNullOrWhiteSpace(acc))
+                    .ToList();
+
+                if (!accounts.Any())
+                    continue;
+
+                // Filter by Twitter if needed
+                if (filterTwitter)
+                {
+                    var twitterFiltered = new HashSet<string>(
+                        project.DbGetLines("id", $"_twitter", where: @"status = 'ok'")
+                    );
+                    accounts = accounts.Where(acc => twitterFiltered.Contains(acc)).ToList();
+                    
+                    if (!accounts.Any())
+                        continue;
+                }
+
+                // Filter by Discord if needed
+                if (filterDiscord)
+                {
+                    var discordFiltered = new HashSet<string>(
+                        project.DbGetLines("id", $"_discord", where: @"status = 'ok'")
+                    );
+                    accounts = accounts.Where(acc => discordFiltered.Contains(acc)).ToList();
+                    
+                    if (!accounts.Any())
+                        continue;
+                }
+
+                totalCount += accounts.Count;
+            }
+            
+            return totalCount;
+        }
+
+        // Helper method without logging
+        private static bool FilterBySocialSilent(IZennoPosterProjectModel project, string socialName)
+        {
+            var accs = project.ListSync("accs");
+            var filtered = new HashSet<string>(
+                project.DbGetLines("id", $"_{socialName.ToLower()}", where: @"status = 'ok'")
+            );
+
+            var combined = accs
+                .Where(acc => filtered.Contains(acc))
+                .ToList();
+            
+            project.ListSync("accs", combined);
+            
+            return combined.Any();
         }
 
         private static bool FilterBySocial(this IZennoPosterProjectModel project, string socialName, string originalCondition = "")

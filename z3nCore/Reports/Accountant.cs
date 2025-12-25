@@ -1455,7 +1455,7 @@ namespace z3nCore.Utilities
 
                   try
                   {
-                      var balance = W3bTools.ERC20(contract, Rpc.Get(chain), address);
+                      var balance = project.ERC20(contract, Rpc.Get(chain), address);
                       res.Add($"{acc}:{balance}");
                   }
                   catch (Exception ex)
@@ -1478,7 +1478,7 @@ namespace z3nCore.Utilities
 
                   try
                   {
-                      var balance = W3bTools.ERC721(contract, Rpc.Get(chain), address);
+                      var balance = project.ERC721(contract, Rpc.Get(chain), address);
                       res.Add($"{acc}:{balance}");
                   }
                   catch (Exception ex)

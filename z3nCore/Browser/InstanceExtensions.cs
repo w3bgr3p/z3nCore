@@ -602,14 +602,15 @@ namespace z3nCore
         }
         
         
-        public static void UpFromFolder(this Instance instance, string pathProfile,
+        public static void UpFromFolder(this Instance instance, string pathProfile,bool useProfile = false,
             ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType browserType = ZennoLab.InterfacesLibrary.Enums.Browser.BrowserType.Chromium)
         {
+            
             ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings settings =
                 (ZennoLab.CommandCenter.Classes.BuiltInBrowserLaunchSettings)ZennoLab.CommandCenter.Classes.BrowserLaunchSettingsFactory.Create(browserType);
             settings.CachePath = pathProfile; 
             settings.ConvertProfileFolder = true;
-            settings.UseProfile = true;
+            settings.UseProfile = useProfile;
             instance.Launch(settings);
         }
         public static void UpEmpty(this Instance instance)

@@ -52,7 +52,7 @@ namespace z3nCore
             decimal fee = 0.00005m;
             string key = _project.DbKey("evm");
             var accountAddress = key.ToEvmAddress(); 
-            var native = W3bTools.EvmNative(rpc, accountAddress);
+            var native = _project.EvmNative(rpc, accountAddress);
             
             if (native < value + fee)
             {
@@ -84,7 +84,7 @@ namespace z3nCore
             catch (Exception ex) { _project.SendWarningToLog($"{ex.Message}", true); throw; }
 
             if (log) _logger.Send(txHash);
-            W3bTools.WaitTx(rpc, txHash);
+            _project.WaitTx(rpc, txHash);
             return txHash;
         }
 
@@ -98,7 +98,7 @@ namespace z3nCore
             {
                 rpc = Rpc.Get(RPC);
                 
-                var native = W3bTools.EvmNative(rpc, accountAddress);
+                var native = _project.EvmNative(rpc, accountAddress);
                 var required = value;// + 0.00015m;
                 if (native > required)
                 {

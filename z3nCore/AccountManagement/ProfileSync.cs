@@ -2,22 +2,22 @@
 using System.IO;
 using System.Collections.Generic;
 using ZennoLab.CommandCenter;
-
 using ZennoLab.InterfacesLibrary.ProjectModel;
-
 using ZennoLab.InterfacesLibrary.ProjectModel.Collections;
 
 namespace z3nCore.Utilities
 {
     public class ProfileSync
     {
-         private readonly IZennoPosterProjectModel _project;
+        private readonly IZennoPosterProjectModel _project;
         private readonly Instance _instance;
+        private readonly Logger _log;
 
-        public ProfileSync(IZennoPosterProjectModel project, Instance instance)
+        public ProfileSync(IZennoPosterProjectModel project, Instance instance, bool log = false)
         {
             _project = project;
             _instance = instance;
+            _log = new Logger(_project, log, classEmoji: "☻");
         }
 
         public void RestoreProfile(
@@ -28,36 +28,52 @@ namespace z3nCore.Utilities
             bool restoreWebgl = true,
             bool rebuildWebgl = false)
         {
-            restoreFrom = restoreFrom.ToLower();
-            if (restoreFrom != "folder" && restoreFrom != "zb" && restoreFrom != "zpprofile" )
-                throw new Exception("restoreFrom must be either [ folder | zb | zpprofile ] ");
+            _log.Send($"[DIAG] RestoreProfile START. Source='{restoreFrom}', Prof={restoreProfile}, Cook={restoreCookies}, Inst={restoreInstance}, WebGL={restoreWebgl}");
             
-            var sourse = restoreFrom +"_";
+            restoreFrom = restoreFrom?.ToLower();
+            if (restoreFrom != "folder" && restoreFrom != "zb" && restoreFrom != "zpprofile" )
+                throw new Exception($"restoreFrom must be either [ folder | zb | zpprofile ]. Current: '{restoreFrom}'");
+            
+            var sourse = restoreFrom + "_";
+            _log.Send($"[DIAG] Resolved DB prefix: '{sourse}'");
 
             if (restoreProfile)
             {
                 var profileList = PropertyManager.GetTypeProperties(typeof(IProfile));
-                _project.SetValuesFromDb(_project.Profile,sourse+ "profile", profileList);
+                var tableName = sourse + "profile";
+                _log.Send($"[DIAG] Restoring IProfile from table: '{tableName}'. Properties count: {profileList?.Count ?? 0}");
+                _project.SetValuesFromDb(_project.Profile, tableName, profileList);
             }
 
             if (restoreInstance)
             {
                 var instanceList = PropertyManager.GetTypeProperties(typeof(Instance));
-                _project.SetValuesFromDb(_instance, sourse + "instance", instanceList);
+                var tableName = sourse + "instance";
+                _log.Send($"[DIAG] Restoring Instance from table: '{tableName}'. Properties count: {instanceList?.Count ?? 0}");
+                _project.SetValuesFromDb(_instance, tableName, instanceList);
             }
             
             if (restoreWebgl)
             {
-                string webglData = (rebuildWebgl) ? _project.DbToJson(sourse +"webgl") :_project.DbGet("_preferences",sourse +"webgl");
+                var tableName = sourse + "webgl";
+                _log.Send($"[DIAG] Restoring WebGL. Rebuild={rebuildWebgl}, Table='{tableName}'");
+                string webglData = (rebuildWebgl) ? _project.DbToJson(tableName) : _project.DbGet("_preferences", tableName);
+                _log.Send($"[DIAG] WebGL data length: {webglData?.Length ?? 0}");
                 _instance.WebGLPreferences.Load(webglData);
             }
             
             if (restoreCookies)
             {
-                var cookies = _project.DbGet($"cookies",sourse + "profile").FromBase64();
+                var tableName = sourse + "profile";
+                _log.Send($"[DIAG] Restoring Cookies from table: '{tableName}'");
+                var cookiesRaw = _project.DbGet($"cookies", tableName);
+                _log.Send($"[DIAG] Cookies (Base64) length: {cookiesRaw?.Length ?? 0}");
+                
+                var cookies = cookiesRaw.FromBase64();
+                _log.Send($"[DIAG] Decoded cookies length: {cookies?.Length ?? 0}");
                 _instance.SetCookie(cookies);
             }
-            
+            _log.Send("[DIAG] RestoreProfile COMPLETED successfully");
         }
         
         public void SaveProfile(
@@ -67,44 +83,57 @@ namespace z3nCore.Utilities
             bool saveCookies = true,
             bool saveWebgl = true)
         {
-            saveTo = saveTo.ToLower();
-            if (saveTo != "folder" && saveTo != "zb" && saveTo != "zpprofile" )
-                throw new Exception("SaveTo must be either [ folder | zb | zpprofile ] ");
+            _log.Send($"[DIAG] SaveProfile START. Dest='{saveTo}', Prof={saveProfile}, Inst={saveInstance}, Cook={saveCookies}, WebGL={saveWebgl}");
             
-            var sourse = saveTo +"_";
+            saveTo = saveTo?.ToLower();
+            if (saveTo != "folder" && saveTo != "zb" && saveTo != "zpprofile" )
+                throw new Exception($"SaveTo must be either [ folder | zb | zpprofile ]. Current: '{saveTo}'");
+            
+            var sourse = saveTo + "_";
 
             if (saveProfile)
             {
                 var profileList = PropertyManager.GetTypeProperties(typeof(IProfile));
-                _project.GetValuesByProperty(_project.Profile, profileList, tableToUpd: sourse + "profile");
+                var tableName = sourse + "profile";
+                _log.Send($"[DIAG] Saving IProfile to table: '{tableName}'");
+                _project.GetValuesByProperty(_project.Profile, profileList, tableToUpd: tableName);
             }
 
             if (saveInstance)
             {
                 var instanceList = PropertyManager.GetTypeProperties(typeof(Instance));
-                _project.GetValuesByProperty(_instance,instanceList, tableToUpd:sourse + "instance");
+                var tableName = sourse + "instance";
+                _log.Send($"[DIAG] Saving Instance to table: '{tableName}'");
+                _project.GetValuesByProperty(_instance, instanceList, tableToUpd: tableName);
             }
             
             if (saveCookies)
             {
-                _project.SaveAllCookies(_instance, table:sourse + "profile");
+                var tableName = sourse + "profile";
+                _log.Send($"[DIAG] Saving All Cookies to table: '{tableName}'");
+                _project.SaveAllCookies(_instance, table: tableName);
             }
                         
             if (saveWebgl)
             {
-                string webglData =  _instance.WebGLPreferences.Save();
+                var tableName = sourse + "webgl";
+                _log.Send($"[DIAG] Saving WebGL to table: '{tableName}'");
+                string webglData = _instance.WebGLPreferences.Save();
+                _log.Send($"[DIAG] Generated WebGL string length: {webglData?.Length ?? 0}");
                
-                _project.DbUpd($"_preferences = '{webglData}'",sourse + "webgl", saveToVar:"");
-                _project.JsonToDb(webglData, sourse + "webgl");
+                _project.DbUpd($"_preferences = '{webglData}'", tableName, saveToVar: "");
+                _project.JsonToDb(webglData, tableName);
             }
-            
+            _log.Send("[DIAG] SaveProfile COMPLETED successfully");
         }
         
 
-        public void AddStructureToDb(  bool log = false)
+        public void AddStructureToDb(bool log = false)
         {
+            _log.Send("[DIAG] AddStructureToDb: Checking existing tables...");
             if (_project.TblExist("folder_profile") && _project.TblExist("zb_profile"))
             {
+                _log.Send("[DIAG] Tables already exist. Skipping structure creation.");
                 return;
             }
             
@@ -113,15 +142,16 @@ namespace z3nCore.Utilities
                 "zpprofile_profile","zpprofile_instance","zpprofile_webgl", };
 
             string primary = "INTEGER PRIMARY KEY";
-            string defaultType = "TEXT DEFAULT ''";	
-		
+            string defaultType = "TEXT DEFAULT ''"; 
+       
             var tableStructure = new Dictionary<string, string>
                 {{ "id", primary },};
-		
+       
             foreach(var tablename in tables)
             {
+                _log.Send($"[DIAG] Creating table: '{tablename}'");
                 _project.TblAdd(tableStructure, tablename);
-                _project.AddRange(tablename);	
+                _project.AddRange(tablename);   
             }
 
             _project.ClmnAdd("cookies","folder_profile");
@@ -131,12 +161,13 @@ namespace z3nCore.Utilities
             
             string[] zb_tables = {"zb_profile","zb_instance"};
             string zb_primary = "TEXT PRIMARY KEY";
-		
+       
             var zb_tableStructure = new Dictionary<string, string>
                 {{ "zb_id", zb_primary },{ "id", defaultType },{ "_name", defaultType }};
-		
+       
             foreach(var tablename in zb_tables)
             {
+                _log.Send($"[DIAG] Creating ZB table: '{tablename}'");
                 _project.TblAdd(zb_tableStructure, tablename);
             }
 
@@ -149,6 +180,7 @@ namespace z3nCore.Utilities
 
             foreach(var tablename in tables_profile)
             {
+                _log.Send($"[DIAG] Adding profile columns to: '{tablename}'");
                 _project.ClmnAdd("cookies",tablename);
                 _project.ClmnAdd(IProfileList,tablename);
             }
@@ -160,11 +192,10 @@ namespace z3nCore.Utilities
             };
             foreach(var tablename in tables_instance)
             {
+                _log.Send($"[DIAG] Adding instance columns to: '{tablename}'");
                 _project.ClmnAdd(instanceList,tablename);
             }
-            
+            _log.Send("[DIAG] AddStructureToDb COMPLETED");
         }
-        
-        
     }
 }
