@@ -313,7 +313,101 @@ namespace z3nCore
             }
         }
 
+        public static string PUT(
+            this IZennoPosterProjectModel project,
+            string url,
+            string body,
+            string proxy = "",
+            string[] headers = null,
+            string cookies = null,
+            bool log = false,
+            bool parse = false,
+            bool parseJson = false,
+            int deadline = 30,
+            bool thrw = false,
+            bool useNetHttp = false,
+            bool returnSuccessWithStatus = false)
+        {
+            if (project == null) throw new ArgumentNullException(nameof(project));
+            if (parseJson)
+            {
+                parse = parseJson;
+                project.warn("using obsolete parameter \"parseJson\", change to \"parse\" ASAP");
+            }
 
+            var logger = new Logger(project, log, classEmoji: "↑↓");
+            string debugProxy = proxy;
+
+            try
+            {
+                string responseBody;
+                int statusCode;
+
+                if (useNetHttp)
+                {
+                    responseBody = ExecutePutViaNetHttp(
+                        project,
+                        url,
+                        body,
+                        proxy,
+                        headers,
+                        deadline,
+                        thrw,
+                        logger,
+                        out statusCode);
+                }
+                else
+                {
+                    responseBody = ExecutePutViaZennoPoster(
+                        project,
+                        url,
+                        body,
+                        proxy,
+                        headers,
+                        cookies,
+                        deadline,
+                        logger,
+                        out statusCode);
+                }
+
+                if (log)
+                {
+                    LogStatus(logger, statusCode, url, debugProxy);
+                    logger.Send($"response: [{responseBody}]");
+                }
+
+                if (statusCode < 200 || statusCode >= 300)
+                {
+                    string errorMessage = FormatErrorMessage(statusCode, responseBody);
+                    logger.Send($"!W HTTP Error: [{errorMessage}] url:[{url}] proxy:[{debugProxy}]");
+
+                    if (thrw)
+                    {
+                        throw new Exception(errorMessage);
+                    }
+                    return errorMessage;
+                }
+
+                if (returnSuccessWithStatus)
+                {
+                    return $"{statusCode}\r\n\r\n{responseBody.Trim()}";
+                }
+
+                if (parse)
+                {
+                    ParseJson(project, responseBody, logger);
+                }
+
+                return responseBody.Trim();
+            }
+            catch (Exception e)
+            {
+                string errorMessage = $"Error: {e.Message}";
+                logger.Send($"!W RequestErr: [{e.Message}] url:[{url}] (proxy: [{debugProxy}])");
+                if (thrw) throw;
+                return errorMessage;
+            }
+        }
         
         private static string ExecuteGetViaZennoPoster(
             IZennoPosterProjectModel project,
@@ -529,6 +623,116 @@ namespace z3nCore
             return response;
         }
 
+        private static string ExecutePutViaZennoPoster(
+        IZennoPosterProjectModel project,
+        string url,
+        string body,
+        string proxy,
+        string[] headers,
+        string cookies,
+        int deadline,
+        Logger logger,
+        out int statusCode)
+        {
+            string fullResponse;
+            
+            if (string.IsNullOrEmpty(cookies))
+            {
+                cookies = GetCookiesForRequest(project, url);
+            }
+            
+            bool useCookieContainer = string.IsNullOrEmpty(cookies);
+            
+            lock (LockObject)
+            {
+                string proxyString = ParseProxy(project, proxy, logger);
+                headers = PrepareHeaders(project, headers, out string userAgent, out string contentType);
+
+                fullResponse = ZennoPoster.HTTP.Request(
+                    HttpMethod.PUT,
+                    url,
+                    body,
+                    contentType,
+                    proxyString,
+                    "UTF-8",
+                    ResponceType.HeaderAndBody,
+                    deadline * 1000,
+                    cookies ?? "",
+                    userAgent,
+                    true,
+                    5,
+                    headers,
+                    "",
+                    false,
+                    true,
+                    useCookieContainer ? project.Profile.CookieContainer : null);
+            }
+
+            string responseBody;
+            ParseResponse(fullResponse, out statusCode, out responseBody);
+            return responseBody;
+        }
+
+        private static string ExecutePutViaNetHttp(
+            IZennoPosterProjectModel project,
+            string url,
+            string body,
+            string proxy,
+            string[] headers,
+            int deadline,
+            bool thrw,
+            Logger logger,
+            out int statusCode)
+        {
+            var netHttp = new NetHttp(project, log: false);
+
+            Dictionary<string, string> headersDic = null;
+            if (headers != null && headers.Length > 0)
+            {
+                headersDic = ConvertHeadersToDictionary(headers);
+            }
+            else
+            {
+                try
+                {
+                    var headersArray = project.Var("headers").Split('\n');
+                    headersDic = ConvertHeadersToDictionary(headersArray);
+                }
+                catch { }
+            }
+
+            if (headersDic == null)
+            {
+                headersDic = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            if (!headersDic.ContainsKey("Cookie"))
+            {
+                string cookies = GetCookiesForRequest(project, url);
+                if (!string.IsNullOrEmpty(cookies))
+                {
+                    headersDic["Cookie"] = cookies.TrimEnd(';', ' ');
+                }
+            }
+
+            string response = netHttp.PUT(
+                url,
+                body,
+                proxy,
+                headersDic,
+                parse: false,
+                deadline: deadline,
+                throwOnFail: false
+            );
+
+            statusCode = TryParseStatusFromNetHttpResponse(response);
+
+            return response;
+        }
+        
+        
+        
+        
         /// <summary>
         /// Подготовить заголовки для ZennoPoster.HTTP.Request
         /// Извлекает User-Agent и Content-Type из headers, фильтрует системные заголовки

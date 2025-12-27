@@ -386,38 +386,43 @@ namespace z3nCore
         /// <summary>
         /// ✅ ИСПРАВЛЕНО: ASYNC PUT запрос
         /// </summary>
+/// <summary>
+/// ✅ ИСПРАВЛЕНО: ASYNC PUT запрос
+/// </summary>
         public async Task<string> PutAsync(
             string url,
             string body = "",
             string proxyString = "",
             Dictionary<string, string> headers = null,
-            bool parse = false)
+            bool parse = false,
+            int deadline = 15,
+            bool throwOnFail = false)
         {
+            string debugHeaders = "";
             try
             {
-                HttpClient client = GetHttpClient(proxyString, 30);
+                HttpClient client = GetHttpClient(proxyString, deadline);
 
                 using (var request = new HttpRequestMessage(HttpMethod.Put, url))
                 {
-                    using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30)))
+                    using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(deadline)))
                     {
                         if (!string.IsNullOrEmpty(body))
                         {
                             request.Content = new StringContent(body, Encoding.UTF8, "application/json");
                         }
 
-                        string defaultUserAgent = _project.Profile.UserAgent;
-                        if (headers == null || !headers.ContainsKey("User-Agent"))
-                        {
-                            request.Headers.Add("User-Agent", defaultUserAgent);
-                        }
+                        var requestHeaders = BuildHeaders(headers);
 
-                        if (headers != null)
+                        foreach (var header in requestHeaders)
                         {
-                            foreach (var header in headers)
-                            {
-                                request.Headers.TryAddWithoutValidation(header.Key, header.Value);
-                            }
+                            request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                            debugHeaders += $"{header.Key}: {header.Value}; ";
+                        }
+                        
+                        if (!string.IsNullOrEmpty(body))
+                        {
+                            debugHeaders += "Content-Type: application/json; charset=UTF-8; ";
                         }
 
                         if (!string.IsNullOrEmpty(body))
@@ -427,12 +432,25 @@ namespace z3nCore
 
                         using (HttpResponseMessage response = await client.SendAsync(request, cts.Token).ConfigureAwait(false))
                         {
-                            response.EnsureSuccessStatusCode();
+                            int statusCode = (int)response.StatusCode;
+
+                            if (!response.IsSuccessStatusCode)
+                            {
+                                string errorMessage = $"{statusCode} !!! {response.ReasonPhrase}";
+                                _logger.Send($"[PUT] SERVER Err: [{errorMessage}] url:[{url}] (proxy: {proxyString}), headers: [{debugHeaders.Trim()}]");
+                                if (throwOnFail)
+                                {
+                                    response.EnsureSuccessStatusCode();
+                                }
+                                return errorMessage;
+                            }
+
+                            string responseHeaders = string.Join("; ", response.Headers.Select(h => $"{h.Key}: {string.Join(", ", h.Value)}"));
 
                             string cookies = "";
                             if (response.Headers.TryGetValues("Set-Cookie", out var cookieValues))
                             {
-                                cookies = cookieValues.Aggregate((a, b) => a + "; " + b);
+                                cookies = string.Join("; ", cookieValues);
                                 _logger.Send($"Set-Cookie found: {cookies}");
                             }
 
@@ -453,13 +471,24 @@ namespace z3nCore
             }
             catch (HttpRequestException e)
             {
-                _logger.Send($"!W RequestErr: [{e.Message}] url:[{url}] (proxy: {(proxyString != "" ? proxyString : "noProxy")})");
-                return e.Message;
+                string errorMessage = e.Message.Contains("Response status code")
+                    ? e.Message.Replace("Response status code does not indicate success:", "").Trim('.').Trim()
+                    : e.Message;
+                _logger.Send($"[PUT] SERVER Err: [{errorMessage}] url:[{url}] (proxy: {proxyString}), headers: [{debugHeaders.Trim()}]");
+                if (throwOnFail) throw;
+                return errorMessage;
+            }
+            catch (TaskCanceledException e)
+            {
+                _logger.Send($"!W [PUT] Timeout: [{e.Message}] url:[{url}] (proxy: {proxyString}) headers: [{debugHeaders.Trim()}]");
+                if (throwOnFail) throw;
+                return $"Timeout: {e.Message}";
             }
             catch (Exception e)
             {
-                _logger.Send($"!W UnknownErr: [{e.Message}] url:[{url}] (proxy: {(proxyString != "" ? proxyString : "noProxy")})");
-                return $"Ошибка: {e.Message}";
+                _logger.Send($"!W [PUT] RequestErr: [{e.Message}] url:[{url}] (proxy: {proxyString}) headers: [{debugHeaders.Trim()}]");
+                if (throwOnFail) throw;
+                return $"Error: {e.Message}";
             }
         }
 
@@ -651,11 +680,13 @@ namespace z3nCore
             string body = "",
             string proxyString = "",
             Dictionary<string, string> headers = null,
-            bool parse = false)
+            bool parse = false,
+            int deadline = 15,
+            bool throwOnFail = false)
         {
             // ✅ Task.Run + ConfigureAwait(false) избегает deadlock
             return Task.Run(async () =>
-                await _asyncClient.PutAsync(url, body, proxyString, headers, parse)
+                await _asyncClient.PutAsync(url, body, proxyString, headers, parse, deadline, throwOnFail)
                     .ConfigureAwait(false)
             ).GetAwaiter().GetResult();
         }
