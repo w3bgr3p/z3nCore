@@ -421,15 +421,22 @@ namespace z3nCore
         {
             string fullResponse;
             
-            // Если cookies не переданы явно, используем GetCookiesForRequest
-            if (string.IsNullOrEmpty(cookies))
+            bool useCookieContainer; // ← Объяви ТУТ
+    
+            // Явный пустой запрос без кук
+            if (cookies == "-")
             {
-                cookies = GetCookiesForRequest(project, url);
+                cookies = "";
+                useCookieContainer = false;
             }
-            
-            // Если GetCookiesForRequest вернул null, используем CookieContainer
-            // Иначе передаем null в CookieContainer чтобы использовать строку cookies
-            bool useCookieContainer = string.IsNullOrEmpty(cookies);
+            else
+            {
+                if (string.IsNullOrEmpty(cookies))
+                {
+                    cookies = GetCookiesForRequest(project, url);
+                }
+                useCookieContainer = string.IsNullOrEmpty(cookies);
+            }
             
             lock (LockObject)
             {
@@ -473,13 +480,21 @@ namespace z3nCore
         {
             string fullResponse;
             
-            if (string.IsNullOrEmpty(cookies))
+            bool useCookieContainer; 
+    
+            if (cookies == "-")
             {
-                cookies = GetCookiesForRequest(project, url);
+                cookies = "";
+                useCookieContainer = false;
             }
-            
-
-            bool useCookieContainer = string.IsNullOrEmpty(cookies);
+            else
+            {
+                if (string.IsNullOrEmpty(cookies))
+                {
+                    cookies = GetCookiesForRequest(project, url);
+                }
+                useCookieContainer = string.IsNullOrEmpty(cookies);
+            }
             
             lock (LockObject)
             {
@@ -635,14 +650,21 @@ namespace z3nCore
         out int statusCode)
         {
             string fullResponse;
-            
-            if (string.IsNullOrEmpty(cookies))
+            bool useCookieContainer; 
+    
+            if (cookies == "-")
             {
-                cookies = GetCookiesForRequest(project, url);
+                cookies = "";
+                useCookieContainer = false;
             }
-            
-            bool useCookieContainer = string.IsNullOrEmpty(cookies);
-            
+            else
+            {
+                if (string.IsNullOrEmpty(cookies))
+                {
+                    cookies = GetCookiesForRequest(project, url);
+                }
+                useCookieContainer = string.IsNullOrEmpty(cookies);
+            }
             lock (LockObject)
             {
                 string proxyString = ParseProxy(project, proxy, logger);

@@ -10,10 +10,7 @@ namespace z3nCore
 {
     public class UnlockApi
     {
-
         protected readonly IZennoPosterProjectModel _project;
-        //protected readonly bool _logShow;
-        //protected readonly Sql _sql;
         protected readonly string _jsonRpc;
         protected readonly Blockchain _blockchain;
         protected readonly string _abi = @"[
@@ -61,8 +58,6 @@ namespace z3nCore
         public UnlockApi(IZennoPosterProjectModel project, bool log = false)
         {
             _project = project;
-            //_sql = new Sql(_project);
-            //_logShow = log;
             _jsonRpc = Rpc.Get("optimism");
             _blockchain = new Blockchain(_jsonRpc);
         }

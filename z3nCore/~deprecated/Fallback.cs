@@ -1,4 +1,5 @@
-﻿using ZennoLab.CommandCenter;
+﻿using z3nCore.Utilities;
+using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
@@ -15,7 +16,9 @@ namespace z3nCore
         }
         public static void ReportDailyHtml(this IZennoPosterProjectModel project, bool call = false, bool withPid = false)
         {
-            project.GenerateFullHtmlReport();
+            var gen = new JsonReportGenerator(project, log: true);
+            gen.GenerateFullReport();
+            gen.GenerateProcessReport();
         }
         
         

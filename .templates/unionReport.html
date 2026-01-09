@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang='ru'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Union Report - Live</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Iosevka', 'Consolas', monospace;
+            background: #0d1117;
+            padding: 15px;
+            color: #c9d1d9;
+        }
+        .container { max-width: 1900px; margin: 0 auto; }
+        
+        /* Headers */
+        .header {
+            background: #161b22;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            padding: 12px 20px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { font-size: 18px; font-weight: 600; }
+        .main-header {
+            background: linear-gradient(135deg, #161b22 0%, #1c2128 100%);
+            border: 2px solid #58a6ff;
+        }
+        
+        .section-header {
+            background: #0d1117;
+            border-left: 4px solid #58a6ff;
+            padding: 10px 15px;
+            margin: 20px 0 15px 0;
+        }
+        .section-header h2 {
+            font-size: 16px;
+            color: #58a6ff;
+            font-weight: 600;
+        }
+        .section-divider {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #30363d, transparent);
+            margin: 30px 0;
+        }
+        
+        /* Summary Cards */
+        .summary-cards {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .summary-card {
+            background: #161b22;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid #30363d;
+            flex: 1;
+            min-width: 0;
+        }
+        .summary-card h3 { color: #8b949e; font-size: 11px; margin-bottom: 4px; }
+        .summary-card .value { font-size: 20px; font-weight: 600; color: #c9d1d9; }
+        .summary-card .subtext { color: #8b949e; font-size: 10px; margin-top: 2px; }
+        
+        /* Sections */
+        .section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .section h2 {
+            margin-bottom: 12px;
+            color: #c9d1d9;
+            border-bottom: 1px solid #30363d;
+            padding-bottom: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        /* Heatmap Common */
+        .heatmap-container {
+            overflow-x: auto;
+            padding: 5px 0;
+        }
+        .heatmap-wrapper {
+            display: inline-block;
+            min-width: 100%;
+        }
+        .heatmap-legend {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+            font-size: 11px;
+            color: #8b949e;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend-box {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            border: 1px solid #30363d;
+        }
+        .legend-box.success { background: #238636; }
+        .legend-box.error { background: #da3633; }
+        .legend-box.success-yesterday { background: #1a5c28; }
+        .legend-box.error-yesterday { background: #a32a27; }
+        .legend-box.success-2days { background: #123819; }
+        .legend-box.error-2days { background: #6b1e1d; }
+        .legend-box.success-old { background: #0a1a0d; }
+        .legend-box.error-old { background: #3a1210; }
+        .legend-box.notdone { background: transparent; }
+        
+        /* Social Network Cells */
+        .cells-grid.social-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            max-width: 100%;
+        }
+        .account-cell {
+            width: calc((100vw - 92px) / 100 - 2px);
+            height: calc((100vw - 92px) / 100 - 2px);
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 2px;
+            padding: 1px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .account-cell:hover {
+            transform: scale(1.3);
+            z-index: 10;
+            box-shadow: 0 0 8px rgba(255,255,255,0.3);
+        }
+        .social-squares {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 1px;
+            width: 100%;
+            height: 100%;
+        }
+        .social-square {
+            border-radius: 1px;
+            cursor: pointer;
+            transition: none;
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+        }
+        
+        /* Daily Report - Project Cards + Heatmap Layout */
+        .heatmap-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .heatmap-with-stats {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+        }
+        .heatmap-project-card {
+            width: 200px;
+            flex-shrink: 0;
+        }
+        .project-card {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .project-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #58a6ff;
+            margin-bottom: 8px;
+        }
+        .progress-bar {
+            height: 6px;
+            background: #161b22;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .project-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            font-size: 10px;
+            color: #8b949e;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stat-good { color: #3fb950; font-weight: 600; }
+        .stat-bad { color: #f85149; font-weight: 600; }
+        .stat-neutral { color: #8b949e; font-weight: 600; }
+        
+        .heatmap-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .heatmap-row {
+            display: flex;
+            align-items: center;
+        }
+        .cells-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            max-width: calc((11px + 2px) * 100);
+        }
+        .heatmap-cell {
+            width: 11px;
+            height: 11px;
+            border-radius: 2px;
+            border: 1px solid #30363d;
+            background: transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .heatmap-cell.success { background: #238636; border-color: #2ea043; }
+        .heatmap-cell.error { background: #da3633; border-color: #f85149; }
+        .heatmap-cell.success-yesterday { background: #1a5c28; border-color: #247a35; }
+        .heatmap-cell.error-yesterday { background: #a32a27; border-color: #c93a36; }
+        .heatmap-cell.success-2days { background: #123819; border-color: #1a5024; }
+        .heatmap-cell.error-2days { background: #6b1e1d; border-color: #8d2826; }
+        .heatmap-cell.success-old { background: #0a1a0d; border-color: #112b15; }
+        .heatmap-cell.error-old { background: #3a1210; border-color: #5a1a18; }
+        .heatmap-cell:hover {
+            transform: scale(1.3);
+            z-index: 10;
+            box-shadow: 0 0 8px rgba(255,255,255,0.3);
+        }
+        
+        /* Stats Sidebar (процессы справа) */
+        .stats-sidebar {
+            width: 250px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .stats-card {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+        }
+        .stats-card h3 {
+            color: #c9d1d9;
+            font-size: 12px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .processes-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 9px;
+            font-family: 'Iosevka', 'Consolas', monospace;
+        }
+        .process-line {
+            display: flex;
+            align-items: center;
+            padding: 4px;
+            background: rgba(48, 54, 61, 0.3);
+            border-radius: 3px;
+            line-height: 1.3;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .process-line:hover {
+            background: rgba(88, 166, 255, 0.2);
+        }
+        .process-line:active {
+            background: rgba(88, 166, 255, 0.3);
+            transform: scale(0.98);
+        }
+        .process-name {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #c9d1d9;
+        }
+        .process-mem {
+            min-width: 45px;
+            text-align: right;
+            color: #58a6ff;
+            margin-left: 4px;
+        }
+        .process-time {
+            min-width: 50px;
+            text-align: right;
+            color: #8b949e;
+        }
+        
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: #1c2128;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+            color: #c9d1d9;
+            font-size: 12px;
+            white-space: pre-wrap;
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            display: none;
+            max-width: 400px;
+            line-height: 1.5;
+        }
+        .tooltip.show { display: block; }
+        .tooltip-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #58a6ff;
+            font-size: 13px;
+        }
+        .tooltip-social {
+            color: #8b949e;
+            font-size: 11px;
+            margin-bottom: 6px;
+            text-transform: capitalize;
+        }
+        .tooltip-time {
+            color: #8b949e;
+            font-size: 11px;
+            margin-bottom: 8px;
+        }
+        .tooltip-login {
+            font-family: 'Iosevka', monospace;
+            font-size: 12px;
+            font-weight: bold;
+            margin: 6px 0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(88, 166, 255, 0.1);
+            color: #58a6ff;
+        }
+        .tooltip-status {
+            margin: 5px 0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            font-size: 11px;
+        }
+        .tooltip-status.ok {
+            color: #3fb950;
+            background: rgba(63, 185, 80, 0.1);
+        }
+        .tooltip-status.success {
+            color: #3fb950;
+            background: rgba(63, 185, 80, 0.1);
+        }
+        .tooltip-status.error {
+            color: #f85149;
+            background: rgba(248, 81, 73, 0.1);
+        }
+        .tooltip-status.empty { color: #8b949e; }
+        .tooltip-error {
+            margin-top: 8px;
+            color: #f85149;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            padding: 8px;
+            background: rgba(248, 81, 73, 0.05);
+            border-radius: 4px;
+            border-left: 3px solid #f85149;
+        }
+        .tooltip-info {
+            margin-top: 8px;
+            color: #8b949e;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            padding: 8px;
+            background: rgba(139, 148, 158, 0.05);
+            border-radius: 4px;
+            border-left: 3px solid #8b949e;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(13, 17, 23, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            font-size: 18px;
+            color: #58a6ff;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .summary-cards { flex-direction: column; }
+            .cells-grid { justify-content: center; }
+            .heatmap-with-stats { flex-direction: column; }
+            .heatmap-project-card { width: 100%; max-width: 320px; }
+            .stats-sidebar { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading-overlay">⏳ Loading data...</div>
+    <div id="tooltip" class="tooltip"></div>
+    <div class="container">
+        <!-- Main Header -->
+        <div class="header main-header">
+            <h1 id="reportTitle">📊 Union Report</h1>
+        </div>
+        
+        <!-- Social Networks Section -->
+        <div class="section-header">
+            <h2>🌐 Social Networks Status</h2>
+        </div>
+        <div class="summary-cards" id="socialSummary">
+            <!-- Will be filled by JS -->
+        </div>
+        <div class="section">
+            <h2>Social Networks HeatMap</h2>
+            <div class="heatmap-container">
+                <div class="heatmap-wrapper">
+                    <div class="heatmap-legend">
+                        <span>Legend:</span>
+                        <div class="legend-item"><div class="legend-box" style="background: #1DA1F2;"></div> Twitter</div>
+                        <div class="legend-item"><div class="legend-box" style="background: #FFFFFF; border-color: #666;"></div> GitHub</div>
+                        <div class="legend-item"><div class="legend-box" style="background: #5865F2;"></div> Discord</div>
+                        <div class="legend-item"><div class="legend-box" style="background: #0088CC;"></div> Telegram</div>
+                        <div class="legend-item"><div class="legend-box" style="opacity: 0.3; background: #da3633;"></div> Error</div>
+                        <div class="legend-item"><div class="legend-box" style="opacity: 0.3; background: #666;"></div> Not connected</div>
+                    </div>
+                    <div class="cells-grid social-grid" id="socialGrid">
+                        <!-- Will be filled by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Divider -->
+        <div class="section-divider"></div>
+
+        <!-- Daily Projects Section -->
+        <div class="section-header">
+            <h2>📈 Daily Projects Status</h2>
+        </div>
+        <div class="summary-cards" id="dailySummary">
+            <!-- Will be filled by JS -->
+        </div>
+        <div class="section">
+            <h2>Projects HeatMap</h2>
+            <div class="heatmap-container">
+                <div class="heatmap-wrapper">
+                    <div class="heatmap-legend">
+                        <span>Legend:</span>
+                        <div class="legend-item"><div class="legend-box success"></div><div class="legend-box error"></div> Today</div>
+                        <div class="legend-item"><div class="legend-box success-yesterday"></div><div class="legend-box error-yesterday"></div> Yesterday</div>
+                        <div class="legend-item"><div class="legend-box success-2days"></div><div class="legend-box error-2days"></div> 2 days ago</div>
+                        <div class="legend-item"><div class="legend-box success-old"></div><div class="legend-box error-old"></div> 3+ days</div>
+                        <div class="legend-item"><div class="legend-box notdone"></div> Not touched</div>
+                    </div>
+                    <div style="display: flex; gap: 15px;">
+                        <div class="heatmap-grid" id="projectsGrid" style="flex: 1; min-width: 0;">
+                            <!-- Will be filled by JS -->
+                        </div>
+                        <!-- Process Monitor Sidebar -->
+                        <div id="processMonitor" class="stats-sidebar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Load data files -->
+    <script src="metadata.js"></script>
+    <script src="social.js"></script>
+    <script>
+        // Счётчик загруженных скриптов
+        window.scriptsToLoad = 0;
+        window.scriptsLoaded = 0;
+        
+        function checkAllLoaded() {
+            console.log(`📊 Загружено ${window.scriptsLoaded} из ${window.scriptsToLoad} скриптов`);
+            if (window.scriptsLoaded >= window.scriptsToLoad && window.scriptsToLoad > 0) {
+                console.log('✅ Все скрипты загружены, запускаем отчет');
+                // Запускаем загрузчик отчета
+                if (window.ReportLoader) {
+                    new ReportLoader();
+                } else {
+                    console.error('❌ ReportLoader не найден!');
+                }
+            }
+        }
+        
+        // Динамическая загрузка проектов
+        if (window.reportMetadata && window.reportMetadata.projects) {
+            console.log('📦 Начинаем загрузку проектов:', window.reportMetadata.projects);
+            window.scriptsToLoad += window.reportMetadata.projects.length;
+            
+            window.reportMetadata.projects.forEach(name => {
+                const script = document.createElement('script');
+                script.src = `projects/${name}.js`;
+                script.onerror = () => {
+                    console.error(`❌ Failed to load: projects/${name}.js`);
+                    window.scriptsLoaded++;
+                    checkAllLoaded();
+                };
+                script.onload = () => {
+                    console.log(`✅ Loaded: projects/${name}.js`);
+                    window.scriptsLoaded++;
+                    checkAllLoaded();
+                };
+                document.head.appendChild(script);
+            });
+        }
+        
+        // Загрузка данных о процессах (если есть поле machines в metadata)
+        if (window.reportMetadata && window.reportMetadata.machines) {
+            console.log('🖥️ Начинаем загрузку процессов:', window.reportMetadata.machines);
+            window.scriptsToLoad += window.reportMetadata.machines.length;
+            
+            window.reportMetadata.machines.forEach(mName => {
+                const script = document.createElement('script');
+                script.src = `process_${mName}.js`;
+                script.onerror = () => {
+                    console.warn(`⚠️ Process data not found: process_${mName}.js`);
+                    window.scriptsLoaded++;
+                    checkAllLoaded();
+                };
+                script.onload = () => {
+                    console.log(`✅ Loaded: process_${mName}.js`);
+                    window.scriptsLoaded++;
+                    checkAllLoaded();
+                };
+                document.head.appendChild(script);
+            });
+        }
+        
+        // Если нет проектов и процессов - запускаем сразу
+        if (window.scriptsToLoad === 0) {
+            console.log('⚠️ Нет проектов для загрузки');
+        }
+    </script>
+    <script src="reportLoader.js"></script>
+</body>
+</html>

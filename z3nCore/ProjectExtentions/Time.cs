@@ -17,9 +17,8 @@ namespace z3nCore
 
             public Deadline()
             {
-                Init = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                Reset();
             }
-
             public double Check(double limitSec)
             {
                 long currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -31,6 +30,11 @@ namespace z3nCore
         
                 return differenceSec;
             }
+            public void Reset()
+            {
+                Init = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            }
+            
         }
 
 

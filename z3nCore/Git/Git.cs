@@ -149,11 +149,11 @@ namespace z3nCore.Api
             try
             {
                 // Читаем из БД вместо файла
-                var allProjects = _project.DbGetLines("name", "!projects", where: "\"name\" != ''");
+                var allProjects = _db.GetLines("name", "!projects", where: "\"name\" != ''", log:true);
         
                 foreach (var projectName in allProjects)
                 {
-                    var ghSynced = _db.Get("gh_synced", "!projects", where: $"\"name\" = '{projectName}'");
+                    var ghSynced = _db.Get("gh_synced", "!projects", where: $"\"name\" = '{projectName}'", log:true);
                     projectsList.Add($"{projectName} : {ghSynced}");
                 }
             }

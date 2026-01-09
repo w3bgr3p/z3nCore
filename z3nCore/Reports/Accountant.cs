@@ -12,6 +12,9 @@ namespace z3nCore.Utilities
 {
     public class Accountant
     {
+        
+        
+        
         #region Constants
         
         // Пороги для цветовой индикации
@@ -190,6 +193,36 @@ namespace z3nCore.Utilities
 
         #region Private Methods - HTML Generation
 
+        public static class HtmlEncoder
+        {
+            public static string HtmlEncode(string text)
+            {
+                if (string.IsNullOrEmpty(text))
+                    return text;
+
+                return text
+                    .Replace("&", "&amp;")
+                    .Replace("<", "&lt;")
+                    .Replace(">", "&gt;")
+                    .Replace("\"", "&quot;")
+                    .Replace("'", "&#39;");
+            }
+
+            public static string HtmlAttributeEncode(string text)
+            {
+                if (string.IsNullOrEmpty(text))
+                    return text;
+
+                return text
+                    .Replace("&", "&amp;")
+                    .Replace("\"", "&quot;")
+                    .Replace("'", "&#39;")
+                    .Replace("<", "&lt;")
+                    .Replace(">", "&gt;");
+            }
+        }
+        
+        
         private string GenerateBalanceHtml(string[] rows, List<string> columns)
         {
             var sb = new System.Text.StringBuilder();

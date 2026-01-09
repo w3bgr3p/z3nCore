@@ -152,7 +152,7 @@ namespace z3nCore.Utilities
     private void CreateSnapshotIfChanged(string filePath, string fileName, 
         string projectDir, string snapDir)
     {
-        string fileHash = z3nCore.Api.Git.GetFileHash(filePath);
+        string fileHash = z3nCore.Git.GitHub.GetFileHash(filePath);
         
         if (HashExistsInSnaps(snapDir, fileHash))
             return;
@@ -176,7 +176,7 @@ namespace z3nCore.Utilities
         var snaps = Directory.GetFiles(snapDir, "*", SearchOption.TopDirectoryOnly);
         foreach (string snapFile in snaps)
         {
-            if (z3nCore.Api.Git.GetFileHash(snapFile) == targetHash)
+            if (z3nCore.Git.GitHub.GetFileHash(snapFile) == targetHash)
                 return true;
         }
         return false;

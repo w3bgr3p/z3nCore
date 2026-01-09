@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using ZennoLab.CommandCenter;
 using ZennoLab.InterfacesLibrary.ProjectModel;
+using Newtonsoft.Json.Linq;
 
 namespace z3nCore
 {
@@ -174,6 +175,49 @@ namespace z3nCore
         {
             var element = FindTrafficElement(url, strict, timeoutSeconds);
             return element.GetAllResponseHeaders();
+        }
+        
+        public string GetApiStructure(string urlFilter)
+        {
+            var t = new Traffic(_project, _instance, true);
+            var all = t.FindAllTrafficElements(urlFilter);
+    
+            var uniqueEndpoints = new Dictionary<string, JObject>(); // url -> first example
+    
+            foreach (var el in all)
+            {
+                string key = $"{el.Method}:{el.Url}"; // GET:url и POST:url - разные эндпоинты
+        
+                if (uniqueEndpoints.ContainsKey(key))
+                    continue; // Уже есть пример этого эндпоинта
+        
+                var item = new JObject();
+                item["method"] = el.Method;
+                item["url"] = el.Url;
+                item["statusCode"] = el.StatusCode;
+        
+                if (!string.IsNullOrEmpty(el.RequestBody))
+                {
+                    try { item["requestBody"] = JToken.Parse(el.RequestBody); }
+                    catch { item["requestBody"] = el.RequestBody; }
+                }
+        
+                if (!string.IsNullOrEmpty(el.ResponseBody))
+                {
+                    try { item["responseBody"] = JToken.Parse(el.ResponseBody); }
+                    catch { item["responseBody"] = el.ResponseBody; }
+                }
+        
+                uniqueEndpoints[key] = item;
+            }
+    
+            var snapshot = new JObject();
+            snapshot["totalEndpoints"] = uniqueEndpoints.Count;
+            snapshot["endpoints"] = new JArray(uniqueEndpoints.Values);
+    
+            string json = snapshot.ToString(Newtonsoft.Json.  Formatting.Indented);
+            
+            return json;
         }
 
         #endregion

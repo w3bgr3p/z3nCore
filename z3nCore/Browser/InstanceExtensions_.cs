@@ -1,4 +1,6 @@
-﻿
+﻿using AForge.Imaging;
+using System.Drawing;
+using System.Drawing.Imaging;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -649,6 +651,323 @@ namespace z3nCore
                 }
             }
         }
+
+        #region Canvas
+
+        private static string IsImg(string imgInput)
+        {
+            // Путь должен содержать расширение изображения
+            if (imgInput.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
+                imgInput.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+                imgInput.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+                imgInput.EndsWith(".gif", StringComparison.OrdinalIgnoreCase) ||
+                imgInput.EndsWith(".bmp", StringComparison.OrdinalIgnoreCase) ||
+                imgInput.EndsWith(".webp", StringComparison.OrdinalIgnoreCase))
+            {
+                // Если это путь - читаем и конвертируем
+                return Convert.ToBase64String(System.IO.File.ReadAllBytes(imgInput));
+            }
+            else
+            {
+                // Если это не путь - возвращаем как есть (уже Base64)
+                return imgInput;
+            }
+        }
+
+        /// <summary>
+        /// Получить размер viewport браузера
+        /// </summary>
+        private static int[] GetViewportSize(Instance instance)
+        {
+            string js = @"
+                return JSON.stringify({
+                    width: window.innerWidth,
+                    height: window.innerHeight
+                });
+            ";
+            string result = instance.ActiveTab.MainDocument.EvaluateScript(js);
+            
+            var match = System.Text.RegularExpressions.Regex.Match(result, @"""width"":(\d+),""height"":(\d+)");
+            int width = int.Parse(match.Groups[1].Value);
+            int height = int.Parse(match.Groups[2].Value);
+            
+            return new int[] { width, height };
+        }
+
+        /// <summary>
+        /// Найти изображение на экране и вернуть координаты его центра
+        /// </summary>
+        /// <returns>Координаты центра найденного изображения [x, y]</returns>
+        public static int[] FindImg(this Instance instance, string imgFile, int[] searchArea)
+        {
+            Tab tab = instance.ActiveTab;
+            if (tab.IsBusy) tab.WaitDownloading();
+
+            string image = IsImg(imgFile);
+            System.Drawing.Rectangle searchRect = new System.Drawing.Rectangle(searchArea[0], searchArea[1], searchArea[2], searchArea[3]); 
+            System.Drawing.Rectangle[] searchAreas = new System.Drawing.Rectangle[] { searchRect };
+
+            string rectStr = tab.FindImage(image, searchAreas, 99);
+
+            if (string.IsNullOrEmpty(rectStr))
+            {
+                throw new Exception($"Изображение {imgFile} не найдено в указанной области.");
+            }
+
+            string[] parts = rectStr.Split(',');
+            if (parts.Length != 4)
+            {
+                throw new Exception($"Некорректный формат координат: {rectStr}");
+            }
+
+            int left   = Convert.ToInt32(parts[0].Trim());
+            int top    = Convert.ToInt32(parts[1].Trim());
+            int width  = Convert.ToInt32(parts[2].Trim());
+            int height = Convert.ToInt32(parts[3].Trim());
+
+            int centerX = left + width / 2;
+            int centerY = top + height / 2;
+
+            if (centerX == 0 && centerY == 0)
+            {
+                throw new Exception("Изображение не найдено (координаты 0,0).");
+            }
+
+            return new int[] { centerX, centerY };
+        }
+
+        /// <summary>
+        /// Найти изображение и кликнуть по его центру
+        /// </summary>
+        /// <returns>Координаты клика [x, y]</returns>
+        public static int[] ClickImg(this Instance instance, string imgFile, int[] searchArea)
+        {
+            int[] coords = instance.FindImg(imgFile, searchArea);
+            
+            System.Drawing.Rectangle clickPoint = new System.Drawing.Rectangle(coords[0], coords[1], 1, 1);
+            instance.ActiveTab.RiseEvent("click", clickPoint, "Left");
+            
+            return coords;
+        }
+
+        /// <summary>
+        /// Найти изображение и тапнуть по его центру
+        /// </summary>
+        /// <returns>Координаты тапа [x, y]</returns>
+        public static int[] TouchImg(this Instance instance, string imgFile, int[] searchArea)
+        {
+            int[] coords = instance.FindImg(imgFile, searchArea);
+            
+            instance.ActiveTab.Touch.Touch(coords[0], coords[1]);
+            
+            return coords;
+        }
+
+        /// <summary>
+        /// Получить координаты центра экрана
+        /// </summary>
+        /// <returns>Координаты центра [x, y]</returns>
+        public static int[] GetCenter(this Instance instance)
+        {
+            int[] viewport = GetViewportSize(instance);
+            return new int[] { viewport[0] / 2, viewport[1] / 2 };
+        }
+
+        /// <summary>
+        /// Переместить курсор в центр экрана
+        /// </summary>
+        /// <returns>Координаты центра [x, y]</returns>
+        public static int[] MouseCenter(this Instance instance,bool moveMouse = false)
+        {
+            int[] center = instance.GetCenter();
+            
+            instance.UseFullMouseEmulation = true;
+            var pos = new System.Drawing.Point(center[0], center[1]);
+            if (moveMouse) 
+                instance.ActiveTab.FullEmulationMouseMove(center[0], center[1]);
+            else
+                instance.ActiveTab.FullEmulationMouseCurrentPosition = pos;
+            
+            return center;
+        }
+
+        /// <summary>
+        /// Получить область вокруг центра экрана
+        /// </summary>
+        /// <returns>Область поиска [x, y, width, height]</returns>
+        /// <summary>
+        /// Получить область вокруг центра экрана
+        /// </summary>
+        /// <returns>Область поиска [x, y, width, height]</returns>
+        public static int[] CenterArea(this Instance instance, int width = 0, int height = 0)
+        {
+            int[] viewportSize = GetViewportSize(instance);
+            
+            if (width == 0 && height == 0)
+            {
+                // Если не указаны размеры - возвращаем весь viewport
+                return new int[] { 0, 0, viewportSize[0], viewportSize[1] };
+            }
+            
+            if (height == 0) height = width;
+
+            int centerX = viewportSize[0] / 2;
+            int centerY = viewportSize[1] / 2;
+
+            int x = centerX - width / 2;
+            int y = centerY - height / 2;
+
+            return new int[] { x, y, width, height };
+        }
+
+        private static Random _random = new Random();
+
+        /// <summary>
+        /// Свайп от центра экрана в указанном направлении
+        /// </summary>
+        /// <returns>Координаты конечной точки свайпа [x, y]</returns>
+        public static int[] SwipeFromCenter(this Instance instance, int distance, string direction = null)
+        {
+            int[] center = instance.GetCenter();
+            int centerX = center[0];
+            int centerY = center[1];
+
+            if (string.IsNullOrEmpty(direction))
+            {
+                string[] directions = { "left", "up", "right", "down" };
+                direction = directions[_random.Next(directions.Length)];
+            }
+
+            int toX = centerX;
+            int toY = centerY;
+
+            switch (direction.ToLower())
+            {
+                case "left":
+                    toX = centerX - distance;
+                    break;
+                case "right":
+                    toX = centerX + distance;
+                    break;
+                case "up":
+                    toY = centerY - distance;
+                    break;
+                case "down":
+                    toY = centerY + distance;
+                    break;
+                default:
+                    throw new ArgumentException($"Неизвестное направление: {direction}. Используй: left, up, right, down");
+            }
+
+            instance.ActiveTab.Touch.SwipeBetween(centerX, centerY, toX, toY);
+            
+            return new int[] { toX, toY };
+        }
+
+        /// <summary>
+        /// Найти изображение и свайпнуть его в центр экрана
+        /// </summary>
+        /// <returns>Координаты центра экрана [x, y]</returns>
+        public static int[] SwipeImgToCenter(this Instance instance, string imgFile, int[] searchArea)
+        {
+            int[] imgCoords = instance.FindImg(imgFile, searchArea);
+            int[] center = instance.GetCenter();
+
+            instance.ActiveTab.Touch.SwipeBetween(imgCoords[0], imgCoords[1], center[0], center[1]);
+
+            return center;
+        }
+
+        /// <summary>
+        /// Тапнуть по центру экрана
+        /// </summary>
+        /// <returns>Координаты тапа [x, y]</returns>
+        public static int[] TouchCenter(this Instance instance)
+        {
+            int[] center = instance.GetCenter();
+            instance.ActiveTab.Touch.Touch(center[0], center[1]);
+            return center;
+        }
+
+        /// <summary>
+        /// Кликнуть по центру экрана
+        /// </summary>
+        /// <returns>Координаты клика [x, y]</returns>
+        public static int[] ClickCenter(this Instance instance)
+        {
+            int[] center = instance.GetCenter();
+            System.Drawing.Rectangle clickPoint = new System.Drawing.Rectangle(center[0], center[1], 1, 1);
+            instance.ActiveTab.RiseEvent("click", clickPoint, "Left");
+            return center;
+        }
+
+        public static Dictionary<string, int[]> FindMultipleInScreenshot(
+            this Instance instance,
+            Dictionary<string, string> templates,
+            int[] searchArea,
+            float threshold = 0.95f)
+        {
+            Tab tab = instance.ActiveTab;
+            if (tab.IsBusy) tab.WaitDownloading();
+            
+            // 1. Получаем полный скриншот страницы
+            string fullBase64 = tab.GetPagePreview();
+            byte[] fullBytes = Convert.FromBase64String(fullBase64);
+            
+            Bitmap fullScreenshot;
+            using (var ms = new MemoryStream(fullBytes))
+            {
+                fullScreenshot = new Bitmap(ms);
+            }
+            
+            // 2. Вырезаем нужную область
+            System.Drawing.Rectangle cropRect = new System.Drawing.Rectangle(
+                searchArea[0], searchArea[1], searchArea[2], searchArea[3]
+            );
+            
+            Bitmap screenshot = fullScreenshot.Clone(cropRect, fullScreenshot.PixelFormat);
+            fullScreenshot.Dispose();
+            
+            var results = new Dictionary<string, int[]>();
+            var matcher = new ExhaustiveTemplateMatching(threshold);
+            
+            // 3. Ищем ВСЕ шаблоны в ОДНОМ скриншоте
+            foreach (var kvp in templates)
+            {
+                try
+                {
+                    byte[] templateBytes = Convert.FromBase64String(kvp.Value);
+                    Bitmap templateBmp;
+                    using (var ms = new MemoryStream(templateBytes))
+                    {
+                        templateBmp = new Bitmap(ms);
+                    }
+                    
+                    TemplateMatch[] matches = matcher.ProcessImage(screenshot, templateBmp);
+                    
+                    if (matches != null && matches.Length > 0)
+                    {
+                        var bestMatch = matches[0];
+                        
+                        // Координаты относительно экрана
+                        int centerX = searchArea[0] + bestMatch.Rectangle.X + bestMatch.Rectangle.Width / 2;
+                        int centerY = searchArea[1] + bestMatch.Rectangle.Y + bestMatch.Rectangle.Height / 2;
+                        
+                        results[kvp.Key] = new int[] { centerX, centerY };
+                    }
+                    
+                    templateBmp.Dispose();
+                }
+                catch { }
+            }
+            
+            screenshot.Dispose();
+            return results;
+        }
+        
+        #endregion
+                        
+                
 
     }
 

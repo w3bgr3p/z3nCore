@@ -15,6 +15,7 @@ namespace z3nCore
         private string _token;
         private string _group;
         private string _topic;
+        private readonly NetHttp _http;
 
         public Telegram(IZennoPosterProjectModel project, bool log = false, string token = null, string group = null, string topic = null)
         {
@@ -24,6 +25,7 @@ namespace z3nCore
             _token = token;
             _group = group;
             _topic = topic;
+            _http = new NetHttp(project, log: false);
             LoadCreds();
         }
 
@@ -64,7 +66,7 @@ namespace z3nCore
             {
                 string encodedFailReport = Uri.EscapeDataString(_project.Variables["failReport"].Value);
                 string failUrl = $"https://api.telegram.org/bot{_token}/sendMessage?chat_id={_group}&text={encodedFailReport}&reply_to_message_id={_topic}&parse_mode=MarkdownV2";
-                _project.GET(failUrl);
+                _http.GET(failUrl);
             }
             else
             {
@@ -72,7 +74,7 @@ namespace z3nCore
                 string successReport = $"✅️  \\#{_project.Name.EscapeMarkdown()} \\#{_project.Variables["acc0"].Value} \n";
                 string encodedReport = Uri.EscapeDataString(successReport);
                 string url = $"https://api.telegram.org/bot{_token}/sendMessage?chat_id={_group}&text={encodedReport}&reply_to_message_id={_topic}&parse_mode=MarkdownV2";
-                _project.GET(url);
+                _http.GET(url);
             }
             string toLog = $"✔️ All jobs done. Elapsed: {_project.TimeElapsed()}s \n███ ██ ██  ██ █  █  █  ▓▓▓ ▓▓ ▓▓  ▓  ▓  ▓  ▒▒▒ ▒▒ ▒▒ ▒  ▒  ░░░ ░░  ░░ ░ ░ ░ ░ ░ ░  ░  ░  ░   ░   ░   ░    ░    ░    ░     ░        ░          ░";
         }
@@ -97,7 +99,7 @@ namespace z3nCore
                     url += $"&reply_to_message_id={_topic}";
                 }
 
-                string response = _project.GET(url);
+                string response = _http.GET(url);
                 
                 if (response.Contains("\"ok\":true"))
                 {
@@ -210,7 +212,7 @@ namespace z3nCore
                     url += $"&reply_to_message_id={_topic}";
                 }
 
-                string response = _project.GET(url);
+                string response = _http.GET(url);
                 
                 if (response.Contains("\"ok\":true"))
                 {

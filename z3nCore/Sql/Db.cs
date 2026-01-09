@@ -6,11 +6,10 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using ZennoLab.InterfacesLibrary.ProjectModel;
 
 namespace z3nCore
 {
-    public class Db
+    public partial class Db
     {
         private readonly string _dbMode;
         private readonly string _sqLitePath;
@@ -20,7 +19,7 @@ namespace z3nCore
         private readonly string _pgUser;
         private readonly string _pgPass;
         private readonly string _defaultTable;
-        private readonly IZennoPosterProjectModel _project;
+        
         
         private const char RawSeparator = '·';
         private const char ColumnSeparator = '¦';
@@ -46,28 +45,6 @@ namespace z3nCore
             _defaultTable = defaultTable;
         }
         
-        public Db(
-            IZennoPosterProjectModel project,
-            string dbMode = null,
-            string sqLitePath = null,
-            string pgHost = null,
-            string pgPort = null,
-            string pgDbName = null,
-            string pgUser = null,
-            string pgPass = null,
-            string defaultTable = null)
-        {
-            _project = project;
-            _dbMode = dbMode ?? project.Var("DBmode");
-            _sqLitePath = sqLitePath ?? project.Var("DBsqltPath");
-            _pgHost = pgHost ?? project.GVar("sqlPgHost");
-            _pgPort = pgPort ?? project.GVar("sqlPgPort");
-            _pgDbName = pgDbName ?? project.GVar("sqlPgName");
-            _pgUser = pgUser ?? project.GVar("sqlPgUser");
-            _pgPass = pgPass ?? project.Var("DBpstgrPass");
-            _defaultTable = defaultTable ?? project.ProjectTable();
-        }
-
         private void Log(object toLog)
         {
             string toSend = $"{toLog}";
