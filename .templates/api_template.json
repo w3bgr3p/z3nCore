@@ -1,0 +1,114 @@
+{
+  "anticaptcha": [
+    "REQUIRED",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "binance": [
+    "REQUIRED",
+    "REQUIRED",
+    "",
+    "REQUIRED",
+    "",
+    ""
+  ],
+  "bitget": [
+    "REQUIRED",
+    "REQUIRED",
+    "REQUIRED",
+    "REQUIRED",
+    "",
+    ""
+  ],
+  "capguru": [
+    "REQUIRED",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "capmonster": [
+    "REQUIRED",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "capsolver": [
+    "REQUIRED",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "firstmail": [
+    "REQUIRED",
+    "REQUIRED",
+    "REQUIRED",
+    "REQUIRED",
+    "",
+    ""
+  ],
+  "github": [
+    "REQUIRED",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "mexc": [
+    "REQUIRED",
+    "REQUIRED",
+    "",
+    "REQUIRED",
+    "",
+    "REQUIRED"
+  ],
+  "okx": [
+    "REQUIRED",
+    "REQUIRED",
+    "REQUIRED",
+    "",
+    "",
+    ""
+  ],
+  "openrouter": [
+    "REQUIRED",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "perplexity": [
+    "REQUIRED",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ],
+  "tg_logger": [
+    "REQUIRED",
+    "",
+    "",
+    "",
+    "REQUIRED",
+    ""
+  ],
+  "webshare": [
+    "REQUIRED",
+    "",
+    "",
+    "",
+    "",
+    ""
+  ]
+}
